@@ -115,11 +115,11 @@ impl StorageKey for Vec<u8> {
         self.len()
     }
 
-    fn write(&self, buffer: &mut Vec<u8>) {        
+    fn write(&self, buffer: &mut Vec<u8>) {
         buffer.extend_from_slice(self)
     }
 
-    fn read(buffer: &[u8]) -> Self {        
+    fn read(buffer: &[u8]) -> Self {
         buffer.to_vec()
     }
 }
