@@ -66,10 +66,12 @@ extern crate toml;
 extern crate uuid;
 extern crate vec_map;
 
-// Test dependencies.
-#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
+extern crate snow;
+extern crate tokio;
+
+// Test dependencies.
 #[cfg(test)]
 extern crate tempdir;
 #[cfg(all(test, feature = "long_benchmarks"))]
