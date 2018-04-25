@@ -599,7 +599,7 @@ impl State {
             }
             *known_round = round;
         }
-        let max_byzantine_count = self.validators().len() - self.majority_count();
+        let max_byzantine_count = (self.validators().len()  + 2 )/ 3 - 1;
         if self.validators_rounds.len() <= max_byzantine_count {
             trace!("Count of validators, lower then max byzantine count.");
             return None;

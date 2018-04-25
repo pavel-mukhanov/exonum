@@ -54,7 +54,8 @@ mod basic;
 mod consensus;
 mod requests;
 mod whitelist;
-pub mod state; // TODO: temporary solution to get access to WAIT constants (ECR-167)
+pub mod state;
+// TODO: temporary solution to get access to WAIT constants (ECR-167)
 pub mod timeout_adjuster;
 
 /// External messages.
@@ -117,6 +118,8 @@ pub struct NodeHandler {
     pub peer_discovery: Vec<SocketAddr>,
     /// Does this node participate in the consensus?
     is_enabled: bool,
+    /// mempool config
+    pub mempool: MemoryPoolConfig,
 }
 
 /// Service configuration.
@@ -193,8 +196,8 @@ impl From<AllowOrigin> for CorsMiddleware {
 
 impl ser::Serialize for AllowOrigin {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
+        where
+            S: ser::Serializer,
     {
         match *self {
             AllowOrigin::Any => "*".serialize(serializer),
@@ -211,8 +214,8 @@ impl ser::Serialize for AllowOrigin {
 
 impl<'de> de::Deserialize<'de> for AllowOrigin {
     fn deserialize<D>(d: D) -> Result<AllowOrigin, D::Error>
-    where
-        D: de::Deserializer<'de>,
+        where
+            D: de::Deserializer<'de>,
     {
         struct Visitor;
 
@@ -224,8 +227,8 @@ impl<'de> de::Deserialize<'de> for AllowOrigin {
             }
 
             fn visit_str<E>(self, value: &str) -> Result<AllowOrigin, E>
-            where
-                E: de::Error,
+                where
+                    E: de::Error,
             {
                 match value {
                     "*" => Ok(AllowOrigin::Any),
@@ -234,8 +237,8 @@ impl<'de> de::Deserialize<'de> for AllowOrigin {
             }
 
             fn visit_seq<A>(self, seq: A) -> Result<AllowOrigin, A::Error>
-            where
-                A: de::SeqAccess<'de>,
+                where
+                    A: de::SeqAccess<'de>,
             {
                 let hosts =
                     de::Deserialize::deserialize(de::value::SeqAccessDeserializer::new(seq))?;
@@ -408,6 +411,7 @@ impl NodeHandler {
             &config.listener.consensus_secret_key,
         );
 
+        let mempool = config.clone().mempool;
         let mut whitelist = config.listener.whitelist;
         whitelist.set_validators(stored.validator_keys.iter().map(|x| x.consensus_key));
         let mut state = State::new(
@@ -437,6 +441,7 @@ impl NodeHandler {
             channel: sender,
             peer_discovery: config.peer_discovery,
             is_enabled: true,
+            mempool,
         }
     }
 
@@ -503,9 +508,29 @@ impl NodeHandler {
         // Recover cached consensus messages if any. We do this after main initialization and before
         // the start of event processing.
         let messages = schema.consensus_messages_cache();
-        for msg in messages.iter() {
-            self.handle_message(msg);
+        trace!("Cached messages size {}", messages.len());
+
+        if messages.len() > self.mempool.events_pool_capacity.network_events_capacity as u64 {
+            info!("Cached messages size is bigger than mempool. Clearing cache.");
+            self.clear_cache();
+        } else {
+            for msg in messages.iter() {
+                self.handle_message(msg);
+            }
         }
+    }
+
+    fn clear_cache(&mut self) {
+        let patch = {
+            let mut fork = self.blockchain.fork();
+            {
+                let mut schema = Schema::new(&mut fork);
+                schema.consensus_messages_cache_mut().clear();
+            }
+            fork.into_patch()
+        };
+        self.blockchain.merge_sync(patch).expect("Clearing cache error.");
+        info!("Cache cleared.");
     }
 
     /// Sends the given message to a peer by its id.
