@@ -32,6 +32,7 @@ use super::error::{into_other, log_error, other_error, result_ok};
 
 use super::noise;
 use crypto::PublicKey;
+use events::noise::NoiseWrapper;
 
 const OUTGOING_CHANNEL_SIZE: usize = 10;
 
@@ -116,7 +117,7 @@ impl ConnectionsPool {
     fn connect_to_peer(
         self,
         network_config: NetworkConfiguration,
-        _max_message_len: u32,
+        max_message_len: u32,
         peer: SocketAddr,
         network_tx: mpsc::Sender<NetworkEvent>,
         handle: &Handle,
@@ -155,7 +156,8 @@ impl ConnectionsPool {
                 Ok(sock)
             })
             .and_then(move |sock| {
-                noise::send_handshake(sock, &consensus_key).and_then(|framed|{
+                let wrapper = NoiseWrapper { max_message_len };
+                wrapper.send_handshake(sock, &consensus_key).and_then(|framed|{
                     Ok(framed)
                 })
             })
@@ -347,7 +349,7 @@ struct Listener(Box<Future<Item = (), Error = io::Error>>);
 impl Listener {
     fn bind(
         network_config: NetworkConfiguration,
-        _max_message_len: u32,
+        max_message_len: u32,
         listen_address: SocketAddr,
         handle: Handle,
         network_tx: &mpsc::Sender<NetworkEvent>,
@@ -375,7 +377,11 @@ impl Listener {
             }
             trace!("Accepted incoming connection with peer={}", addr);
             let network_tx = network_tx.clone();
-            let connection_handler = noise::listen_handshake(sock, &stored)
+
+            let wrapper = NoiseWrapper { max_message_len };
+            wrapper.wrap();
+
+            let connection_handler = wrapper.listen_handshake(sock, &stored)
                 .and_then(move |framed| {
                     let (_, stream) = framed.split();
                     stream

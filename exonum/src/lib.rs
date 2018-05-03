@@ -17,7 +17,7 @@
 //! For more information see the project readme.
 // spell-checker:ignore cors
 
-#![deny(missing_debug_implementations, missing_docs, unsafe_code)]
+#![deny(missing_debug_implementations, unsafe_code)]
 #![cfg_attr(feature = "flame_profile", feature(plugin, custom_attribute))]
 #![cfg_attr(feature = "flame_profile", plugin(exonum_flamer))]
 #![cfg_attr(feature = "long_benchmarks", feature(test))]
@@ -60,7 +60,7 @@ extern crate term;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_retry;
-#[cfg(any(test, feature = "long_benchmarks"))]
+//#[cfg(any(test, feature = "long_benchmarks"))]
 extern crate tokio_timer;
 extern crate toml;
 extern crate uuid;
@@ -91,6 +91,6 @@ pub mod blockchain;
 pub mod explorer;
 pub mod api;
 
-mod events;
+pub mod events;
 #[cfg(test)]
 mod sandbox;

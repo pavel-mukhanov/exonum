@@ -218,7 +218,6 @@ fn test_network_handshake() {
 }
 
 #[test]
-#[ignore] // TODO: noise protocol splits messages in chunks of 2^16 bytes
 fn test_network_big_message() {
     let first = "127.0.0.1:17200".parse().unwrap();
     let second = "127.0.0.1:17201".parse().unwrap();
@@ -264,7 +263,6 @@ fn test_network_big_message() {
 }
 
 #[test]
-#[ignore] // TODO: noise protocol splits messages in chunks of 2^16 bytes
 fn test_network_max_message_len() {
     let first = "127.0.0.1:17202".parse().unwrap();
     let second = "127.0.0.1:17303".parse().unwrap();

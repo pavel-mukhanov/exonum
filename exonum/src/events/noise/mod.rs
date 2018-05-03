@@ -1,5 +1,6 @@
-mod noise_codec;
-
+use crypto::PublicKey;
+use events::codec::MessagesCodec;
+use events::noise::noise_codec::NoiseCodec;
 use futures::future::Future;
 use snow::NoiseBuilder;
 use snow::params::NoiseParams;
@@ -8,19 +9,41 @@ use tokio;
 use tokio_core::net::TcpStream;
 use tokio_io::AsyncRead;
 use tokio_io::codec::Framed;
-use events::noise::noise_codec::NoiseCodec;
-use crypto::PublicKey;
+use futures::future::ok;
+use futures::Stream;
+
+mod noise_codec;
 
 static SECRET: &'static [u8] = b"secret secret secret key secrets";
 lazy_static! {
     static ref PARAMS: NoiseParams = "Noise_XXpsk3_25519_ChaChaPoly_BLAKE2s".parse().unwrap();
 }
 
+#[derive(Debug)]
+pub struct NoiseWrapper {
+    pub max_message_len: u32,
+}
+
+#[cfg(all(feature = "noise_protocol"))]
+impl NoiseWrapper {
+    pub fn wrap(&self) {
+        info!("wrap noise protocol")
+    }
+
+    pub fn listen_handshake(&self, stream: TcpStream, stored: &PublicKey) -> Box<Future<Item=Framed<TcpStream, NoiseCodec>, Error=io::Error>> {
+        listen_handshake(stream, stored)
+    }
+
+    pub fn send_handshake(&self, stream: TcpStream, stored: &PublicKey) -> Box<Future<Item=Framed<TcpStream, NoiseCodec>, Error=io::Error>> {
+        send_handshake(stream, stored)
+    }
+
+}
+
 //TODO: Consider using tokio-proto for noise handshake
-pub fn listen_handshake(
-    stream: TcpStream,
-    stored: &PublicKey,
-) -> Box<Future<Item = Framed<TcpStream, NoiseCodec>, Error = io::Error>> {
+pub fn listen_handshake(stream: TcpStream,
+                        stored: &PublicKey,
+) -> Box<Future<Item=Framed<TcpStream, NoiseCodec>, Error=io::Error>> {
     let builder: NoiseBuilder = NoiseBuilder::new(PARAMS.clone());
     let static_key = stored.as_ref();
     let mut noise = builder
@@ -53,10 +76,9 @@ pub fn listen_handshake(
     Box::new(framed)
 }
 
-pub fn send_handshake(
-    stream: TcpStream,
-    stored: &PublicKey,
-) -> Box<Future<Item = Framed<TcpStream, NoiseCodec>, Error = io::Error>> {
+pub fn send_handshake(stream: TcpStream,
+                      stored: &PublicKey,
+) -> Box<Future<Item=Framed<TcpStream, NoiseCodec>, Error=io::Error>> {
     let builder: NoiseBuilder = NoiseBuilder::new(PARAMS.clone());
     let static_key = stored.as_ref();
     let mut noise = builder
@@ -87,7 +109,7 @@ pub fn send_handshake(
     Box::new(framed)
 }
 
-pub fn read(sock: TcpStream) -> Box<Future<Item = (TcpStream, Vec<u8>), Error = io::Error>> {
+pub fn read(sock: TcpStream) -> Box<Future<Item=(TcpStream, Vec<u8>), Error=io::Error>> {
     let buf = vec![0u8; 2];
     Box::new(
         tokio::io::read_exact(sock, buf)
@@ -95,13 +117,32 @@ pub fn read(sock: TcpStream) -> Box<Future<Item = (TcpStream, Vec<u8>), Error = 
     )
 }
 
-pub fn write(
-    sock: TcpStream,
-    buf: Vec<u8>,
-    len: usize,
-) -> Box<Future<Item = (TcpStream, Vec<u8>), Error = io::Error>> {
+pub fn write(sock: TcpStream,
+             buf: Vec<u8>,
+             len: usize,
+) -> Box<Future<Item=(TcpStream, Vec<u8>), Error=io::Error>> {
     let mut msg_len_buf = vec![(len >> 8) as u8, (len & 0xff) as u8];
     let buf = &buf[0..len];
     msg_len_buf.extend_from_slice(buf);
     Box::new(tokio::io::write_all(sock, msg_len_buf))
+}
+
+#[cfg(not(feature = "noise_protocol"))]
+impl NoiseWrapper {
+    pub fn wrap(&self) {
+        info!("skip noise protocol")
+    }
+
+    pub fn listen_handshake(&self, stream: TcpStream, _: &PublicKey) -> Box<Future<Item=Framed<TcpStream, MessagesCodec>, Error=io::Error>> {
+        self.framed_stream(stream)
+    }
+
+    pub fn send_handshake(&self, stream: TcpStream, _: &PublicKey) -> Box<Future<Item=Framed<TcpStream, MessagesCodec>, Error=io::Error>> {
+        self.framed_stream(stream)
+    }
+
+    pub fn framed_stream(&self, stream: TcpStream) -> Box<Future<Item=Framed<TcpStream, MessagesCodec>, Error=io::Error>> {
+        let framed = stream.framed(MessagesCodec::new(self.max_message_len));
+        Box::new(ok(framed))
+    }
 }

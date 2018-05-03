@@ -31,8 +31,8 @@ use std::cmp::Ordering;
 use node::{ExternalMessage, NodeTimeout};
 use helpers::{Height, Round};
 
-#[cfg(test)]
-mod tests;
+//#[cfg(test)]
+pub mod tests;
 #[cfg(all(test, feature = "long_benchmarks"))]
 mod benches;
 

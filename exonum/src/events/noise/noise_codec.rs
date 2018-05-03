@@ -7,6 +7,7 @@ use std::io;
 use messages::RawMessage;
 use messages::MessageBuffer;
 
+#[allow(missing_debug_implementations)]
 pub struct NoiseCodec {
     session: Session,
 }
@@ -26,16 +27,28 @@ impl Decoder for NoiseCodec {
             return Ok(None);
         };
 
-        let len = BigEndian::read_u16(buf) as usize;
-        let data = buf.split_to(len + 2).to_vec();
-        let data = &data[2..];
-        let mut read_to = vec![0u8; len];
-        //TODO: read messages bigger than 2^16
-        self.session.read_message(data, &mut read_to).unwrap();
+        let len = LittleEndian::read_u32(buf) as usize;
+//        println!("message len {}", len);
 
-        let total_len = LittleEndian::read_u32(&read_to[6..10]) as usize;
+        if len > buf.len() {
+            return Ok(None);
+        }
 
-        let data = read_to.split_at(total_len);
+        let data = buf.split_to(len + 4).to_vec();
+        let data = &data[4..];
+        let mut readed_data = vec![0u8; 0];
+        let mut readed_len = 0usize;
+
+        data.chunks(65535).for_each(|chunk| {
+            let mut read_to = vec![0u8; chunk.len()];
+//            println!("chunk len {:?}", chunk.len());
+            readed_len += self.session.read_message(chunk, &mut read_to).unwrap();
+            readed_data.extend_from_slice(&read_to);
+        });
+
+        let total_len = LittleEndian::read_u32(&readed_data[6..10]) as usize;
+
+        let data = readed_data.split_at(total_len);
         let raw = RawMessage::new(MessageBuffer::from_vec(Vec::from(data.0)));
         Ok(Some(raw))
     }
@@ -46,13 +59,22 @@ impl Encoder for NoiseCodec {
     type Error = io::Error;
 
     fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> io::Result<()> {
-        let mut tmp_buf = vec![0u8; 65535];
-        let len = self.session
-            .write_message(msg.as_ref(), &mut tmp_buf)
-            .unwrap();
-        let mut msg_len_buf = vec![(len >> 8) as u8, (len & 0xff) as u8];
-        let tmp_buf = &tmp_buf[0..len];
-        msg_len_buf.extend_from_slice(tmp_buf);
+        let mut len = 0usize;
+
+        let mut write_to_buf = vec![0u8; 0];
+
+        msg.as_ref().chunks(65535 - 16).for_each(|chunk| {
+            let mut tmp_buf = vec![0u8; 65535];
+            len += self.session
+                .write_message( chunk,&mut tmp_buf)
+                .unwrap();
+            write_to_buf.extend_from_slice(&tmp_buf);
+        });
+
+        let mut msg_len_buf = vec![0u8; 4];
+        LittleEndian::write_u32(&mut msg_len_buf, len as u32);
+        let write_to_buf = &write_to_buf[0..len];
+        msg_len_buf.extend_from_slice(write_to_buf);
         buf.extend_from_slice(&msg_len_buf);
         Ok(())
     }
