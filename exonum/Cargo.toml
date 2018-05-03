@@ -51,7 +51,7 @@ os_info = "0.7.0"
 chrono = { version = "0.4.0", features = ["serde"] }
 bodyparser = "0.8.0"
 uuid = { version = "0.6.0", features = ["serde"] }
-snow = "0.1.8-preview"
+snow = { version = "0.1.9", features = ["ring-accelerated"]}
 lazy_static = "1.0.0"
 
 exonum_rocksdb = "0.7"
