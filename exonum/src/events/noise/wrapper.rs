@@ -7,6 +7,9 @@ use bytes::BytesMut;
 use byteorder::{ByteOrder, LittleEndian};
 use std::io;
 use events::noise::resolver::ExonumResolver;
+use hex::{ToHex, FromHex};
+use crypto;
+use std::net::SocketAddr;
 
 pub const NOISE_MAX_MESSAGE_LEN: usize = 65_535;
 pub const TAG_LEN: usize = 16;
@@ -16,7 +19,7 @@ pub const HANDSHAKE_HEADER_LEN: usize = 2;
 // We choose XX pattern since it provides mutual authentication and
 // transmission of static public keys.
 // see: https://noiseprotocol.org/noise.html#interactive-patterns
-static PARAMS: &str = "Noise_XX_25519_ChaChaPoly_BLAKE2s";
+static PARAMS: &str = "Noise_XK_25519_ChaChaPoly_BLAKE2s";
 
 /// Wrapper around noise session to provide latter convenient interface.
 pub struct NoiseWrapper {
@@ -24,28 +27,30 @@ pub struct NoiseWrapper {
 }
 
 impl NoiseWrapper {
-    pub fn responder(params: &HandshakeParams) -> Self {
-        let builder: NoiseBuilder = Self::noise_builder(params);
-//        let private_key = builder.generate_private_key().unwrap();
-        let private_key = params.secret_key.to_hex();
 
-        println!("private key len  {}", private_key.len());
+    pub fn initiator(params: &HandshakeParams, addr: &SocketAddr) -> Self {
+        let builder: NoiseBuilder = Self::noise_builder(params);
+        let private_key = params.secret_key.to_hex();
+        let private_key = Vec::from_hex(private_key).unwrap();
+        let remote_key = params.connect_list.peers.get(addr).unwrap();
 
         let session = builder
-//            .local_private_key(&private_key)
-            .build_responder()
+            .local_private_key(&private_key)
+            .remote_public_key(remote_key.as_ref())
+            .build_initiator()
             .unwrap();
 
         NoiseWrapper { session }
     }
 
-    pub fn initiator(params: &HandshakeParams) -> Self {
+    pub fn responder(params: &HandshakeParams) -> Self {
         let builder: NoiseBuilder = Self::noise_builder(params);
-        let private_key = params.secret_key.to_hex().into_bytes();
+        let private_key = params.secret_key.to_hex();
+        let private_key = Vec::from_hex(private_key).unwrap();
 
         let session = builder
             .local_private_key(&private_key)
-            .build_initiator()
+            .build_responder()
             .unwrap();
 
         NoiseWrapper { session }
@@ -126,10 +131,7 @@ impl NoiseWrapper {
     }
 
     fn noise_builder(params: &HandshakeParams) -> NoiseBuilder {
-        let public_key = params.public_key.as_ref();
-
         NoiseBuilder::with_resolver(PARAMS.parse().unwrap(), Box::new(ExonumResolver::new()))
-            .remote_public_key(public_key)
     }
 }
 

@@ -110,6 +110,8 @@ mod test {
     use events::noise::wrapper::NoiseWrapper;
     use events::noise::HandshakeParams;
     use crypto::{gen_keypair_from_seed, Seed};
+    use std::collections::HashMap;
+    use node::ConnectList;
 
     #[test]
     fn decode_message_valid_header_size() {
@@ -150,13 +152,16 @@ mod test {
     fn codecs() -> (MessagesCodec, MessagesCodec) {
         let (public_key, secret_key) = gen_keypair_from_seed(&Seed::new([0; 32]));
 
+        let socket_addr = "0.0.0.0".parse().unwrap();
+
         let params = HandshakeParams {
             public_key,
             secret_key,
             max_message_len: 1024,
+            connect_list: ConnectList::default()
         };
 
-        let mut initiator = NoiseWrapper::initiator(&params).session;
+        let mut initiator = NoiseWrapper::initiator(&params, &socket_addr).session;
         let mut responder = NoiseWrapper::responder(&params).session;
 
         let mut buffer_msg = vec![0u8; 1024];

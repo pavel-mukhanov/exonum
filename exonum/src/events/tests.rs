@@ -26,10 +26,11 @@ use messages::{Connect, Message, MessageWriter, RawMessage};
 use events::{NetworkEvent, NetworkRequest};
 use events::network::{NetworkConfiguration, NetworkPart};
 use events::error::log_error;
-use node::{EventsPoolCapacity, NodeChannel};
+use node::{EventsPoolCapacity, NodeChannel, Whitelist, ConnectList};
 use blockchain::ConsensusConfig;
 use helpers::user_agent;
 use events::noise::HandshakeParams;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct TestHandler {
@@ -148,10 +149,12 @@ impl TestEvents {
         let handle = thread::spawn(move || {
             let mut core = Core::new().unwrap();
             let (public_key, secret_key) = gen_keypair_from_seed(&Seed::new([0; 32]));
+
             let handshake_params = HandshakeParams {
                 public_key,
                 secret_key,
                 max_message_len: network_part.max_message_len,
+                connect_list: ConnectList::default()
             };
             let fut = network_part.run(&core.handle(), &handshake_params);
             core.run(fut).map_err(log_error).unwrap();

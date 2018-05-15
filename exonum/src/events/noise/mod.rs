@@ -21,6 +21,9 @@ use tokio_io::{AsyncRead, codec::Framed, io::{read_exact, write_all}};
 use futures::future::Future;
 use byteorder::{ByteOrder, LittleEndian};
 use events::noise::wrapper::HANDSHAKE_HEADER_LEN;
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use node::ConnectList;
 
 pub mod wrapper;
 mod resolver;
@@ -31,6 +34,7 @@ pub struct HandshakeParams {
     pub public_key: PublicKey,
     pub secret_key: SecretKey,
     pub max_message_len: u32,
+    pub connect_list: ConnectList,
 }
 
 #[derive(Debug)]
@@ -79,7 +83,8 @@ fn send_handshake(
     noise: &HandshakeParams,
 ) -> Box<Future<Item = Framed<TcpStream, MessagesCodec>, Error = io::Error>> {
     let max_message_len = noise.max_message_len;
-    let mut noise = NoiseWrapper::initiator(noise);
+    let addr = stream.peer_addr().unwrap();
+    let mut noise = NoiseWrapper::initiator(noise, &addr);
     let (len, buf) = noise.write_handshake_msg().unwrap();
     let framed = write(stream, &buf, len)
         .and_then(|(stream, _msg)| read(stream))
