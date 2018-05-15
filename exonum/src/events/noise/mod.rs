@@ -23,6 +23,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use events::noise::wrapper::HANDSHAKE_HEADER_LEN;
 
 pub mod wrapper;
+mod resolver;
 
 #[derive(Debug, Clone)]
 /// Params needed to establish secured connection using Noise Protocol.

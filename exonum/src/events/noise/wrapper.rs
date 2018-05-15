@@ -6,6 +6,7 @@ use std::fmt::{Error, Formatter};
 use bytes::BytesMut;
 use byteorder::{ByteOrder, LittleEndian};
 use std::io;
+use events::noise::resolver::ExonumResolver;
 
 pub const NOISE_MAX_MESSAGE_LEN: usize = 65_535;
 pub const TAG_LEN: usize = 16;
@@ -25,9 +26,13 @@ pub struct NoiseWrapper {
 impl NoiseWrapper {
     pub fn responder(params: &HandshakeParams) -> Self {
         let builder: NoiseBuilder = Self::noise_builder(params);
-        let private_key = builder.generate_private_key().unwrap();
+//        let private_key = builder.generate_private_key().unwrap();
+        let private_key = params.secret_key.to_hex();
+
+        println!("private key len  {}", private_key.len());
+
         let session = builder
-            .local_private_key(&private_key)
+//            .local_private_key(&private_key)
             .build_responder()
             .unwrap();
 
@@ -36,7 +41,8 @@ impl NoiseWrapper {
 
     pub fn initiator(params: &HandshakeParams) -> Self {
         let builder: NoiseBuilder = Self::noise_builder(params);
-        let private_key = builder.generate_private_key().unwrap();
+        let private_key = params.secret_key.to_hex().into_bytes();
+
         let session = builder
             .local_private_key(&private_key)
             .build_initiator()
@@ -121,7 +127,9 @@ impl NoiseWrapper {
 
     fn noise_builder(params: &HandshakeParams) -> NoiseBuilder {
         let public_key = params.public_key.as_ref();
-        NoiseBuilder::new(PARAMS.parse().unwrap()).remote_public_key(public_key)
+
+        NoiseBuilder::with_resolver(PARAMS.parse().unwrap(), Box::new(ExonumResolver::new()))
+            .remote_public_key(public_key)
     }
 }
 

@@ -67,6 +67,7 @@ extern crate tokio_timer;
 extern crate toml;
 extern crate uuid;
 extern crate vec_map;
+extern crate crypto as rust_crypto;
 
 // Test dependencies.
 #[cfg(test)]
