@@ -30,6 +30,7 @@ use node::{EventsPoolCapacity, NodeChannel};
 use blockchain::ConsensusConfig;
 use helpers::user_agent;
 use events::noise::HandshakeParams;
+use env_logger;
 
 #[derive(Debug)]
 pub struct TestHandler {
@@ -148,10 +149,13 @@ impl TestEvents {
         let handle = thread::spawn(move || {
             let mut core = Core::new().unwrap();
             let (public_key, secret_key) = gen_keypair_from_seed(&Seed::new([0; 32]));
+            let first = "127.0.0.1:17230".parse().unwrap();
+            let connect = connect_message(first);
             let handshake_params = HandshakeParams {
                 public_key,
                 secret_key,
                 max_message_len: network_part.max_message_len,
+                connect,
             };
             let fut = network_part.run(&core.handle(), &handshake_params);
             core.run(fut).map_err(log_error).unwrap();
@@ -225,6 +229,7 @@ fn test_network_handshake() {
 
 #[test]
 fn test_network_big_message() {
+    env_logger::init();
     let first = "127.0.0.1:17200".parse().unwrap();
     let second = "127.0.0.1:17201".parse().unwrap();
 
@@ -237,8 +242,11 @@ fn test_network_big_message() {
     let mut e1 = e1.spawn();
     let mut e2 = e2.spawn();
 
+    info!("first connect");
     e1.connect_with(second);
     e2.wait_for_connect();
+
+    return
 
     e2.connect_with(first);
     e1.wait_for_connect();

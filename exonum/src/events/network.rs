@@ -159,7 +159,7 @@ impl ConnectionsPool {
                 })
             })
             // Connect socket with the outgoing channel
-            .and_then(move |stream| {
+            .and_then(move |(_connect, stream)| {
                 trace!("Established connection with peer={}", peer);
                 let (sink, stream) = stream.split();
 
@@ -370,21 +370,7 @@ impl Listener {
             trace!("Accepted incoming connection with peer={}", addr);
             let network_tx = network_tx.clone();
 
-            let stream = NoiseHandshake::listen(&handshake_params, sock).flatten_stream();
-
-            let connection_handler = stream
-                .into_future()
-                .and_then(Ok)
-                .map_err(|e| e.0)
-                .and_then(move |(raw, stream)| match raw.map(Any::from_raw) {
-                    Some(Ok(Any::Connect(msg))) => Ok((msg, stream)),
-                    Some(Ok(other)) => Err(other_error(&format!(
-                        "First message is not Connect, got={:?}",
-                        other
-                    ))),
-                    Some(Err(e)) => Err(into_other(e)),
-                    None => Err(other_error("Incoming socket closed")),
-                })
+            let connection_handler = NoiseHandshake::listen(&handshake_params, sock)
                 .and_then(move |(connect, stream)| {
                     trace!("Received handshake message={:?}", connect);
                     let event = NetworkEvent::PeerConnected(addr, connect);

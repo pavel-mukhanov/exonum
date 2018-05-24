@@ -64,9 +64,9 @@ impl NoiseWrapper {
         self.read(input, NOISE_MAX_MESSAGE_LENGTH)
     }
 
-    pub fn write_handshake_msg(&mut self) -> Result<(usize, Vec<u8>), NoiseError> {
+    pub fn write_handshake_msg(&mut self, msg: &[u8]) -> Result<(usize, Vec<u8>), NoiseError> {
         // Payload in handshake messages can be empty.
-        self.write(&[0u8])
+        self.write(msg)
     }
 
     pub fn into_transport_mode(self) -> Result<Self, NoiseError> {
@@ -135,6 +135,7 @@ impl NoiseWrapper {
 
     fn read(&mut self, input: &[u8], len: usize) -> Result<(usize, Vec<u8>), NoiseError> {
         let mut buf = vec![0u8; len];
+        info!("reading bytes {:?}", input);
         let len = self.session
             .read_message(input, &mut buf)
             .map_err(|e| NoiseError::new(format!("Error while reading noise message: {:?}", e.0)))?;
@@ -143,6 +144,7 @@ impl NoiseWrapper {
 
     fn write(&mut self, msg: &[u8]) -> Result<(usize, Vec<u8>), NoiseError> {
         let mut buf = vec![0u8; NOISE_MAX_MESSAGE_LENGTH];
+        info!("writing bytes {:?}", msg);
         let len = self.session
             .write_message(msg, &mut buf)
             .map_err(|e| NoiseError::new(format!("Error while writing noise message: {:?}", e.0)))?;

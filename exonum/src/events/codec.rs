@@ -111,6 +111,7 @@ mod test {
     use events::noise::wrapper::NoiseWrapper;
     use events::noise::HandshakeParams;
     use crypto::{gen_keypair_from_seed, Seed};
+    use events::tests::connect_message;
 
     #[test]
     fn decode_message_valid_header_size() {
@@ -150,11 +151,14 @@ mod test {
 
     fn create_encrypted_codecs() -> (MessagesCodec, MessagesCodec) {
         let (public_key, secret_key) = gen_keypair_from_seed(&Seed::new([0; 32]));
+        let first = "127.0.0.1:17230".parse().unwrap();
+        let connect = connect_message(first);
 
         let params = HandshakeParams {
             public_key,
             secret_key,
             max_message_len: 1024,
+            connect
         };
 
         let mut initiator = NoiseWrapper::initiator(&params).session;

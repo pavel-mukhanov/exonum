@@ -920,11 +920,13 @@ impl Node {
             info!("Public exonum api started on {}", listen_address);
         };
 
-        let handshake_params = HandshakeParams {
-            public_key: *self.handler().state().consensus_public_key(),
-            secret_key: self.handler().state().consensus_secret_key().clone(),
-            max_message_len: self.max_message_len,
-        };
+        let handshake_params = HandshakeParams::new(
+            *self.handler().state().consensus_public_key(),
+            self.handler().state().consensus_secret_key().clone(),
+            self.max_message_len,
+            self.state().our_connect_message().clone(),
+        );
+
         self.run_handler(&handshake_params)?;
 
         // Stop all api handlers.
