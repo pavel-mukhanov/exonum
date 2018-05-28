@@ -26,6 +26,7 @@ use events::noise::wrapper::{NoiseWrapper, HANDSHAKE_HEADER_LENGTH};
 use std::net::SocketAddr;
 
 pub mod wrapper;
+pub mod sodium_resolver;
 
 type HandshakeResult = Box<Future<Item = Framed<TcpStream, MessagesCodec>, Error = io::Error>>;
 

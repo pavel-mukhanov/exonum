@@ -23,6 +23,7 @@ use std::io;
 
 use events::noise::HandshakeParams;
 use std::net::SocketAddr;
+use events::noise::sodium_resolver::SodiumResolver;
 
 pub const NOISE_MAX_MESSAGE_LENGTH: usize = 65_535;
 pub const TAG_LENGTH: usize = 16;
@@ -32,7 +33,7 @@ pub const HANDSHAKE_HEADER_LENGTH: usize = 2;
 // We choose XX pattern since it provides mutual authentication and
 // transmission of static public keys.
 // See: https://noiseprotocol.org/noise.html#interactive-patterns
-static PARAMS: &str = "Noise_XK_25519_ChaChaPoly_BLAKE2s";
+static PARAMS: &str = "Noise_XX_25519_ChaChaPoly_BLAKE2s";
 
 /// Wrapper around noise session to provide latter convenient interface.
 pub struct NoiseWrapper {
@@ -162,7 +163,7 @@ impl NoiseWrapper {
 
     fn noise_builder(params: &HandshakeParams) -> NoiseBuilder {
         let public_key = params.public_key.as_ref();
-        NoiseBuilder::new(PARAMS.parse().unwrap()).remote_public_key(public_key)
+        NoiseBuilder::with_resolver(PARAMS.parse().unwrap(), Box::new(SodiumResolver::new()))
     }
 }
 
@@ -224,7 +225,7 @@ mod test {
     use snow::wrappers::rand_wrapper::RandomOs;
 
     #[test]
-    fn test_connect_list() {
+    fn test_noise_handshake_with_remote_key() {
         env_logger::init();
         let first: SocketAddr = "127.0.0.1:17230".parse().unwrap();
         let second:SocketAddr = "127.0.0.1:17231".parse().unwrap();
@@ -247,9 +248,5 @@ mod test {
         e1.connect_with(second);
 
         assert_eq!(e2.wait_for_connect(), c1);
-
-
     }
-
-
 }
