@@ -14,16 +14,17 @@
 
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::BytesMut;
-use snow::{NoiseBuilder, Session};
 use crypto::PUBLIC_KEY_LENGTH;
-
+use events::noise::HandshakeParams;
+use events::noise::sodium_resolver::SodiumResolver;
+use snow::{NoiseBuilder, Session};
 use std::fmt;
 use std::fmt::{Error, Formatter};
 use std::io;
-
-use events::noise::HandshakeParams;
 use std::net::SocketAddr;
-use events::noise::sodium_resolver::SodiumResolver;
+use events::noise::sodium_resolver::{SodiumRandom, SodiumDh25519};
+use crypto::{PublicKey, SecretKey};
+use snow::types::Dh;
 
 pub const NOISE_MAX_MESSAGE_LENGTH: usize = 65_535;
 pub const TAG_LENGTH: usize = 16;
@@ -33,7 +34,7 @@ pub const HANDSHAKE_HEADER_LENGTH: usize = 2;
 // We choose XX pattern since it provides mutual authentication and
 // transmission of static public keys.
 // See: https://noiseprotocol.org/noise.html#interactive-patterns
-static PARAMS: &str = "Noise_XX_25519_ChaChaPoly_BLAKE2s";
+static PARAMS: &str = "Noise_XK_25519_ChaChaPoly_BLAKE2s";
 
 /// Wrapper around noise session to provide latter convenient interface.
 pub struct NoiseWrapper {
@@ -41,7 +42,6 @@ pub struct NoiseWrapper {
 }
 
 impl NoiseWrapper {
-
     pub fn initiator(params: &HandshakeParams, peer: &SocketAddr) -> Self {
         let builder: NoiseBuilder = Self::noise_builder(params);
         let private_key = &params.secret_key[..PUBLIC_KEY_LENGTH];
@@ -162,7 +162,7 @@ impl NoiseWrapper {
     }
 
     fn noise_builder(params: &HandshakeParams) -> NoiseBuilder {
-        let public_key = params.public_key.as_ref();
+        let _public_key = params.public_key.as_ref();
         NoiseBuilder::with_resolver(PARAMS.parse().unwrap(), Box::new(SodiumResolver::new()))
     }
 }
@@ -197,43 +197,47 @@ impl From<NoiseError> for io::Error {
     }
 }
 
+// TODO: remove, only for testing
+#[allow(dead_code)]
+pub fn generate_noise_keys() -> (PublicKey, SecretKey) {
+    let mut random = SodiumRandom::default();
+    let mut dh = SodiumDh25519::default();
+    dh.generate(&mut random);
+
+    let public_key = PublicKey::from_slice(dh.pubkey()).unwrap();
+    let mut private_key = Vec::from(dh.privkey());
+    private_key.extend_from_slice(dh.pubkey());
+
+    let secret_key = SecretKey::from_slice(&private_key).unwrap();
+
+    (public_key, secret_key)
+}
+
 
 #[cfg(test)]
 mod test {
-
+    use crypto::{sign, verify};
+    use env_logger;
+    use events::tests::connect_message;
     use events::tests::TestEvents;
     use node::ConnectList;
     use std::collections::HashMap;
-    use crypto::{Seed, gen_keypair_from_seed};
     use std::net::SocketAddr;
-    use events::tests::connect_message;
-    use env_logger;
-    use std::io;
-    use tokio_core::reactor::Core;
-    use snow::NoiseBuilder;
-    use crypto::gen_keypair;
-    use snow::DefaultResolver;
-    use snow::CryptoResolver;
-    use snow::types::Random;
-    use snow::params::DHChoice;
-    use snow::types::Dh;
-    use snow::params::HashChoice;
-    use snow::types::Hash;
-    use snow::params::CipherChoice;
-    use snow::types::Cipher;
-    use std::marker::Send;
-    use snow::wrappers::rand_wrapper::RandomOs;
+    use events::noise::wrapper::generate_noise_keys;
 
     #[test]
     fn test_noise_handshake_with_remote_key() {
         env_logger::init();
         let first: SocketAddr = "127.0.0.1:17230".parse().unwrap();
-        let second:SocketAddr = "127.0.0.1:17231".parse().unwrap();
+        let second: SocketAddr = "127.0.0.1:17231".parse().unwrap();
 
         let mut peers = HashMap::new();
 
         // Create connect list
-        let (public_key, secret_key) = gen_keypair_from_seed(&Seed::new([2; 32]));
+        let (public_key, secret_key) = generate_noise_keys();
+        // doesn't work
+        // let (public_key, secret_key) = gen_keypair_from_seed(&Seed::new([0; 32]));
+
         let addr = second.clone();
         peers.insert(addr, public_key);
         let connect_list = ConnectList { peers };
@@ -242,11 +246,20 @@ mod test {
         let e2 = TestEvents::with_addr(second);
         let c1 = connect_message(first);
 
-        let mut e1 = e1.spawn();
+        let e1 = e1.spawn();
         let mut e2 = e2.spawn2(public_key, secret_key);
 
         e1.connect_with(second);
 
         assert_eq!(e2.wait_for_connect(), c1);
+    }
+
+    #[test]
+    fn test_sign_with_noise_keys() {
+        let (public_key, secret_key) = generate_noise_keys();
+        let data = [1, 2, 3];
+        let signature = sign(&data, &secret_key);
+        // is not Ok()
+        assert!(verify(&signature, &data, &public_key));
     }
 }

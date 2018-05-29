@@ -21,7 +21,7 @@ use std::net::SocketAddr;
 use std::thread;
 use std::time::{self, Duration};
 
-use crypto::{gen_keypair, gen_keypair_from_seed, PublicKey, SecretKey, Seed, Signature};
+use crypto::{gen_keypair, PublicKey, SecretKey, Signature};
 use messages::{Connect, Message, MessageWriter, RawMessage};
 use events::{NetworkEvent, NetworkRequest};
 use events::network::{NetworkConfiguration, NetworkPart};
@@ -30,8 +30,8 @@ use node::{EventsPoolCapacity, NodeChannel};
 use blockchain::ConsensusConfig;
 use helpers::user_agent;
 use events::noise::HandshakeParams;
-use env_logger;
 use node::ConnectList;
+use events::noise::wrapper::generate_noise_keys;
 
 #[derive(Debug)]
 pub struct TestHandler {
@@ -162,7 +162,11 @@ impl TestEvents {
         let (mut handler_part, network_part) = self.into_reactor();
         let handle = thread::spawn(move || {
             let mut core = Core::new().unwrap();
-            let (public_key, secret_key) = gen_keypair_from_seed(&Seed::new([1; 32]));
+
+            let (public_key, secret_key) = generate_noise_keys();
+            // doesn't work
+            // let (public_key, secret_key) = gen_keypair_from_seed(&Seed::new([0; 32]));
+
             let handshake_params = HandshakeParams {
                 public_key,
                 secret_key,

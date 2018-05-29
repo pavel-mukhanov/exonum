@@ -46,7 +46,7 @@ impl CryptoResolver for SodiumResolver {
 }
 
 // Random data generator.
-struct SodiumRandom;
+pub struct SodiumRandom;
 
 impl Default for SodiumRandom {
     fn default() -> SodiumRandom {
@@ -68,7 +68,7 @@ pub struct SodiumDh25519 {
 }
 
 impl Default for SodiumDh25519 {
-    fn default() -> SodiumDh25519 {
+    fn /**/default() -> SodiumDh25519 {
         SodiumDh25519 {
             privkey: sodium_curve25519::Scalar([0; 32]),
             pubkey: sodium_curve25519::GroupElement([0; 32]),

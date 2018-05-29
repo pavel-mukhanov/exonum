@@ -54,6 +54,7 @@ fn node_config() -> NodeConfig {
         mempool: Default::default(),
         services_configs: Default::default(),
         database: Default::default(),
+        connect_list: Default::default(),
     }
 }
 
