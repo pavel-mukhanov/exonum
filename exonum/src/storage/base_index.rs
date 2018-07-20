@@ -38,12 +38,12 @@ use storage::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
 /// [`StorageValue`]: ../trait.StorageValue.html
 #[derive(Debug)]
 pub struct BaseIndex<T> {
-    name: String,
+    pub name: String,
     is_family: bool,
     index_id: Option<Vec<u8>>,
     is_mutable: bool,
     index_type: IndexType,
-    view: T,
+    pub view: T,
 }
 
 /// An iterator over the entries of a `BaseIndex`.
@@ -146,7 +146,7 @@ where
         }
     }
 
-    fn prefixed_key<K: StorageKey + ?Sized>(&self, key: &K) -> Vec<u8> {
+    pub fn prefixed_key<K: StorageKey + ?Sized>(&self, key: &K) -> Vec<u8> {
         if let Some(ref prefix) = self.index_id {
             let mut v = vec![0; prefix.len() + key.size()];
             v[..prefix.len()].copy_from_slice(prefix);

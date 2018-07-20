@@ -35,7 +35,7 @@ use super::{
 /// [`StorageValue`]: ../trait.StorageValue.html
 #[derive(Debug)]
 pub struct ListIndex<T, V> {
-    base: BaseIndex<T>,
+    pub base: BaseIndex<T>,
     length: Cell<Option<u64>>,
     _v: PhantomData<V>,
 }
