@@ -24,13 +24,14 @@ use std::{
 };
 
 use blockchain::{ConsensusConfig, StoredConfiguration, ValidatorKeys};
+use crypto::x25519;
 use crypto::{CryptoHash, Hash, PublicKey, SecretKey};
 use helpers::{Height, Milliseconds, Round, ValidatorId};
 use messages::{
     BlockResponse, Connect, ConsensusMessage, Message, Precommit, Prevote, Propose, RawMessage,
 };
-use node::connect_list::ConnectList;
-use node::ConnectInfo;
+use node::{connect_list::ConnectList, ConnectInfo};
+use std::sync::{Arc, RwLock};
 use storage::{KeySetIndex, MapIndex, Patch, Snapshot};
 
 // TODO: Move request timeouts into node configuration. (ECR-171)
@@ -56,7 +57,7 @@ pub struct State {
     service_secret_key: SecretKey,
 
     config: StoredConfiguration,
-    connect_list: ConnectList,
+    connect_list: SharedConnectList,
     tx_pool_capacity: usize,
 
     peers: HashMap<PublicKey, Connect>,
@@ -380,6 +381,54 @@ impl IncompleteBlock {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+/// Shared `ConnectList` representation to be used in network.
+pub struct SharedConnectList {
+    connect_list: Arc<RwLock<ConnectList>>,
+}
+
+impl SharedConnectList {
+    /// Creates `SharedConnectList` from `ConnectList`.
+    pub fn from_connect_list(connect_list: ConnectList) -> Self {
+        SharedConnectList {
+            connect_list: Arc::new(RwLock::new(connect_list)),
+        }
+    }
+
+    /// Returns `true` if a peer with the given public key can connect.
+    pub fn is_peer_allowed(&self, public_key: &PublicKey) -> bool {
+        let connect_list = self.connect_list.read().expect("ConnectList read lock");
+        return connect_list.is_peer_allowed(public_key);
+    }
+
+    /// Get public key corresponding to validator with `address`.
+    pub fn find_key_by_address(&self, address: &SocketAddr) -> Option<PublicKey> {
+        let connect_list = self.connect_list.read().expect("ConnectList read lock");
+        let list = connect_list.clone();
+        list.find_key_by_address(address).map(|k| *k)
+    }
+
+    /// Returns `true` if a peer with the given public key can connect.
+    pub fn is_peer_allowed_x25519(&self, public_key: &x25519::PublicKey) -> bool {
+        let connect_list = self.connect_list.read().expect("ConnectList read lock");
+        return connect_list.is_peer_allowed_x25519(public_key);
+    }
+
+    /// Return `peers` from underlying `ConnectList`
+    pub fn peers(&self) -> Vec<ConnectInfo> {
+        self.connect_list
+            .read()
+            .expect("ConnectList read lock")
+            .peers
+            .iter()
+            .map(|(pk, a)| ConnectInfo {
+                address: *a,
+                public_key: *pk,
+            })
+            .collect()
+    }
+}
+
 impl State {
     /// Creates state with the given parameters.
     #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
@@ -405,7 +454,7 @@ impl State {
             service_public_key,
             service_secret_key,
             tx_pool_capacity,
-            connect_list,
+            connect_list: SharedConnectList::from_connect_list(connect_list),
             peers,
             connections: HashMap::new(),
             height: last_height,
@@ -474,8 +523,8 @@ impl State {
     }
 
     /// Returns node's ConnectList.
-    pub fn connect_list(&self) -> &ConnectList {
-        &self.connect_list
+    pub fn connect_list(&self) -> SharedConnectList {
+        self.connect_list.clone()
     }
 
     /// Returns public (consensus and service) keys of known validators.
@@ -1131,6 +1180,10 @@ impl State {
 
     /// Add peer to node's `ConnectList`.
     pub fn add_peer_to_connect_list(&mut self, peer: ConnectInfo) {
-        self.connect_list.add(peer);
+        let mut list = self.connect_list
+            .connect_list
+            .write()
+            .expect("ConnectList write lock");
+        list.add(peer);
     }
 }

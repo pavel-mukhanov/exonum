@@ -33,6 +33,7 @@ use events::{
         HandshakeRawMessage, HandshakeResult, NoiseHandshake,
     },
 };
+use node::state::SharedConnectList;
 
 #[test]
 #[cfg(feature = "sodiumoxide-crypto")]
@@ -300,7 +301,10 @@ fn run_handshake_listener(
                         Some(message) => Either::A(
                             NoiseErrorHandshake::responder(&params, message).listen(stream),
                         ),
-                        None => Either::B(NoiseHandshake::responder(&params).listen(stream)),
+                        None => Either::B(
+                            NoiseHandshake::responder(&params, SharedConnectList::default())
+                                .listen(stream),
+                        ),
                     };
 
                     handshake
@@ -324,7 +328,7 @@ fn send_handshake(
 
     let stream = TcpStream::connect(&addr, &handle)
         .and_then(|sock| match bogus_message {
-            None => NoiseHandshake::initiator(&params).send(sock),
+            None => NoiseHandshake::initiator(&params, SharedConnectList::default()).send(sock),
             Some(message) => NoiseErrorHandshake::initiator(&params, message).send(sock),
         })
         .map(|_| ())
@@ -346,7 +350,10 @@ impl NoiseErrorHandshake {
         NoiseErrorHandshake {
             bogus_message,
             current_step: HandshakeStep::EphemeralKeyExchange,
-            inner: Some(NoiseHandshake::initiator(params)),
+            inner: Some(NoiseHandshake::initiator(
+                params,
+                SharedConnectList::default(),
+            )),
         }
     }
 
@@ -354,7 +361,10 @@ impl NoiseErrorHandshake {
         NoiseErrorHandshake {
             bogus_message,
             current_step: HandshakeStep::EphemeralKeyExchange,
-            inner: Some(NoiseHandshake::responder(params)),
+            inner: Some(NoiseHandshake::responder(
+                params,
+                SharedConnectList::default(),
+            )),
         }
     }
 
