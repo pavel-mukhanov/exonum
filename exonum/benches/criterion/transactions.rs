@@ -30,7 +30,8 @@ use exonum::{
         Blockchain, ExecutionResult, GenesisConfig, Service, SharedNodeState, Transaction,
         TransactionSet, ValidatorKeys,
     },
-    crypto::{self, Hash, PublicKey}, encoding,
+    crypto::{self, Hash, PublicKey},
+    encoding,
     events::{error::other_error, Event, EventHandler, HandlerPart, NetworkEvent},
     messages::{Message, RawTransaction},
     node::{
@@ -195,7 +196,8 @@ impl TransactionsBenchmarkRunner {
         };
         // Emulates transactions from the network.
         let socket_addr = handler_part.handler.inner().system_state.listen_address();
-        let transactions = self.transactions
+        let transactions = self
+            .transactions
             .into_iter()
             .map(|raw| NetworkEvent::MessageReceived(socket_addr, raw))
             .collect::<Vec<_>>();

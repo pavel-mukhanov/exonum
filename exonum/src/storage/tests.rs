@@ -199,13 +199,17 @@ mod memorydb_tests {
 
 mod rocksdb_tests {
     use super::super::{DbOptions, RocksDB};
-    use storage::{ListIndex, Fork, values::StorageValue, db::{Database, Snapshot}};
+    use std::cell::RefCell;
     use std::path::Path;
-    use tempdir::TempDir;
     use storage::base_index::BaseIndex;
     use storage::indexes_metadata;
     use storage::StorageKey;
-    use std::cell::RefCell;
+    use storage::{
+        db::{Database, Snapshot},
+        values::StorageValue,
+        Fork, ListIndex,
+    };
+    use tempdir::TempDir;
 
     fn rocksdb_database(path: &Path) -> RocksDB {
         let options = DbOptions::default();
@@ -224,37 +228,6 @@ mod rocksdb_tests {
         let dir = TempDir::new("exonum_rocksdb2").unwrap();
         let path = dir.path();
         super::changelog(rocksdb_database(path));
-    }
-
-
-    impl<'a, V> ListIndex<&'a RefCell<Fork>, V>
-        where
-            V: StorageValue,
-    {
-        fn set_len(&mut self, len: u64) {}
-
-        pub fn push(&mut self, value: V) {
-            let len = self.len();
-            self.base.put(&len, value);
-            self.set_len(len + 1)
-        }
-    }
-
-    impl<'a> BaseIndex<&'a RefCell<Fork>> {
-        fn set_index_type(&mut self) {
-
-        }
-
-        /// Inserts the key-value pair into the index. Both key and value may be of *any* types.
-        pub fn put<K, V>(&mut self, key: &K, value: V)
-            where
-                K: StorageKey,
-                V: StorageValue,
-        {
-            self.set_index_type();
-            let key = self.prefixed_key(key);
-            self.view.put(&self.name, key, value.into_bytes());
-        }
     }
 
     #[test]

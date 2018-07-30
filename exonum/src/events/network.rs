@@ -17,16 +17,19 @@ use futures::{
     Sink, Stream,
 };
 use tokio_core::{
-    net::{TcpListener, TcpStream}, reactor::Handle,
+    net::{TcpListener, TcpStream},
+    reactor::Handle,
 };
 use tokio_retry::{
-    strategy::{jitter, FixedInterval}, Retry,
+    strategy::{jitter, FixedInterval},
+    Retry,
 };
 
 use std::{cell::RefCell, collections::HashMap, io, net::SocketAddr, rc::Rc, time::Duration};
 
 use super::{
-    error::{into_other, log_error, other_error, result_ok}, to_box,
+    error::{into_other, log_error, other_error, result_ok},
+    to_box,
 };
 use crypto::{x25519, PublicKey};
 use events::noise::{Handshake, HandshakeParams, NoiseHandshake};
@@ -200,7 +203,8 @@ impl ConnectionsPool {
         peer: SocketAddr,
         network_tx: mpsc::Sender<NetworkEvent>,
     ) -> Box<dyn Future<Item = (), Error = io::Error>> {
-        let fut = self.remove(&peer)
+        let fut = self
+            .remove(&peer)
             .into_future()
             .map_err(other_error)
             .and_then(move |_| {

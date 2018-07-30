@@ -126,16 +126,17 @@ impl NodeHandler {
         let snapshot = self.blockchain.snapshot();
         let schema = Schema::new(snapshot);
         //TODO: Remove this match after errors refactor. (ECR-979)
-        let has_unknown_txs =
-            match self.state
-                .add_propose(msg, &schema.transactions(), &schema.transactions_pool())
-            {
-                Ok(state) => state.has_unknown_txs(),
-                Err(err) => {
-                    warn!("{}, msg={:?}", err, msg);
-                    return;
-                }
-            };
+        let has_unknown_txs = match self.state.add_propose(
+            msg,
+            &schema.transactions(),
+            &schema.transactions_pool(),
+        ) {
+            Ok(state) => state.has_unknown_txs(),
+            Err(err) => {
+                warn!("{}, msg={:?}", err, msg);
+                return;
+            }
+        };
 
         let hash = msg.hash();
 
@@ -227,7 +228,8 @@ impl NodeHandler {
         if self.state.block(&block_hash).is_none() {
             let snapshot = self.blockchain.snapshot();
             let schema = Schema::new(snapshot);
-            let has_unknown_txs = self.state
+            let has_unknown_txs = self
+                .state
                 .create_incomplete_block(msg, &schema.transactions(), &schema.transactions_pool())
                 .has_unknown_txs();
 
@@ -415,7 +417,8 @@ impl NodeHandler {
             if self.state.has_majority_prevotes(round, propose_hash) {
                 // Put consensus messages for current Propose and this round to the cache.
                 self.check_propose_saved(round, &propose_hash);
-                let raw_messages = self.state
+                let raw_messages = self
+                    .state
                     .prevotes(prevote_round, propose_hash)
                     .iter()
                     .map(|msg| msg.raw().clone())
@@ -758,7 +761,8 @@ impl NodeHandler {
                 ).raw()
                     .clone(),
                 RequestData::ProposeTransactions(ref propose_hash) => {
-                    let txs: Vec<_> = self.state
+                    let txs: Vec<_> = self
+                        .state
                         .propose(propose_hash)
                         .unwrap()
                         .unknown_txs()
@@ -874,7 +878,8 @@ impl NodeHandler {
     /// node tries to catch up with other nodes' height.
     pub fn request_next_block(&mut self) {
         // TODO: Randomize next peer. (ECR-171)
-        let heights: Vec<_> = self.state
+        let heights: Vec<_> = self
+            .state
             .nodes_with_bigger_height()
             .into_iter()
             .cloned()
@@ -898,7 +903,8 @@ impl NodeHandler {
 
     /// Broadcasts the `Prevote` message to all peers.
     pub fn broadcast_prevote(&mut self, round: Round, propose_hash: &Hash) -> bool {
-        let validator_id = self.state
+        let validator_id = self
+            .state
             .validator_id()
             .expect("called broadcast_prevote in Auditor node.");
         let locked_round = self.state.locked_round();
@@ -924,7 +930,8 @@ impl NodeHandler {
 
     /// Broadcasts the `Precommit` message to all peers.
     pub fn broadcast_precommit(&mut self, round: Round, propose_hash: &Hash, block_hash: &Hash) {
-        let validator_id = self.state
+        let validator_id = self
+            .state
             .validator_id()
             .expect("called broadcast_precommit in Auditor node.");
         let precommit = Precommit::new(

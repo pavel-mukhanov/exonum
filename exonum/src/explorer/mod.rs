@@ -20,8 +20,11 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::{
-    cell::{Ref, RefCell}, collections::Bound, fmt,
-    ops::{Index, Range, RangeFrom, RangeFull, RangeTo}, slice,
+    cell::{Ref, RefCell},
+    collections::Bound,
+    fmt,
+    ops::{Index, Range, RangeFrom, RangeFull, RangeTo},
+    slice,
 };
 
 use blockchain::{
@@ -659,7 +662,8 @@ impl SerializeContent for Box<dyn Transaction> {
     {
         use serde::ser::Error;
 
-        let value = self.as_ref()
+        let value = self
+            .as_ref()
             .serialize_field()
             .map_err(|err| S::Error::custom(err.description()))?;
         value.serialize(serializer)

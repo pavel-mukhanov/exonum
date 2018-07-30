@@ -24,6 +24,7 @@ use std::{borrow::Cow, marker::PhantomData};
 
 use super::{Fork, Iter, Snapshot, StorageKey, StorageValue};
 use storage::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
+use std::cell::RefCell;
 
 /// Basic struct for all indices that implements common features.
 ///
@@ -352,4 +353,22 @@ mod tests {
     fn check_invalid_name() {
         assert_valid_name("invalid-name");
     }
+}
+
+
+
+impl<'a> BaseIndex<&'a RefCell<Fork>> {
+    fn set_index_type(&mut self) {}
+
+    /// Inserts the key-value pair into the index. Both key and value may be of *any* types.
+    pub fn put<K, V>(&mut self, key: &K, value: V)
+    where
+        K: StorageKey + ?Sized,
+        V: StorageValue,
+    {
+        self.set_index_type();
+        let key = self.prefixed_key(key);
+        self.view.borrow_mut().put(&self.name, key, value.into_bytes());
+    }
+
 }

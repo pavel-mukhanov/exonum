@@ -13,16 +13,23 @@
 // limitations under the License.
 
 use futures::{
-    future::Either, sync::{mpsc, mpsc::Sender}, Future, Sink, Stream,
+    future::Either,
+    sync::{mpsc, mpsc::Sender},
+    Future, Sink, Stream,
 };
 use snow::{types::Dh, NoiseBuilder};
 use tokio_core::{
-    net::{TcpListener, TcpStream}, reactor::Core,
+    net::{TcpListener, TcpStream},
+    reactor::Core,
 };
 use tokio_io::{AsyncRead, AsyncWrite};
 
 use std::{
-    error::Error, io::{self, Result as IoResult}, net::SocketAddr, thread, time::Duration,
+    error::Error,
+    io::{self, Result as IoResult},
+    net::SocketAddr,
+    thread,
+    time::Duration,
 };
 
 use crypto::{gen_keypair_from_seed, x25519, Seed, PUBLIC_KEY_LENGTH, SEED_LENGTH};
@@ -383,7 +390,8 @@ impl NoiseErrorHandshake {
                 HandshakeRawMessage(msg.to_vec())
                     .write(stream)
                     .map(move |(stream, _)| {
-                        self.current_step = self.current_step
+                        self.current_step = self
+                            .current_step
                             .next()
                             .expect("Extra handshake step taken");
                         (stream, self)
@@ -397,7 +405,8 @@ impl NoiseErrorHandshake {
                     .write_handshake_msg(stream)
                     .map(move |(stream, inner)| {
                         self.inner = Some(inner);
-                        self.current_step = self.current_step
+                        self.current_step = self
+                            .current_step
                             .next()
                             .expect("Extra handshake step taken");
                         (stream, self)
@@ -414,7 +423,8 @@ impl Handshake for NoiseErrorHandshake {
     where
         S: AsyncRead + AsyncWrite + 'static,
     {
-        let framed = self.read_handshake_msg(stream)
+        let framed = self
+            .read_handshake_msg(stream)
             .and_then(|(stream, handshake)| handshake.write_handshake_msg(stream))
             .and_then(|(stream, handshake)| handshake.read_handshake_msg(stream))
             .and_then(|(stream, handshake)| handshake.inner.unwrap().finalize(stream));
@@ -425,7 +435,8 @@ impl Handshake for NoiseErrorHandshake {
     where
         S: AsyncRead + AsyncWrite + 'static,
     {
-        let framed = self.write_handshake_msg(stream)
+        let framed = self
+            .write_handshake_msg(stream)
             .and_then(|(stream, handshake)| handshake.read_handshake_msg(stream))
             .and_then(|(stream, handshake)| handshake.write_handshake_msg(stream))
             .and_then(|(stream, handshake)| handshake.inner.unwrap().finalize(stream));

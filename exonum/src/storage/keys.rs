@@ -354,7 +354,8 @@ mod tests {
                 // Fuzzed roundtrip
                 let mut buffer = [0_u8; $size];
                 let handpicked_vals = vec![$type::min_value(), $type::max_value()];
-                for x in rng.gen_iter::<$type>()
+                for x in rng
+                    .gen_iter::<$type>()
                     .take(FUZZ_SAMPLES)
                     .chain(handpicked_vals)
                 {

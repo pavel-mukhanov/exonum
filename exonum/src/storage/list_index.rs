@@ -20,9 +20,11 @@
 use std::{cell::Cell, marker::PhantomData};
 
 use super::{
-    base_index::{BaseIndex, BaseIndexIter}, indexes_metadata::IndexType, Fork, Snapshot,
-    StorageKey, StorageValue,
+    base_index::{BaseIndex, BaseIndexIter},
+    indexes_metadata::IndexType,
+    Fork, Snapshot, StorageKey, StorageValue,
 };
+use std::cell::RefCell;
 
 /// A list of items where elements are added to the end of the list and are
 /// removed starting from the end of the list.
@@ -630,3 +632,17 @@ mod tests {
         }
     }
 }
+
+impl<'a, V> ListIndex<&'a RefCell<Fork>, V>
+where
+    V: StorageValue,
+{
+    fn set_len(&mut self, len: u64) {}
+
+    pub fn push(&mut self, value: V) {
+        let len = self.len();
+        self.base.put(&len, value);
+        self.set_len(len + 1)
+    }
+}
+

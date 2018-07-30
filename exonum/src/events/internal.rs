@@ -16,11 +16,13 @@ use futures::{self, sync::mpsc, Future, Sink, Stream};
 use tokio_core::reactor::{Handle, Timeout};
 
 use std::{
-    io, time::{Duration, SystemTime},
+    io,
+    time::{Duration, SystemTime},
 };
 
 use super::{
-    error::{into_other, other_error}, to_box, InternalEvent, InternalRequest, TimeoutRequest,
+    error::{into_other, other_error},
+    to_box, InternalEvent, InternalRequest, TimeoutRequest,
 };
 
 #[derive(Debug)]
@@ -32,11 +34,13 @@ pub struct InternalPart {
 impl InternalPart {
     pub fn run(self, handle: Handle) -> Box<dyn Future<Item = (), Error = io::Error>> {
         let internal_tx = self.internal_tx.clone();
-        let fut = self.internal_requests_rx
+        let fut = self
+            .internal_requests_rx
             .for_each(move |request| {
                 let event = match request {
                     InternalRequest::Timeout(TimeoutRequest(time, timeout)) => {
-                        let duration = time.duration_since(SystemTime::now())
+                        let duration = time
+                            .duration_since(SystemTime::now())
                             .unwrap_or_else(|_| Duration::from_millis(0));
                         let internal_tx = internal_tx.clone();
                         let fut = Timeout::new(duration, &handle)

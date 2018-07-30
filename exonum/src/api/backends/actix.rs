@@ -18,17 +18,25 @@ pub use actix_web::middleware::cors::Cors;
 
 use actix::{msgs::SystemExit, Addr, Arbiter, Syn, System};
 use actix_web::{
-    self, error::ResponseError, server::{HttpServer, IntoHttpHandler, StopServer}, AsyncResponder,
-    FromRequest, HttpMessage, HttpResponse, Query,
+    self,
+    error::ResponseError,
+    server::{HttpServer, IntoHttpHandler, StopServer},
+    AsyncResponder, FromRequest, HttpMessage, HttpResponse, Query,
 };
 use failure;
 use futures::{Future, IntoFuture};
 use serde::{
-    de::{self, DeserializeOwned}, ser, Serialize,
+    de::{self, DeserializeOwned},
+    ser, Serialize,
 };
 
 use std::{
-    fmt, net::SocketAddr, result, str::FromStr, sync::{mpsc, Arc}, thread::{self, JoinHandle},
+    fmt,
+    net::SocketAddr,
+    result,
+    str::FromStr,
+    sync::{mpsc, Arc},
+    thread::{self, JoinHandle},
 };
 
 use api::{
@@ -482,7 +490,8 @@ impl FromStr for AllowOrigin {
             return Ok(AllowOrigin::Any);
         }
 
-        let v: Vec<_> = s.split(',')
+        let v: Vec<_> = s
+            .split(',')
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();

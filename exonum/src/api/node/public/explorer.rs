@@ -24,8 +24,8 @@ use std::sync::{Arc, Mutex};
 
 use api::{
     backends::actix::{self, FutureResponse, HttpRequest, RawHandler, RequestHandler},
-    websocket::{Server, Session}, Error as ApiError, ServiceApiBackend, ServiceApiScope,
-    ServiceApiState,
+    websocket::{Server, Session},
+    Error as ApiError, ServiceApiBackend, ServiceApiScope, ServiceApiState,
 };
 use blockchain::{Block, SharedNodeState};
 use crypto::Hash;

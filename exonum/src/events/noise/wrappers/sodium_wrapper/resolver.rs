@@ -15,7 +15,8 @@
 use byteorder::{ByteOrder, LittleEndian};
 use rand::{thread_rng, Rng};
 use snow::{
-    params::{CipherChoice, DHChoice, HashChoice}, types::{Cipher, Dh, Hash, Random},
+    params::{CipherChoice, DHChoice, HashChoice},
+    types::{Cipher, Dh, Hash, Random},
     CryptoResolver, DefaultResolver,
 };
 

@@ -28,7 +28,9 @@ use env_logger::{Builder, Formatter};
 use log::{Level, Record, SetLoggerError};
 
 use std::{
-    env, io::{self, Write}, time::SystemTime,
+    env,
+    io::{self, Write},
+    time::SystemTime,
 };
 
 use blockchain::{GenesisConfig, ValidatorKeys};

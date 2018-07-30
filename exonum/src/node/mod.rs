@@ -18,7 +18,8 @@
 // spell-checker:ignore cors
 
 pub use self::{
-    connect_list::ConnectList, state::{RequestData, State, ValidatorState},
+    connect_list::ConnectList,
+    state::{RequestData, State, ValidatorState},
 };
 
 // TODO: Temporary solution to get access to WAIT constants. (ECR-167)
@@ -34,7 +35,11 @@ use tokio_core::reactor::Core;
 use toml::Value;
 
 use std::{
-    collections::{BTreeMap, HashSet}, fmt, io, net::{SocketAddr, ToSocketAddrs}, sync::Arc, thread,
+    collections::{BTreeMap, HashSet},
+    fmt, io,
+    net::{SocketAddr, ToSocketAddrs},
+    sync::Arc,
+    thread,
     time::{Duration, SystemTime},
 };
 
@@ -45,9 +50,10 @@ use blockchain::{
 };
 use crypto::{self, CryptoHash, Hash, PublicKey, SecretKey};
 use events::{
-    error::{into_other, log_error, other_error, LogError}, noise::HandshakeParams, HandlerPart,
-    InternalEvent, InternalPart, InternalRequest, NetworkConfiguration, NetworkEvent, NetworkPart,
-    NetworkRequest, SyncSender, TimeoutRequest,
+    error::{into_other, log_error, other_error, LogError},
+    noise::HandshakeParams,
+    HandlerPart, InternalEvent, InternalPart, InternalRequest, NetworkConfiguration, NetworkEvent,
+    NetworkPart, NetworkRequest, SyncSender, TimeoutRequest,
 };
 use helpers::{
     config::ConfigManager, fabric::NodePublicConfig, user_agent, Height, Milliseconds, Round,
@@ -339,7 +345,8 @@ pub struct ConnectListConfig {
 impl ConnectListConfig {
     /// Creates `ConnectListConfig` from validators public configs.
     pub fn from_node_config(list: &[NodePublicConfig]) -> Self {
-        let peers = list.iter()
+        let peers = list
+            .iter()
             .map(|config| ConnectInfo {
                 public_key: config.validator_keys.consensus_key,
                 address: config.address,
@@ -586,7 +593,8 @@ impl NodeHandler {
 
     /// Broadcasts given message to all peers.
     pub fn broadcast(&mut self, message: &RawMessage) {
-        let peers: Vec<SocketAddr> = self.state
+        let peers: Vec<SocketAddr> = self
+            .state
             .peers()
             .values()
             .map(|conn| conn.addr())
@@ -964,23 +972,27 @@ impl Node {
                     Arc::new(app_config)
                 };
 
-                let public_api_handler = self.api_options
+                let public_api_handler = self
+                    .api_options
                     .public_api_address
                     .map(|listen_address| ApiRuntimeConfig {
                         listen_address,
                         access: ApiAccess::Public,
-                        app_config: self.api_options
+                        app_config: self
+                            .api_options
                             .public_allow_origin
                             .clone()
                             .map(into_app_config),
                     })
                     .into_iter();
-                let private_api_handler = self.api_options
+                let private_api_handler = self
+                    .api_options
                     .private_api_address
                     .map(|listen_address| ApiRuntimeConfig {
                         listen_address,
                         access: ApiAccess::Private,
-                        app_config: self.api_options
+                        app_config: self
+                            .api_options
                             .private_allow_origin
                             .clone()
                             .map(into_app_config),
