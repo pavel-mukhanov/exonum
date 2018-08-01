@@ -354,21 +354,3 @@ mod tests {
         assert_valid_name("invalid-name");
     }
 }
-
-
-
-impl<'a> BaseIndex<&'a RefCell<Fork>> {
-    fn set_index_type(&mut self) {}
-
-    /// Inserts the key-value pair into the index. Both key and value may be of *any* types.
-    pub fn put<K, V>(&mut self, key: &K, value: V)
-    where
-        K: StorageKey + ?Sized,
-        V: StorageValue,
-    {
-        self.set_index_type();
-        let key = self.prefixed_key(key);
-        self.view.borrow_mut().put(&self.name, key, value.into_bytes());
-    }
-
-}

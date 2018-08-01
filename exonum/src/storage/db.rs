@@ -530,13 +530,6 @@ impl AsRef<dyn Snapshot> for Fork {
     }
 }
 
-impl AsRef<dyn Snapshot> for RefCell<Fork> {
-    fn as_ref(&self) -> &dyn Snapshot {
-        let borrow = self.borrow();
-        borrow.as_ref()
-    }
-}
-
 impl ::std::fmt::Debug for Fork {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "Fork(..)")

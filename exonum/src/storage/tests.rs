@@ -230,19 +230,4 @@ mod rocksdb_tests {
         super::changelog(rocksdb_database(path));
     }
 
-    #[test]
-    fn test_rocksdb_multiple_index() {
-        let dir = TempDir::new("exonum_rocksdb2").unwrap();
-        let path = dir.path();
-
-        let rocksdb = rocksdb_database(path);
-
-        let mut fork = RefCell::new(rocksdb.fork());
-
-        let mut index = ListIndex::new("list_index", &fork);
-
-        index.push("string".to_string());
-
-        println!("index 0 {:?}", index.get(0));
-    }
 }

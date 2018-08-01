@@ -145,6 +145,7 @@ mod memorydb;
 mod options;
 mod rocksdb;
 mod values;
+mod migration;
 
 pub mod key_set_index;
 pub mod list_index;
