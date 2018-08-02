@@ -5,10 +5,10 @@ use storage::indexes_metadata;
 use storage::Fork;
 use storage::Iter;
 use storage::ListIndex;
+use storage::Patch;
 use storage::Snapshot;
 use storage::StorageKey;
 use storage::StorageValue;
-use storage::Patch;
 
 #[derive(Debug, Clone)]
 pub struct MigrationFork {
@@ -84,10 +84,10 @@ mod tests {
 
     use std::{cell::RefCell, path::Path, rc::Rc};
 
-    use storage::{db::Database, DbOptions, ListIndex, RocksDB, migration::MigrationFork};
     use crypto::{self, PublicKey};
-    use storage::Snapshot;
     use storage::Fork;
+    use storage::Snapshot;
+    use storage::{db::Database, migration::MigrationFork, DbOptions, ListIndex, RocksDB};
 
     fn rocksdb_database(path: &Path) -> RocksDB {
         let options = DbOptions::default();
@@ -142,36 +142,29 @@ mod tests {
     }
 
     encoding_struct! {
-    struct Wallet {
-        pub_key:            &PublicKey,
-        balance:            u64,
+        struct Wallet {
+            pub_key:            &PublicKey,
+            balance:            u64,
+        }
     }
-}
 
     impl Wallet {
         pub fn set_balance(self, balance: u64) -> Self {
-            Self::new(
-                self.pub_key(),
-                balance,
-            )
+            Self::new(self.pub_key(), balance)
         }
     }
 
     encoding_struct! {
-    struct NewWallet {
-        pub_key:            &PublicKey,
-        balance:            u64,
-        name:               &str,
+        struct NewWallet {
+            pub_key:            &PublicKey,
+            balance:            u64,
+            name:               &str,
+        }
     }
-}
 
     impl NewWallet {
         pub fn set_balance(self, balance: u64) -> Self {
-            Self::new(
-                self.pub_key(),
-                balance,
-                self.name(),
-            )
+            Self::new(self.pub_key(), balance, self.name())
         }
     }
 
@@ -204,7 +197,6 @@ mod tests {
     }
 
     impl<'a> CurrencySchema<&'a mut Fork> {
-
         pub fn wallets_mut(&mut self) -> ListIndex<&mut Fork, Wallet> {
             ListIndex::new("wallets", &mut self.view)
         }
@@ -218,11 +210,9 @@ mod tests {
     }
 
     impl<'a> CurrencySchema<&'a MigrationFork> {
-
         pub fn wallets_mut(&self) -> ListIndex<&MigrationFork, Wallet> {
             ListIndex::new("wallets", &self.view)
         }
-
     }
 
     #[derive(Debug)]
@@ -248,7 +238,6 @@ mod tests {
     // We need to create `MigrationFork` impls for old and new schema's.
     // It will lead to duplicate code.
     impl<'a> NewCurrencySchema<&'a MigrationFork> {
-
         pub fn wallets_mut(&self) -> ListIndex<&MigrationFork, NewWallet> {
             ListIndex::new("wallets", &self.view)
         }
@@ -293,7 +282,11 @@ mod tests {
 
         let old_wallet = old_schema.wallet(0).unwrap();
 
-        new_schema.create_wallet(&old_wallet.pub_key(), old_wallet.balance(), "new wallet name");
+        new_schema.create_wallet(
+            &old_wallet.pub_key(),
+            old_wallet.balance(),
+            "new wallet name",
+        );
         let new_wallet = new_schema.wallets_mut().get(0).unwrap();
 
         assert_eq!(old_wallet.pub_key(), new_wallet.pub_key());
