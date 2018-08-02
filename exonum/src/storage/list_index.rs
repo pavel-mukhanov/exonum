@@ -38,7 +38,7 @@ use std::cell::RefCell;
 #[derive(Debug)]
 pub struct ListIndex<T, V> {
     pub base: BaseIndex<T>,
-    length: Cell<Option<u64>>,
+    pub length: Cell<Option<u64>>,
     _v: PhantomData<V>,
 }
 
