@@ -437,6 +437,7 @@ impl Listener {
         }
     }
 
+    #[allow(dead_code)]
     fn process_incoming_messages<S>(
         stream: SplitStream<S>,
         network_tx: mpsc::Sender<NetworkEvent>,
