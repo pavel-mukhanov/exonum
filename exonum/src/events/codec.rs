@@ -19,6 +19,7 @@ use tokio_io::codec::{Decoder, Encoder};
 
 use events::noise::{NoiseWrapper, HEADER_LENGTH as NOISE_HEADER_LENGTH};
 use messages::{MessageBuffer, RawMessage, HEADER_LENGTH};
+use std::io;
 
 #[derive(Debug)]
 pub struct MessagesCodec {
@@ -51,6 +52,7 @@ impl Decoder for MessagesCodec {
 
         // To fix some weird `decode()` behavior https://github.com/carllerche/bytes/issues/104
         if buf.len() < len + NOISE_HEADER_LENGTH {
+            info!("drop message 1 {}", buf.len());
             return Ok(None);
         }
 
@@ -80,13 +82,40 @@ impl Decoder for MessagesCodec {
             );
         }
 
+        info!("decode buf length {}", buf.len());
+
         // Read message
         if buf.len() >= total_len {
             let data = buf.split_to(total_len).to_vec();
             let raw = RawMessage::new(MessageBuffer::from_vec(data));
             return Ok(Some(raw));
         }
+
+        info!("drop message 2 {}", buf.len());
+
         Ok(None)
+    }
+
+    fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        info!("decode_eof buf length {}", buf.len());
+        match try!(self.decode(buf)) {
+            Some(frame) => {
+                info!("frame decoded");
+                Ok(Some(frame))
+            },
+            None => {
+                if buf.is_empty() {
+                    info!("buf is_empty");
+                    Ok(None)
+                } else {
+                    info!("decode_eof error");
+//                    Err(io::Error::new(io::ErrorKind::Other,
+//                                       "bytes remaining on stream").into())
+                    let _read = buf.take();
+                    Ok(None)
+                }
+            }
+        }
     }
 }
 

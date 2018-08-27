@@ -207,8 +207,8 @@ pub struct EventsPoolCapacity {
 impl Default for EventsPoolCapacity {
     fn default() -> Self {
         Self {
-            network_requests_capacity: 512,
-            network_events_capacity: 512,
+            network_requests_capacity: 1024,
+            network_events_capacity: 1024,
             internal_events_capacity: 128,
             api_requests_capacity: 1024,
         }

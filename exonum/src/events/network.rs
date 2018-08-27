@@ -404,7 +404,7 @@ impl Listener {
                             .and_then(move |(connect, stream)| {
                                 trace!("Received handshake message={:?}", connect);
 
-                                Self::process_incoming_messages(
+                                Self::process_incoming_messages_old(
                                     stream, network_tx, connect, address,
                                 )
                             })
@@ -413,7 +413,9 @@ impl Listener {
                                 let _holder = holder;
                             })
                     })
-                    .map_err(log_error);
+                    .map_err(|e| {
+                        info!("{}", e.backtrace());
+                    });
 
                 handle.spawn(to_box(connection_handler));
                 to_box(future::ok(()))
@@ -452,6 +454,31 @@ impl Listener {
             .map_err(into_failure)
             .and_then(|sender| sender.sink_map_err(into_failure).send_all(stream))
             .map(|_| ())
+    }
+
+    fn process_incoming_messages_old<S>(
+        stream: SplitStream<S>,
+        network_tx: mpsc::Sender<NetworkEvent>,
+        connect: Connect,
+        address: SocketAddr,
+    ) -> impl Future<Item = (), Error = failure::Error>
+        where
+            S: Stream<Item = RawMessage, Error = failure::Error>,
+    {
+        let event = NetworkEvent::PeerConnected(address, connect);
+
+        let stream = network_tx
+            .clone()
+            .send(event)
+            .map_err(into_failure)
+            .and_then(move |_| Ok(stream))
+            .flatten_stream();
+
+        let stream = stream.map(move |raw| NetworkEvent::MessageReceived(address, raw));
+
+        stream.for_each(move |event| {
+            network_tx.clone().send(event).map_err(into_failure).map(drop)
+        })
     }
 }
 
