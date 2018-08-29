@@ -26,7 +26,6 @@ use tokio_io::{AsyncRead, AsyncWrite};
 
 use std::{net::SocketAddr, thread, time::Duration};
 
-use bytes::BytesMut;
 use crypto::{gen_keypair_from_seed, Seed, PUBLIC_KEY_LENGTH, SEED_LENGTH};
 use events::{
     error::into_failure,
