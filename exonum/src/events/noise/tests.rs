@@ -13,11 +13,11 @@
 // limitations under the License.
 
 use byteorder::{ByteOrder, LittleEndian};
+use bytes::BytesMut;
 use failure;
 use futures::{
     future::Either, sync::{mpsc, mpsc::Sender}, Future, Sink, Stream,
 };
-
 use snow::{types::Dh, Builder};
 use tokio_core::{
     net::{TcpListener, TcpStream}, reactor::Core,
@@ -383,15 +383,15 @@ fn run_handshake_listener(
         TcpListener::bind(addr, &handle)
             .unwrap()
             .incoming()
-            .for_each(move |(stream, _)| {
+            .for_each(move |(stream, peer)| {
                 let err_sender = err_sender.clone();
 
                 handle.spawn({
                     let handshake = match bogus_message {
                         Some(message) => Either::A(
-                            NoiseErrorHandshake::responder(&params, message).listen(stream),
+                            NoiseErrorHandshake::responder(&params, &peer, message).listen(stream),
                         ),
-                        None => Either::B(NoiseHandshake::responder(&params).listen(stream)),
+                        None => Either::B(NoiseHandshake::responder(&params, &peer).listen(stream)),
                     };
 
                     handshake
@@ -416,8 +416,8 @@ fn send_handshake(
     let stream = TcpStream::connect(&addr, &handle)
         .map_err(into_failure)
         .and_then(|sock| match bogus_message {
-            None => NoiseHandshake::initiator(&params).send(sock),
-            Some(message) => NoiseErrorHandshake::initiator(&params, message).send(sock),
+            None => NoiseHandshake::initiator(&params, addr).send(sock),
+            Some(message) => NoiseErrorHandshake::initiator(&params, addr, message).send(sock),
         })
         .map(|_| ());
 
@@ -433,19 +433,27 @@ struct NoiseErrorHandshake {
 }
 
 impl NoiseErrorHandshake {
-    fn initiator(params: &HandshakeParams, bogus_message: BogusMessage) -> Self {
+    fn initiator(
+        params: &HandshakeParams,
+        peer_address: &SocketAddr,
+        bogus_message: BogusMessage,
+    ) -> Self {
         NoiseErrorHandshake {
             bogus_message,
             current_step: HandshakeStep::EphemeralKeyExchange,
-            inner: Some(NoiseHandshake::initiator(params)),
+            inner: Some(NoiseHandshake::initiator(params, peer_address)),
         }
     }
 
-    fn responder(params: &HandshakeParams, bogus_message: BogusMessage) -> Self {
+    fn responder(
+        params: &HandshakeParams,
+        peer_address: &SocketAddr,
+        bogus_message: BogusMessage,
+    ) -> Self {
         NoiseErrorHandshake {
             bogus_message,
             current_step: HandshakeStep::EphemeralKeyExchange,
-            inner: Some(NoiseHandshake::responder(params)),
+            inner: Some(NoiseHandshake::responder(params, peer_address)),
         }
     }
 

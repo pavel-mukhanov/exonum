@@ -160,8 +160,6 @@ pub struct ListenerConfig {
 pub struct NodeApiConfig {
     /// Timeout to update api state.
     pub state_update_timeout: usize,
-    /// Enable api endpoints for the `blockchain_explorer` on public api address.
-    pub enable_blockchain_explorer: bool,
     /// Listen address for public api endpoints.
     pub public_api_address: Option<SocketAddr>,
     /// Listen address for private api endpoints.
@@ -182,7 +180,6 @@ impl Default for NodeApiConfig {
     fn default() -> Self {
         Self {
             state_update_timeout: 10_000,
-            enable_blockchain_explorer: true,
             public_api_address: None,
             private_api_address: None,
             public_allow_origin: None,
@@ -592,8 +589,14 @@ impl NodeHandler {
     pub fn broadcast(&mut self, message: &RawMessage) {
         let peers: Vec<SocketAddr> = self.state
             .peers()
-            .values()
-            .map(|conn| conn.addr())
+            .iter()
+            .filter_map(|(pubkey, connection)| {
+                if self.state.connect_list().is_peer_allowed(pubkey) {
+                    Some(connection.addr())
+                } else {
+                    None
+                }
+            })
             .collect();
 
         for address in peers {
