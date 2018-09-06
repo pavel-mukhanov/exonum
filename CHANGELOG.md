@@ -39,6 +39,10 @@ The project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
   `first_round_timeout`. Value of this percentage is defined in
   `ConsensusConfig::TIMEOUT_LINEAR_INCREASE_PERCENT` constant (10%). (#848)
 
+- `missing_keys`, `entries`, `all_entries` methods of `CheckedMapProof` and
+  `MapProof::missing_keys_unchecked` method now return `impl Iterator` instead
+  of `Vec`. (#918)
+
 ### New Features
 
 #### exonum
@@ -55,6 +59,10 @@ The project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
 - Added `/v1/blocks/subscribe` endpoint for following block commit events
   through WebSockets (#792).
 
+- Added `MapProof::all_entries_unchecked` method. It is used for more efficient
+  calculations in Exonum Java Bindings, but can be used for debug purposes
+  as well. (#918)
+
 ### Bug Fixes
 
 #### exonum
@@ -70,6 +78,9 @@ The project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
   consensus is at round 0. (#673)
 
 - Node now works correctly after consensus re-enable via API. (#902)
+
+- Bug with incorrect EOF handling while decoding network messages has been
+  fixed. (#917)
 
 ### Internal Improvements
 
