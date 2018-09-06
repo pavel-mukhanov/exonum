@@ -104,27 +104,6 @@ impl Decoder for MessagesCodec {
         Ok(message)
     }
 
-    fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        trace!("decode_eof buf length {}", buf.len());
-        match try!(self.decode(buf)) {
-            Some(frame) => {
-                trace!("frame decoded");
-                Ok(Some(frame))
-            },
-            None => {
-                if buf.is_empty() {
-                    trace!("buf is_empty");
-                    Ok(None)
-                } else {
-                    trace!("decode_eof error");
-//                    Err(io::Error::new(io::ErrorKind::Other,
-//                                       "bytes remaining on stream").into())
-                    let _read = buf.take();
-                    Ok(None)
-                }
-            }
-        }
-    }
 }
 
 impl Encoder for MessagesCodec {
