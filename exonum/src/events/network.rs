@@ -87,8 +87,17 @@ pub struct NetworkPart {
 
 #[derive(Clone, Debug)]
 struct ConnectionPool {
-    peers: Rc<RefCell<HashMap<SocketAddr, mpsc::Sender<RawMessage>>>>,
+    peers: Rc<RefCell<HashMap<SocketAddr, Peer>>>,
 }
+
+#[derive(Debug, PartialOrd, PartialEq)]
+enum Direction {
+    Incoming,
+    Outgoing
+}
+
+#[derive(Debug)]
+struct Peer(mpsc::Sender<RawMessage>, Direction);
 
 impl ConnectionPool {
     fn new() -> Self {
@@ -97,13 +106,24 @@ impl ConnectionPool {
         }
     }
 
-    fn len(&self) -> usize {
-        self.peers.borrow().len()
+    fn len_incoming(&self) -> usize {
+        self.peers.borrow().values().filter(|peer| peer.1 == Direction::Incoming ).count()
     }
 
-    fn add(&self, address: &SocketAddr, sender: mpsc::Sender<RawMessage>) {
+    fn len_outgoing(&self) -> usize {
+        self.peers.borrow().values().filter(|peer| peer.1 == Direction::Outgoing ).count()
+    }
+
+    fn add_outgoing(&self, address: &SocketAddr, sender: mpsc::Sender<RawMessage>) {
+        info!("add_outgoing {}", address);
         let mut peers = self.peers.borrow_mut();
-        peers.insert(*address, sender);
+        peers.insert(*address, Peer(sender, Direction::Outgoing));
+    }
+
+    fn add_incoming(&self, address: &SocketAddr, sender: mpsc::Sender<RawMessage>) {
+        info!("add incoming {}", address);
+        let mut peers = self.peers.borrow_mut();
+        peers.insert(*address, Peer(sender, Direction::Incoming));
     }
 
     fn contains(&self, address: &SocketAddr) -> bool {
@@ -118,7 +138,7 @@ impl ConnectionPool {
 
     fn add_incoming_address(&self, remote_address: &SocketAddr) -> mpsc::Receiver<RawMessage> {
         let (sender_tx, receiver_rx) = mpsc::channel::<RawMessage>(OUTGOING_CHANNEL_SIZE);
-        self.add(&remote_address, sender_tx);
+        self.add_incoming(&remote_address, sender_tx);
         receiver_rx
     }
 
@@ -147,10 +167,12 @@ impl ConnectionPool {
         if let Some(sender) = sender_tx.get(&address) {
             Either::A(
                 sender
+                    .0
                     .clone()
                     .send(message.clone())
                     .map(drop)
                     .or_else(move |e| {
+                        info!("send error to {}!", address);
                         log_error(e);
                         write_pool.remove(&address);
                         Ok(())
@@ -243,7 +265,8 @@ impl NetworkHandler {
                 let holder = incoming_connections_counter.clone();
                 // Check incoming connections count
                 let connections_count = Rc::strong_count(&incoming_connections_counter) - 1;
-                if connections_count > incoming_connections_limit {
+                info!("pool len_incoming {}", pool.len_incoming());
+                if pool.len_incoming() + 1  > incoming_connections_limit {
                     warn!(
                         "Rejected incoming connection with peer={}, \
                          connections limit reached.",
@@ -292,7 +315,7 @@ impl NetworkHandler {
         let action = move || TcpStream::connect(&address);
 
         let (sender_tx, receiver_rx) = mpsc::channel::<RawMessage>(OUTGOING_CHANNEL_SIZE);
-        self.pool.add(&address, sender_tx);
+        self.pool.add_outgoing(&address, sender_tx);
 
         let pool = self.pool.clone();
 
@@ -363,6 +386,7 @@ impl NetworkHandler {
             .sink_map_err(into_failure)
             .send_all(stream.map(move |message| NetworkEvent::MessageReceived(address, message)))
             .then(move |_| pool.disconnect_with_peer(&address, &network_tx))
+            .map(drop)
             .map_err(|e| {
                 error!("Connection terminated: {}: {}", e, e.find_root_cause());
             })
@@ -479,7 +503,7 @@ impl NetworkHandler {
     }
 
     fn can_create_connections(&self) -> bool {
-        self.pool.len() <= self.network_config.max_outgoing_connections
+        self.pool.len_outgoing() + 1<= self.network_config.max_outgoing_connections
     }
 
     fn send_unable_connect_event(

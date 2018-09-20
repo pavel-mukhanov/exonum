@@ -421,7 +421,7 @@ fn test_network_reconnect() {
     e1.send_to(second, msg.clone());
     assert_eq!(e2.wait_for_message(), msg);
 
-    e1.disconnect_with(second);
+//    e1.disconnect_with(second);
     drop(e2);
     assert_eq!(e1.wait_for_disconnect(), second);
 
