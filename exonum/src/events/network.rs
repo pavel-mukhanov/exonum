@@ -267,6 +267,7 @@ impl NetworkHandler {
                     .peer_addr()
                     .expect("Remote peer address resolve failed");
                 let conn_addr = ConnectedPeerAddr::In(address);
+                trace!("Processing connection from {:?}", conn_addr);
                 let pool = pool.clone();
                 let network_tx = network_tx.clone();
                 let handle = handle.clone();
@@ -475,6 +476,7 @@ impl NetworkHandler {
     }
 
     fn parse_connect_msg(raw: Option<RawMessage>) -> Result<Connect, failure::Error> {
+        trace!("parsing connect message {:?}", raw);
         let raw = raw.ok_or_else(|| format_err!("Incoming socket closed"))?;
         let message = Any::from_raw(raw).map_err(into_failure)?;
         match message {

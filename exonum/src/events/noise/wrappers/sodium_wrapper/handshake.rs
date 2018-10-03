@@ -141,6 +141,7 @@ impl NoiseHandshake {
 
         let noise = self.noise.into_transport_mode()?;
         let framed = MessagesCodec::new(self.max_message_len, noise).framed(stream);
+        trace!("Handshake has finished, message len {}", message.len());
         Ok((framed, RawMessage::from_vec(message)))
     }
 
@@ -167,6 +168,7 @@ impl Handshake for NoiseHandshake {
             .and_then(|(stream, handshake)| handshake.read_handshake_msg(stream))
             .and_then(|(stream, handshake, message)| handshake.finalize(stream, message))
             .map_err(move |e| {
+                trace!("Received error {:?}", e.to_string());
                 e.context(format!("peer {} disconnected", peer_address))
                     .into()
             });
