@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Workaround for `failure` see https://github.com/rust-lang-nursery/failure/issues/223 and
-// ECR-1771 for the details.
-#![allow(bare_trait_objects)]
-
+use failure::Fail;
+use serde_derive::{Serialize, Deserialize};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use exonum_crypto::{CryptoHash, Hash, HashStream};
 
 use super::{
     key::{BitsRange, ChildKind, ProofMapKey, ProofPath, KEY_SIZE},
     node::{BranchNode, Node},
 };
-use crypto::{CryptoHash, Hash, HashStream};
-use storage::StorageValue;
+use crate::StorageValue;
 
 // Expected size of the proof, in number of hashed entries.
 const DEFAULT_PROOF_CAPACITY: usize = 8;
@@ -201,8 +200,8 @@ impl<K, V> Into<(K, Option<V>)> for OptionalEntry<K, V> {
 /// to obtain information about the proof.
 ///
 /// ```
-/// # use exonum::storage::{Database, MemoryDB, StorageValue, MapProof, ProofMapIndex};
-/// # use exonum::crypto::hash;
+/// # use exonum_merkledb::{Database, MemoryDB, StorageValue, MapProof, ProofMapIndex};
+/// # use exonum_crypto::hash;
 /// let mut fork = { let db = MemoryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &mut fork);
 /// let (h1, h2, h3) = (hash(&[1]), hash(&[2]), hash(&[3]));
@@ -231,11 +230,10 @@ impl<K, V> Into<(K, Option<V>)> for OptionalEntry<K, V> {
 ///   which is asserted by the proof.
 ///
 /// ```
-/// # extern crate exonum;
-/// # #[macro_use] extern crate serde_json;
-/// # use exonum::storage::{Database, MemoryDB, StorageValue, MapProof, ProofMapIndex};
-/// # use exonum::storage::proof_map_index::ProofPath;
-/// # use exonum::crypto::{hash, CryptoHash};
+/// # use serde_json::{self, json};
+/// # use exonum_merkledb::{Database, MemoryDB, StorageValue, MapProof, ProofMapIndex};
+/// # use exonum_merkledb::proof_map_index::ProofPath;
+/// # use exonum_crypto::{hash, CryptoHash};
 /// # fn main() {
 /// let mut fork = { let db = MemoryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &mut fork);
@@ -544,8 +542,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use exonum::storage::{Database, MemoryDB, ProofMapIndex};
-    /// # use exonum::crypto::hash;
+    /// # use exonum_merkledb::{Database, MemoryDB, ProofMapIndex};
+    /// # use exonum_crypto::hash;
     /// let mut fork = { let db = MemoryDB::new(); db.fork() };
     /// let mut map = ProofMapIndex::new("index", &mut fork);
     /// let (h1, h2) = (hash(&[1]), hash(&[2]));

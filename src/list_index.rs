@@ -71,7 +71,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -99,7 +99,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -126,7 +126,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -146,7 +146,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -169,7 +169,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -189,7 +189,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -217,7 +217,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -242,7 +242,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -276,7 +276,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -297,7 +297,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -325,7 +325,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -357,7 +357,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -387,7 +387,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -423,7 +423,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -470,7 +470,7 @@ where
 mod tests {
     use super::{Fork, ListIndex, Snapshot};
     use rand::{distributions::Alphanumeric, thread_rng, Rng};
-    use storage::Database;
+    use crate::Database;
 
     fn gen_tempdir_name() -> String {
         thread_rng().sample_iter(&Alphanumeric).take(10).collect()
@@ -595,7 +595,7 @@ mod tests {
 
     mod memorydb_tests {
         use std::path::Path;
-        use storage::{Database, ListIndex, MemoryDB};
+        use crate::{Database, ListIndex, MemoryDB};
         use tempdir::TempDir;
 
         const IDX_NAME: &'static str = "idx_name";
@@ -657,7 +657,7 @@ mod tests {
 
     mod rocksdb_tests {
         use std::path::Path;
-        use storage::{Database, DbOptions, ListIndex, RocksDB};
+        use crate::{Database, DbOptions, ListIndex, RocksDB};
         use tempdir::TempDir;
 
         const IDX_NAME: &'static str = "idx_name";

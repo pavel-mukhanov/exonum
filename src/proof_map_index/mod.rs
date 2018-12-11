@@ -31,7 +31,7 @@ use super::{
     indexes_metadata::IndexType,
     Fork, Snapshot, StorageKey, StorageValue,
 };
-use crypto::{CryptoHash, Hash, HashStream};
+use exonum_crypto::{CryptoHash, Hash, HashStream};
 
 mod key;
 mod node;
@@ -125,8 +125,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -157,8 +157,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -220,8 +220,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -251,8 +251,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -274,8 +274,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -297,8 +297,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let snapshot = db.snapshot();
@@ -317,7 +317,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let snapshot = db.snapshot();
@@ -340,8 +340,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -365,8 +365,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -390,8 +390,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -414,8 +414,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -440,8 +440,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -466,8 +466,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -566,8 +566,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -683,8 +683,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -743,8 +743,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ProofMapIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ProofMapIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";

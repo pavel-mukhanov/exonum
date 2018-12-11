@@ -29,7 +29,7 @@ use super::{
     indexes_metadata::IndexType,
     Fork, Snapshot, StorageKey, StorageValue,
 };
-use crypto::{hash, CryptoHash, Hash};
+use exonum_crypto::{hash, CryptoHash, Hash};
 
 #[derive(Debug, Default, Clone, Copy)]
 struct SparseListSize {
@@ -145,7 +145,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let snapshot = db.snapshot();
@@ -173,7 +173,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let snapshot = db.snapshot();
@@ -213,7 +213,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -236,7 +236,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -256,7 +256,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -281,7 +281,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -305,7 +305,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -328,7 +328,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -352,7 +352,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -376,7 +376,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -410,7 +410,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -433,7 +433,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -470,7 +470,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -503,7 +503,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -542,7 +542,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -565,7 +565,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, SparseListIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, SparseListIndex};
     ///
     /// let db = MemoryDB::new();
     /// let mut fork = db.fork();
@@ -636,7 +636,7 @@ where
 mod tests {
     use super::SparseListIndex;
     use rand::{distributions::Alphanumeric, thread_rng, Rng};
-    use storage::db::Database;
+    use crate::db::Database;
 
     const IDX_NAME: &'static str = "idx_name";
 
@@ -756,7 +756,7 @@ mod tests {
 
     mod memorydb_tests {
         use std::path::Path;
-        use storage::{Database, MemoryDB};
+        use crate::{Database, MemoryDB};
         use tempdir::TempDir;
 
         fn create_database(_: &Path) -> Box<dyn Database> {
@@ -782,7 +782,7 @@ mod tests {
 
     mod rocksdb_tests {
         use std::path::Path;
-        use storage::{Database, DbOptions, RocksDB};
+        use crate::{Database, DbOptions, RocksDB};
         use tempdir::TempDir;
 
         fn create_database(path: &Path) -> Box<dyn Database> {

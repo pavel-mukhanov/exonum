@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::{cmp, collections::HashSet, fmt::Debug, hash::Hash as StdHash};
+
+use byteorder::{LittleEndian, ByteOrder};
 use rand::{
     self,
     distributions::Alphanumeric,
@@ -19,9 +22,10 @@ use rand::{
     Rng, RngCore, SeedableRng,
 };
 use rand_xorshift::XorShiftRng;
-use serde_json;
+use serde_json::{self, json};
+use serde::{de::DeserializeOwned, Serialize};
 
-use std::{cmp, collections::HashSet, fmt::Debug, hash::Hash as StdHash};
+use exonum_crypto::{hash, CryptoHash, Hash, HashStream};
 
 use super::{
     key::{BitsRange, ChildKind, KEY_SIZE, LEAF_KEY_PREFIX},
@@ -29,9 +33,7 @@ use super::{
     proof::MapProofBuilder,
     HashedKey, MapProof, MapProofError, ProofMapIndex, ProofMapKey, ProofPath,
 };
-use crypto::{hash, CryptoHash, Hash, HashStream};
-use encoding::serialize::reexport::{DeserializeOwned, Serialize};
-use storage::{Database, Fork, StorageValue};
+use crate::{Database, Fork, StorageValue};
 
 const IDX_NAME: &'static str = "idx_name";
 
@@ -1259,10 +1261,27 @@ fn iter(db: Box<dyn Database>) {
 fn tree_with_hashed_key(db: Box<dyn Database>) {
     use std::iter::FromIterator;
 
-    encoding_struct! {
-        struct Point {
-            x: u16,
-            y: u16,
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    struct Point {
+        x: u16,
+        y: u16,
+    }
+
+    impl Point {
+        fn new(x: u16, y: u16) -> Self {
+            Self {
+                x, 
+                y,
+            }
+        }
+    }
+
+    impl CryptoHash for Point {
+        fn hash(&self) -> Hash {
+            let mut buffer = [0; 4];
+            LittleEndian::write_u16(&mut buffer[0..2], self.x);
+            LittleEndian::write_u16(&mut buffer[2..4], self.y);
+            exonum_crypto::hash(&buffer)
         }
     }
 
@@ -1387,7 +1406,7 @@ macro_rules! common_tests {
 
 mod memorydb_tests {
     use std::path::Path;
-    use storage::{Database, MemoryDB};
+    use crate::{Database, MemoryDB};
     use tempdir::TempDir;
 
     fn create_database(_: &Path) -> Box<dyn Database> {
@@ -1399,7 +1418,7 @@ mod memorydb_tests {
 
 mod rocksdb_tests {
     use std::path::Path;
-    use storage::{Database, DbOptions, RocksDB};
+    use crate::{Database, DbOptions, RocksDB};
     use tempdir::TempDir;
 
     fn create_database(path: &Path) -> Box<dyn Database> {

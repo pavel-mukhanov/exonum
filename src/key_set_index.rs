@@ -68,7 +68,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, KeySetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, KeySetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let snapshot = db.snapshot();
@@ -95,7 +95,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, KeySetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, KeySetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let snapshot = db.snapshot();
@@ -120,7 +120,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, KeySetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, KeySetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -144,7 +144,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, KeySetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, KeySetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -167,7 +167,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, KeySetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, KeySetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -194,7 +194,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, KeySetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, KeySetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -217,7 +217,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, KeySetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, KeySetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -248,7 +248,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, KeySetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, KeySetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";

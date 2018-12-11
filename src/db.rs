@@ -235,7 +235,7 @@ enum NextIterValue {
 /// rather than an exclusive one (`&mut self`). This means that the following code compiles:
 ///
 /// ```
-/// use exonum::storage::{Database, MemoryDB};
+/// use exonum_merkledb::{Database, MemoryDB};
 ///
 /// // not declared as `mut db`!
 /// let db: Box<Database> = Box::new(MemoryDB::new());

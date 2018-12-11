@@ -14,6 +14,8 @@
 
 //! Abstract settings for databases.
 
+use serde_derive::{Serialize, Deserialize};
+
 /// Options for the database.
 ///
 /// These parameters apply to the underlying database of Exonum, currently `RocksDB`.

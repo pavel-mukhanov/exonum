@@ -23,7 +23,7 @@
 use std::{borrow::Cow, marker::PhantomData};
 
 use super::{Fork, Iter, Snapshot, StorageKey, StorageValue};
-use storage::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
+use crate::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
 
 /// Basic struct for all indices that implements common features.
 ///

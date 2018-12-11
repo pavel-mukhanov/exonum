@@ -15,8 +15,9 @@
 use std::cmp::{min, Ordering};
 use std::ops;
 
-use crypto::{CryptoHash, Hash, PublicKey, HASH_SIZE};
-use storage::StorageKey;
+use exonum_crypto::{CryptoHash, Hash, PublicKey, HASH_SIZE};
+
+use crate::StorageKey;
 
 pub const BRANCH_KEY_PREFIX: u8 = 0;
 pub const LEAF_KEY_PREFIX: u8 = 1;
@@ -57,10 +58,10 @@ where
     /// The buffer is guaranteed to have size [`PROOF_MAP_KEY_SIZE`].
     ///
     /// [`PROOF_MAP_KEY_SIZE`]: constant.PROOF_MAP_KEY_SIZE.html
-    fn write_key(&self, &mut [u8]);
+    fn write_key(&self, out: &mut [u8]);
 
     /// Reads this key from the buffer.
-    fn read_key(&[u8]) -> Self::Output;
+    fn read_key(from: &[u8]) -> Self::Output;
 }
 
 /// A trait denoting that a certain storage value is suitable for use as a key for
@@ -72,23 +73,34 @@ where
 /// # Example
 ///
 /// ```
-/// # #[macro_use] extern crate exonum;
-/// # use exonum::storage::{MemoryDB, Database, ProofMapIndex, HashedKey};
-/// encoding_struct!{
-///     struct Point {
-///         x: i32,
-///         y: i32,
+/// # use byteorder::{LittleEndian, ByteOrder};
+/// # use exonum_merkledb::{MemoryDB, Database, ProofMapIndex, HashedKey};
+/// 
+/// #[derive(Debug, Copy, Clone, PartialEq)]
+/// struct Point {
+///     y: i16,
+///     x: i16,
+/// }
+/// 
+/// impl exonum_crypto::CryptoHash for Point {
+///     fn hash(&self) -> exonum_crypto::Hash {
+///         let mut buffer = [0; 4];
+///         LittleEndian::write_i16(&mut buffer[0..2], self.x);
+///         LittleEndian::write_i16(&mut buffer[2..4], self.y);
+///         exonum_crypto::hash(&buffer)
 ///     }
 /// }
-///
+/// 
 /// impl HashedKey for Point {}
+/// 
+/// 
 ///
 /// # fn main() {
 /// let mut fork = { let db = MemoryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &mut fork);
-/// map.put(&Point::new(3, -4), 5u32);
-/// assert_eq!(map.get(&Point::new(3, -4)), Some(5));
-/// assert_eq!(map.get(&Point::new(3, 4)), None);
+/// map.put(&Point { x: 3, y: -4 }, 5u32);
+/// assert_eq!(map.get(&Point { x: 3, y: -4 }), Some(5));
+/// assert_eq!(map.get(&Point { x: 3, y: 4 }), None);
 /// # }
 /// ```
 ///
@@ -465,7 +477,7 @@ impl PartialOrd for ProofPath {
 #[cfg(test)]
 mod tests {
     use rand::{self, Rng};
-    use serde_json::{self, Value};
+    use serde_json::{self, Value, json};
 
     use super::*;
 

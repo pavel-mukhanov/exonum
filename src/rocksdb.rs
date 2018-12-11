@@ -16,16 +16,16 @@
 
 //! An implementation of `RocksDB` database.
 
-pub use rocksdb::{BlockBasedOptions as RocksBlockOptions, WriteOptions as RocksDBWriteOptions};
-
-use rocksdb::{self, utils::get_cf_names, DBIterator, Options as RocksDbOptions, WriteBatch};
+pub use exonum_rocksdb::{BlockBasedOptions as RocksBlockOptions, WriteOptions as RocksDBWriteOptions};
 
 use std::{error::Error, fmt, iter::Peekable, mem, path::Path, sync::Arc};
 
-use storage::{self, db::Change, Database, DbOptions, Iter, Iterator, Patch, Snapshot};
+use exonum_rocksdb::{self, utils::get_cf_names, DBIterator, Options as RocksDbOptions, WriteBatch};
 
-impl From<rocksdb::Error> for storage::Error {
-    fn from(err: rocksdb::Error) -> Self {
+use crate::{db::Change, Database, DbOptions, Iter, Iterator, Patch, Snapshot};
+
+impl From<exonum_rocksdb::Error> for crate::Error {
+    fn from(err: exonum_rocksdb::Error) -> Self {
         Self::new(err.description())
     }
 }
@@ -37,7 +37,7 @@ impl From<rocksdb::Error> for storage::Error {
 /// This structure is required to potentially adapt the interface to
 /// use different databases.
 pub struct RocksDB {
-    db: Arc<rocksdb::DB>,
+    db: Arc<exonum_rocksdb::DB>,
 }
 
 impl DbOptions {
@@ -51,8 +51,8 @@ impl DbOptions {
 
 /// A snapshot of a `RocksDB`.
 pub struct RocksDBSnapshot {
-    snapshot: rocksdb::Snapshot<'static>,
-    db: Arc<rocksdb::DB>,
+    snapshot: exonum_rocksdb::Snapshot<'static>,
+    db: Arc<exonum_rocksdb::DB>,
 }
 
 /// An iterator over the entries of a `RocksDB`.
@@ -68,19 +68,19 @@ impl RocksDB {
     /// If the database does not exist at the indicated path and the option
     /// `create_if_missing` is switched on in `DbOptions`, a new database will
     /// be created at the indicated path.
-    pub fn open<P: AsRef<Path>>(path: P, options: &DbOptions) -> storage::Result<Self> {
+    pub fn open<P: AsRef<Path>>(path: P, options: &DbOptions) -> crate::Result<Self> {
         let db = {
             if let Ok(names) = get_cf_names(&path) {
                 let cf_names = names.iter().map(|name| name.as_str()).collect::<Vec<_>>();
-                rocksdb::DB::open_cf(&options.to_rocksdb(), path, cf_names.as_ref())?
+                exonum_rocksdb::DB::open_cf(&options.to_rocksdb(), path, cf_names.as_ref())?
             } else {
-                rocksdb::DB::open(&options.to_rocksdb(), path)?
+                exonum_rocksdb::DB::open(&options.to_rocksdb(), path)?
             }
         };
         Ok(Self { db: Arc::new(db) })
     }
 
-    fn do_merge(&self, patch: Patch, w_opts: &RocksDBWriteOptions) -> storage::Result<()> {
+    fn do_merge(&self, patch: Patch, w_opts: &RocksDBWriteOptions) -> crate::Result<()> {
         let mut batch = WriteBatch::default();
         for (cf_name, changes) in patch {
             let cf = match self.db.cf_handle(&cf_name) {
@@ -109,12 +109,12 @@ impl Database for RocksDB {
         })
     }
 
-    fn merge(&self, patch: Patch) -> storage::Result<()> {
+    fn merge(&self, patch: Patch) -> crate::Result<()> {
         let w_opts = RocksDBWriteOptions::default();
         self.do_merge(patch, &w_opts)
     }
 
-    fn merge_sync(&self, patch: Patch) -> storage::Result<()> {
+    fn merge_sync(&self, patch: Patch) -> crate::Result<()> {
         let mut w_opts = RocksDBWriteOptions::default();
         w_opts.set_sync(true);
         self.do_merge(patch, &w_opts)
@@ -134,7 +134,7 @@ impl Snapshot for RocksDBSnapshot {
     }
 
     fn iter<'a>(&'a self, name: &str, from: &[u8]) -> Iter<'a> {
-        use rocksdb::{Direction, IteratorMode};
+        use exonum_rocksdb::{Direction, IteratorMode};
         let iter = match self.db.cf_handle(name) {
             Some(cf) => self
                 .snapshot

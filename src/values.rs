@@ -14,17 +14,15 @@
 
 //! A definition of `StorageValue` trait and implementations for common types.
 
+use std::{borrow::Cow, mem};
+
 use byteorder::{ByteOrder, LittleEndian};
-use chrono::{DateTime, Duration, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use std::{borrow::Cow, mem};
-
 use super::UniqueHash;
-use crypto::{Hash, PublicKey};
-use encoding::{Field, Offset};
-use helpers::Round;
+use exonum_crypto::{Hash, PublicKey};
 
 /// A type that can be (de)serialized as a value in the blockchain storage.
 ///
@@ -37,11 +35,9 @@ use helpers::Round;
 /// Implementing `StorageValue` for the type:
 ///
 /// ```
-/// # extern crate exonum;
-/// # extern crate byteorder;
 /// use std::borrow::Cow;
-/// use exonum::storage::StorageValue;
-/// use exonum::crypto::{self, CryptoHash, Hash};
+/// use exonum_merkledb::StorageValue;
+/// use exonum_crypto::{self, CryptoHash, Hash};
 /// use byteorder::{LittleEndian, ByteOrder};
 ///
 /// struct Data {
@@ -54,7 +50,7 @@ use helpers::Round;
 ///         let mut buffer = [0; 6];
 ///         LittleEndian::write_i16(&mut buffer[0..2], self.a);
 ///         LittleEndian::write_u32(&mut buffer[2..6], self.b);
-///         crypto::hash(&buffer)
+///         exonum_crypto::hash(&buffer)
 ///     }
 /// }
 ///
@@ -270,33 +266,6 @@ impl StorageValue for DateTime<Utc> {
     }
 }
 
-/// Uses little-endian encoding.
-impl StorageValue for Duration {
-    fn into_bytes(self) -> Vec<u8> {
-        let mut buffer = vec![0; Self::field_size() as usize];
-        let from: Offset = 0;
-        let to: Offset = Self::field_size();
-        self.write(&mut buffer, from, to);
-        buffer
-    }
-
-    fn from_bytes(value: Cow<[u8]>) -> Self {
-        #![allow(unsafe_code)]
-        let from: Offset = 0;
-        let to: Offset = Self::field_size();
-        unsafe { Self::read(&value, from, to) }
-    }
-}
-
-impl StorageValue for Round {
-    fn into_bytes(self) -> Vec<u8> {
-        self.0.into_bytes()
-    }
-
-    fn from_bytes(value: Cow<[u8]>) -> Self {
-        Round(<u32 as StorageValue>::from_bytes(value))
-    }
-}
 
 impl StorageValue for Uuid {
     fn into_bytes(self) -> Vec<u8> {
@@ -322,9 +291,12 @@ impl StorageValue for Decimal {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fmt::Debug;
     use std::str::FromStr;
+
+    use chrono::Duration;
+
+    use super::*;
 
     #[test]
     fn u8_round_trip() {
@@ -420,33 +392,6 @@ mod tests {
         ];
 
         assert_round_trip_eq(&times);
-    }
-
-    #[test]
-    fn storage_value_for_duration_round_trip() {
-        let durations = [
-            Duration::zero(),
-            Duration::max_value(),
-            Duration::min_value(),
-            Duration::nanoseconds(999_999_999),
-            Duration::nanoseconds(-999_999_999),
-            Duration::seconds(42) + Duration::nanoseconds(15),
-            Duration::seconds(-42) + Duration::nanoseconds(-15),
-        ];
-
-        assert_round_trip_eq(&durations);
-    }
-
-    #[test]
-    fn round_round_trip() {
-        let values = [
-            Round::zero(),
-            Round::first(),
-            Round(100),
-            Round(u32::max_value()),
-        ];
-
-        assert_round_trip_eq(&values);
     }
 
     #[test]

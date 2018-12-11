@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(unsafe_code)]
+
+use std::{borrow::Cow, fmt};
 
 use serde_json::{self, Error as JsonError};
+use serde_derive::{Serialize, Deserialize};
 
-use std::{borrow::Cow, error::Error, fmt};
+use exonum_crypto::{self, CryptoHash, Hash};
 
-use crypto::{self, CryptoHash, Hash};
-use encoding::{
-    serialize::{json, WriteBufferWrapper},
-    CheckedOffset, Error as EncodingError, Field, Offset,
-};
-use storage::{base_index::BaseIndex, Fork, Snapshot, StorageValue};
+use crate::{base_index::BaseIndex, Fork, Snapshot, StorageValue};
 
 pub const INDEXES_METADATA_TABLE_NAME: &str = "__INDEXES_METADATA__";
 
@@ -33,14 +30,13 @@ pub const INDEXES_METADATA_TABLE_NAME: &str = "__INDEXES_METADATA__";
 const CORE_STORAGE_METADATA: StorageMetadata = StorageMetadata { version: 0 };
 const CORE_STORAGE_METADATA_KEY: &str = "__STORAGE_METADATA__";
 
-encoding_struct! {
-    struct IndexMetadata {
-        index_type: IndexType,
-        is_family: bool,
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+struct IndexMetadata {
+    index_type: IndexType,
+    is_family: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum IndexType {
     Entry,
@@ -90,54 +86,33 @@ impl StorageValue for IndexType {
     }
 }
 
-impl<'a> Field<'a> for IndexType {
-    unsafe fn read(buffer: &'a [u8], from: Offset, to: Offset) -> Self {
-        u8::read(buffer, from, to).into()
+impl StorageValue for IndexMetadata {
+    fn into_bytes(self) -> Vec<u8> {
+        vec![self.index_type as u8, if self.is_family { 1 } else { 0 } ]
     }
 
-    fn write(&self, buffer: &mut Vec<u8>, from: Offset, to: Offset) {
-        (*self as u8).write(buffer, from, to)
-    }
-
-    fn field_size() -> Offset {
-        u8::field_size()
-    }
-
-    fn check(
-        buffer: &'a [u8],
-        from: CheckedOffset,
-        to: CheckedOffset,
-        latest_segment: CheckedOffset,
-    ) -> ::std::result::Result<CheckedOffset, EncodingError> {
-        u8::check(buffer, from, to, latest_segment)
-    }
+    fn from_bytes(value: Cow<[u8]>) -> Self {
+        let value = value.as_ref();
+        let index_type = IndexType::from(value[0]);
+        let is_family = value[1] != 0;
+        IndexMetadata {
+            index_type, 
+            is_family,
+        }
+    }    
 }
 
-impl json::ExonumJson for IndexType {
-    fn deserialize_field<B: WriteBufferWrapper>(
-        value: &json::reexport::Value,
-        buffer: &mut B,
-        from: Offset,
-        to: Offset,
-    ) -> Result<(), Box<dyn Error>>
-    where
-        Self: Sized,
-    {
-        let v = value.as_u64().ok_or("Can't cast json as u64")? as u8;
-        buffer.write(from, to, v);
-        Ok(())
-    }
-
-    fn serialize_field(&self) -> Result<json::reexport::Value, Box<dyn Error + Send + Sync>> {
-        Ok(json::reexport::Value::from(*self as u8))
+impl CryptoHash for IndexMetadata {
+    fn hash(&self) -> Hash {
+        self.into_bytes().hash()
     }
 }
 
 pub fn assert_index_type(name: &str, index_type: IndexType, is_family: bool, view: &dyn Snapshot) {
     let metadata = BaseIndex::indexes_metadata(view);
     if let Some(value) = metadata.get::<_, IndexMetadata>(name) {
-        let stored_type = value.index_type();
-        let stored_is_family = value.is_family();
+        let stored_type = value.index_type;
+        let stored_is_family = value.is_family;
         assert_eq!(
             stored_type, index_type,
             "Attempt to access index '{}' of type {:?}, \
@@ -164,21 +139,21 @@ pub fn assert_index_type(name: &str, index_type: IndexType, is_family: bool, vie
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct StorageMetadata {
+pub struct StorageMetadata {
     version: u32,
 }
 
 impl StorageMetadata {
-    pub fn current() -> Self {
-        CORE_STORAGE_METADATA
-    }
-
     pub fn try_serialize(&self) -> Result<Vec<u8>, JsonError> {
         serde_json::to_vec(&self)
     }
 
     pub fn try_deserialize(serialized: &[u8]) -> Result<Self, JsonError> {
         serde_json::from_slice(serialized)
+    }
+
+    pub fn current() -> Self {
+        CORE_STORAGE_METADATA
     }
 
     pub fn write_current(view: &mut Fork) {
@@ -206,7 +181,7 @@ impl StorageMetadata {
 impl CryptoHash for StorageMetadata {
     fn hash(&self) -> Hash {
         let vec_bytes = self.try_serialize().unwrap();
-        crypto::hash(&vec_bytes)
+        exonum_crypto::hash(&vec_bytes)
     }
 }
 
@@ -232,7 +207,7 @@ pub fn set_index_type(name: &str, index_type: IndexType, is_family: bool, view: 
     }
     let mut metadata = BaseIndex::indexes_metadata(view);
     if metadata.get::<_, IndexMetadata>(name).is_none() {
-        metadata.put(&name.to_owned(), IndexMetadata::new(index_type, is_family));
+        metadata.put(&name.to_owned(), IndexMetadata { index_type, is_family });
     }
 }
 
@@ -242,8 +217,8 @@ mod tests {
         IndexMetadata, IndexType, StorageMetadata, CORE_STORAGE_METADATA,
         CORE_STORAGE_METADATA_KEY, INDEXES_METADATA_TABLE_NAME,
     };
-    use crypto::{Hash, PublicKey};
-    use storage::{base_index::BaseIndex, Database, Fork, MapIndex, MemoryDB, ProofMapIndex};
+    use exonum_crypto::{Hash, PublicKey};
+    use crate::{base_index::BaseIndex, Database, Fork, MapIndex, MemoryDB, ProofMapIndex};
 
     #[test]
     fn index_metadata_roundtrip() {
@@ -254,9 +229,9 @@ mod tests {
         ];
         let is_family = [true, true, false, false, true, false, true, false];
         for (t, f) in index_types.iter().zip(&is_family) {
-            let metadata = IndexMetadata::new(*t, *f);
-            assert_eq!(metadata.index_type(), *t);
-            assert_eq!(metadata.is_family(), *f)
+            let metadata = IndexMetadata { index_type: *t, is_family: *f };
+            assert_eq!(metadata.index_type, *t);
+            assert_eq!(metadata.is_family, *f)
         }
     }
 

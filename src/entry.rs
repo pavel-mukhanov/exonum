@@ -19,7 +19,7 @@ use std::marker::PhantomData;
 use super::{
     base_index::BaseIndex, indexes_metadata::IndexType, Fork, Snapshot, StorageKey, StorageValue,
 };
-use crypto::Hash;
+use exonum_crypto::Hash;
 
 /// An index that may only contain one element.
 ///
@@ -50,7 +50,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -77,7 +77,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -102,7 +102,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -122,7 +122,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -142,8 +142,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
-    /// use exonum::crypto::{self, Hash};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
+    /// use exonum_crypto::{self, Hash};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -153,7 +153,7 @@ where
     ///
     /// let value = 10;
     /// index.set(value);
-    /// assert_eq!(crypto::hash(&[value]), index.hash());
+    /// assert_eq!(exonum_crypto::hash(&[value]), index.hash());
     /// ```
     pub fn hash(&self) -> Hash {
         self.base
@@ -172,7 +172,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -191,7 +191,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -213,7 +213,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -240,7 +240,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, Entry};
+    /// use exonum_merkledb::{MemoryDB, Database, Entry};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";

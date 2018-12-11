@@ -97,7 +97,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -125,7 +125,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -152,7 +152,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -176,7 +176,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -200,7 +200,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -223,7 +223,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -246,7 +246,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -269,7 +269,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -296,7 +296,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -323,7 +323,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -354,7 +354,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -372,7 +372,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -402,7 +402,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, MapIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, MapIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name = "name";
@@ -607,7 +607,7 @@ mod tests {
 
     mod memorydb_tests {
         use std::path::Path;
-        use storage::{Database, MemoryDB};
+        use crate::{Database, MemoryDB};
         use tempdir::TempDir;
 
         fn create_database(_: &Path) -> Box<dyn Database> {
@@ -633,11 +633,11 @@ mod tests {
 
     mod rocksdb_tests {
         use std::path::Path;
-        use storage::Database;
+        use crate::Database;
         use tempdir::TempDir;
 
         fn create_database(path: &Path) -> Box<dyn Database> {
-            use storage::{DbOptions, RocksDB};
+            use crate::{DbOptions, RocksDB};
             let opts = DbOptions::default();
             Box::new(RocksDB::open(path, &opts).unwrap())
         }

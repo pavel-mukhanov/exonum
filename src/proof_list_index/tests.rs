@@ -13,15 +13,15 @@
 // limitations under the License.
 
 use rand::{distributions::Alphanumeric, thread_rng, Rng, RngCore};
+use serde_derive::Serialize;
+use serde_json::{from_str, to_string};
+use serde::Serialize;
+
+use exonum_crypto::{hash, CryptoHash, Hash};
 
 use self::ListProof::*;
 use super::{hash_one, hash_pair, root_hash, ListProof, ProofListIndex};
-use crypto::{hash, CryptoHash, Hash};
-use encoding::serialize::{
-    json::reexport::{from_str, to_string},
-    reexport::Serialize,
-};
-use storage::Database;
+use crate::Database;
 
 const IDX_NAME: &'static str = "idx_name";
 
@@ -556,7 +556,7 @@ struct ProofInfo<'a, V: Serialize + 'a> {
 
 mod memorydb_tests {
     use std::path::Path;
-    use storage::{Database, MemoryDB};
+    use crate::{Database, MemoryDB};
     use tempdir::TempDir;
 
     fn create_database(_: &Path) -> Box<dyn Database> {
@@ -668,7 +668,7 @@ mod memorydb_tests {
 
 mod rocksdb_tests {
     use std::path::Path;
-    use storage::{Database, DbOptions, RocksDB};
+    use crate::{Database, DbOptions, RocksDB};
     use tempdir::TempDir;
 
     fn create_database(path: &Path) -> Box<dyn Database> {
@@ -780,8 +780,8 @@ mod rocksdb_tests {
 }
 
 mod root_hash_tests {
-    use crypto::{self, Hash};
-    use storage::{Database, MemoryDB, ProofListIndex};
+    use exonum_crypto::{self, Hash};
+    use crate::{Database, MemoryDB, ProofListIndex};
 
     /// Cross-verify `root_hash()` with `ProofListIndex` against expected root hash value.
     fn assert_root_hash_correct(hashes: &[Hash]) {
@@ -799,7 +799,7 @@ mod root_hash_tests {
     }
 
     fn hash_list(bytes: &[&[u8]]) -> Vec<Hash> {
-        bytes.iter().map(|chunk| crypto::hash(chunk)).collect()
+        bytes.iter().map(|chunk| exonum_crypto::hash(chunk)).collect()
     }
 
     #[test]

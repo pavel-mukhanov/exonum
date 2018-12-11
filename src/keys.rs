@@ -21,7 +21,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use crypto::{Hash, PublicKey, Signature, HASH_SIZE, PUBLIC_KEY_LENGTH, SIGNATURE_LENGTH};
+use exonum_crypto::{Hash, PublicKey, Signature, HASH_SIZE, PUBLIC_KEY_LENGTH, SIGNATURE_LENGTH};
 
 /// A type that can be (de)serialized as a key in the blockchain storage.
 ///
@@ -33,10 +33,8 @@ use crypto::{Hash, PublicKey, Signature, HASH_SIZE, PUBLIC_KEY_LENGTH, SIGNATURE
 /// # Examples
 ///
 /// ```
-/// # extern crate exonum;
-/// # extern crate byteorder;
 /// use std::mem;
-/// use exonum::storage::StorageKey;
+/// use exonum_merkledb::StorageKey;
 ///
 /// #[derive(Clone)]
 /// struct Key {
@@ -312,7 +310,7 @@ mod tests {
     use std::{fmt::Debug, str::FromStr};
 
     use chrono::{Duration, TimeZone};
-    use encoding::serialize::FromHex;
+    use hex::FromHex;
 
     // Number of samples for fuzz testing
     const FUZZ_SAMPLES: usize = 100_000;
@@ -390,7 +388,7 @@ mod tests {
 
     #[test]
     fn signed_int_key_in_index() {
-        use storage::{Database, MapIndex, MemoryDB};
+        use crate::{Database, MapIndex, MemoryDB};
 
         let db: Box<dyn Database> = Box::new(MemoryDB::new());
         let mut fork = db.fork();
@@ -421,7 +419,7 @@ mod tests {
     // for signed integers.
     #[test]
     fn old_signed_int_key_in_index() {
-        use storage::{Database, MapIndex, MemoryDB};
+        use crate::{Database, MapIndex, MemoryDB};
 
         // Simple wrapper around a signed integer type with the `StorageKey` implementation,
         // which was used in Exonum <= 0.5.
@@ -516,7 +514,7 @@ mod tests {
 
     #[test]
     fn system_time_key_in_index() {
-        use storage::{Database, MapIndex, MemoryDB};
+        use crate::{Database, MapIndex, MemoryDB};
 
         let db: Box<dyn Database> = Box::new(MemoryDB::new());
         let x1 = Utc.timestamp(80, 0);

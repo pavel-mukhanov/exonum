@@ -16,7 +16,7 @@ use super::{
     Database, Entry, Fork, KeySetIndex, ListIndex, MapIndex, ProofListIndex, ProofMapIndex,
     Snapshot, SparseListIndex, ValueSetIndex,
 };
-use crypto::Hash;
+use exonum_crypto::Hash;
 
 const IDX_NAME: &'static str = "idx_name";
 
@@ -204,7 +204,7 @@ mod memorydb_tests {
 mod rocksdb_tests {
     use super::super::{DbOptions, RocksDB};
     use std::path::Path;
-    use storage::{Database, ListIndex, Snapshot};
+    use crate::{Database, ListIndex, Snapshot};
     use tempdir::TempDir;
 
     fn rocksdb_database(path: &Path) -> RocksDB {
@@ -267,7 +267,7 @@ mod rocksdb_tests {
 // This should compile to ensure ?Sized bound on `new_in_family` (see #1024).
 #[allow(dead_code, unreachable_code, unused_variables)]
 fn should_compile() {
-    let mut fork: Fork = unimplemented!();
+    let fork: Fork = unimplemented!();
     let _: Entry<_, ()> = Entry::new_in_family("", "", &mut fork);
     let _: KeySetIndex<_, Hash> = KeySetIndex::new_in_family("", "", &mut fork);
     let _: ListIndex<_, ()> = ListIndex::new_in_family("", "", &mut fork);

@@ -25,7 +25,7 @@ use super::{
     indexes_metadata::IndexType,
     Fork, Snapshot, StorageKey, StorageValue,
 };
-use crypto::Hash;
+use exonum_crypto::Hash;
 
 /// A set of value items.
 ///
@@ -82,7 +82,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -109,7 +109,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let snapshot = db.snapshot();
@@ -134,7 +134,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -154,8 +154,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
-    /// use exonum::crypto;
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_crypto;
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -163,7 +163,7 @@ where
     /// let mut index = ValueSetIndex::new(name, &mut fork);
     ///
     /// let data = vec![1, 2, 3];
-    /// let data_hash = crypto::hash(&data);
+    /// let data_hash = exonum_crypto::hash(&data);
     /// assert!(!index.contains_by_hash(&data_hash));
     ///
     /// index.insert(data);
@@ -177,7 +177,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -200,8 +200,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -226,7 +226,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -249,8 +249,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
-    /// use exonum::crypto::Hash;
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_crypto::Hash;
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -279,7 +279,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -298,7 +298,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -320,8 +320,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
-    /// use exonum::crypto;
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_crypto;
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
@@ -329,7 +329,7 @@ where
     /// let mut index = ValueSetIndex::new(name, &mut fork);
     ///
     /// let data = vec![1, 2, 3];
-    /// let data_hash = crypto::hash(&data);
+    /// let data_hash = exonum_crypto::hash(&data);
     /// index.insert(data);
     /// assert!(index.contains_by_hash(&data_hash));
     ///
@@ -349,7 +349,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum::storage::{MemoryDB, Database, ValueSetIndex};
+    /// use exonum_merkledb::{MemoryDB, Database, ValueSetIndex};
     ///
     /// let db = MemoryDB::new();
     /// let name  = "name";
