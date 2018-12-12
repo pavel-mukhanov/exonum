@@ -21,9 +21,9 @@ clonned
 codecov
 compat
 concat
+cors
 Cors
 CORS
-cors
 counterintuitive
 cryptocurrency
 cryptographically
@@ -143,6 +143,7 @@ supervisorctl
 supervisord
 symm
 tempdir
+tempfile
 terminfo
 testdata
 testkit
