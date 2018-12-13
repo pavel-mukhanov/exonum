@@ -74,7 +74,7 @@ where
 ///
 /// ```
 /// # use byteorder::{LittleEndian, ByteOrder};
-/// # use exonum_merkledb::{MemoryDB, Database, ProofMapIndex, HashedKey};
+/// # use exonum_merkledb::{TemporaryDB, Database, ProofMapIndex, HashedKey};
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
@@ -96,7 +96,7 @@ where
 ///
 ///
 /// # fn main() {
-/// let mut fork = { let db = MemoryDB::new(); db.fork() };
+/// let mut fork = { let db = TemporaryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &mut fork);
 /// map.put(&Point { x: 3, y: -4 }, 5u32);
 /// assert_eq!(map.get(&Point { x: 3, y: -4 }), Some(5));

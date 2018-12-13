@@ -87,9 +87,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     ///
     /// let snapshot = db.snapshot();
@@ -119,9 +119,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let index_id = vec![01];
     ///
@@ -199,9 +199,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -219,9 +219,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -242,9 +242,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -262,9 +262,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -287,9 +287,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -311,10 +311,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     /// use exonum_crypto::Hash;
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -339,9 +339,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -370,9 +370,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -404,9 +404,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let snapshot = db.snapshot();
     /// let index: ProofListIndex<_, u8> = ProofListIndex::new(name, &snapshot);
@@ -427,9 +427,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let snapshot = db.snapshot();
     /// let index: ProofListIndex<_, u8> = ProofListIndex::new(name, &snapshot);
@@ -465,9 +465,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -500,9 +500,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -528,9 +528,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
@@ -578,9 +578,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use exonum_merkledb::{MemoryDB, Database, ProofListIndex};
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofListIndex};
     ///
-    /// let db = MemoryDB::new();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let mut fork = db.fork();
     /// let mut index = ProofListIndex::new(name, &mut fork);
