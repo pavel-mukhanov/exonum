@@ -86,7 +86,7 @@ where
 ///
 /// ```
 /// # use byteorder::{LittleEndian, ByteOrder};
-/// # use exonum_merkledb::{MemoryDB, Database, ProofMapIndex, HashedKey};
+/// # use exonum_merkledb::{TemporaryDB, Database, ProofMapIndex, HashedKey};
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
@@ -108,7 +108,7 @@ where
 ///
 ///
 /// # fn main() {
-/// let mut fork = { let db = MemoryDB::new(); db.fork() };
+/// let mut fork = { let db = TemporaryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &mut fork);
 /// map.put(&Point { x: 3, y: -4 }, 5u32);
 /// assert_eq!(map.get(&Point { x: 3, y: -4 }), Some(5));
@@ -509,7 +509,7 @@ impl ProofPath {
         // Trims insignificant bits in the last byte.
         let bits_in_last_byte = bits_len % 8;
         if whole_bytes_len > 0 && bits_in_last_byte != 0 {
-            let zero_bits_mask = !(255u8 << (self.end() % 8));
+            let zero_bits_mask = !(255_u8 << (self.end() % 8));
             buffer[bytes_written - 1] &= zero_bits_mask;
         }
         bytes_written

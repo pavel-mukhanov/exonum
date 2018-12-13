@@ -85,7 +85,7 @@ impl BranchNode {
 
 impl CryptoHash for BranchNode {
     fn hash(&self) -> Hash {
-        let mut bytes: SmallVec<[u8; 256]> = smallvec![0u8; 132];
+        let mut bytes: SmallVec<[u8; 256]> = smallvec![0_u8; 132];
         let mut pos = HASH_SIZE * 2;
         // Writes hashes to the buffer.
         bytes[..pos].copy_from_slice(&self.raw[..pos]);

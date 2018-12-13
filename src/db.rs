@@ -235,10 +235,10 @@ enum NextIterValue {
 /// rather than an exclusive one (`&mut self`). This means that the following code compiles:
 ///
 /// ```
-/// use exonum_merkledb::{Database, MemoryDB};
+/// use exonum_merkledb::{Database, TemporaryDB};
 ///
 /// // not declared as `mut db`!
-/// let db: Box<Database> = Box::new(MemoryDB::new());
+/// let db: Box<Database> = Box::new(TemporaryDB::new());
 /// let mut fork = db.fork();
 /// fork.put("index_name", vec![1, 2, 3], vec![123]);
 /// db.merge(fork.into_patch()).unwrap();
@@ -643,7 +643,9 @@ impl<'a> Iterator for ForkIter<'a> {
 }
 
 impl<T: Database> From<T> for Box<dyn Database> {
+    // False positive
+    #![allow(clippy::use_self)]
     fn from(db: T) -> Self {
-        Box::new(db) as Self
+        Box::new(db)
     }
 }

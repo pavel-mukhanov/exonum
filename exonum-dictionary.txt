@@ -21,9 +21,9 @@ clonned
 codecov
 compat
 concat
+cors
 Cors
 CORS
-cors
 counterintuitive
 cryptocurrency
 cryptographically
@@ -63,7 +63,7 @@ libssl
 maintainer's
 markdownlint
 memlimit
-memorydb
+TemporaryDB
 mempool
 Merkelized
 Merkle
@@ -144,6 +144,7 @@ supervisorctl
 supervisord
 symm
 tempdir
+tempfile
 terminfo
 testdata
 testkit
