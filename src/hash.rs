@@ -20,7 +20,7 @@ use exonum_crypto::{CryptoHash, Hash, HashStream};
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]
-///MerkleDB hash prefixes.
+/// `MerkleDB` hash prefixes.
 pub enum HashTag {
     /// Hash prefix of the leaf node of a merkle tree.
     Leaf = 0,
