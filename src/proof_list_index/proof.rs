@@ -40,7 +40,10 @@ pub struct ProofOfAbsence {
 impl ProofOfAbsence {
     /// New `ProofOfAbsence` for specified list `length` and `merkle_root`.
     pub fn new(length: u64, merkle_root: Hash) -> Self {
-        Self { length, merkle_root }
+        Self {
+            length,
+            merkle_root,
+        }
     }
 
     pub fn length(&self) -> u64 {
@@ -108,7 +111,9 @@ impl<V: StorageValue + Clone> ListProof<V> {
                 vec.push((key.index(), value));
                 HashTag::hash_leaf(value.clone())
             }
-            ListProof::Absent(ref proof) => HashTag::hash_list_node(proof.length, proof.merkle_root),
+            ListProof::Absent(ref proof) => {
+                HashTag::hash_list_node(proof.length, proof.merkle_root)
+            }
         };
         Ok(hash)
     }
