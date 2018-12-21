@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{fmt::Debug, io::Write};
+use std::{fmt::Debug, io::Write, borrow::Cow};
 
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt, WriteBytesExt};
 use criterion::{black_box, Bencher, Criterion};
@@ -47,7 +47,7 @@ impl BinaryForm for SimpleData {
         buffer
     }
 
-    fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, failure::Error> {
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
         let bytes = bytes.as_ref();
         let id = LittleEndian::read_u16(&bytes[0..2]);
         let class = LittleEndian::read_i16(&bytes[2..4]);
@@ -83,7 +83,7 @@ impl BinaryForm for CursorData {
         buf
     }
 
-    fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, failure::Error> {
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
         let mut bytes = bytes.as_ref();
         let id = bytes.read_u16::<LittleEndian>().unwrap();
         let class = bytes.read_i16::<LittleEndian>().unwrap();
@@ -137,7 +137,7 @@ where
     // Checks that binary value is correct.
     let val = f();
     let bytes = val.to_bytes();
-    let val2 = V::from_bytes(bytes).unwrap();
+    let val2 = V::from_bytes(bytes.into()).unwrap();
     assert_eq!(val, val2);
     // Runs benchmarks.
     c.bench_function(
@@ -160,7 +160,7 @@ where
                     let val = f();
                     val.to_bytes()
                 },
-                |bytes| black_box(V::from_bytes(bytes).unwrap()),
+                |bytes| black_box(V::from_bytes(bytes.into()).unwrap()),
             );
         },
     );
