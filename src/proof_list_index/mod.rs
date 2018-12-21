@@ -22,7 +22,7 @@ use self::key::ProofListKey;
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    BinaryValue, Fork, Snapshot, BinaryKey, UniqueHash,
+    BinaryKey, BinaryValue, Fork, Snapshot, UniqueHash,
 };
 use exonum_crypto::{hash, Hash, HashStream};
 
