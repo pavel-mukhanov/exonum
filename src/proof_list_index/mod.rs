@@ -22,7 +22,7 @@ use self::key::ProofListKey;
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    BinaryForm, Fork, Snapshot, BinaryKey, UniqueHash,
+    BinaryValue, Fork, Snapshot, BinaryKey, UniqueHash,
 };
 use exonum_crypto::{hash, Hash, HashStream};
 
@@ -36,9 +36,9 @@ mod tests;
 /// A Merkelized version of an array list that provides proofs of existence for the list items.
 ///
 /// `ProofListIndex` implements a Merkle tree, storing elements as leaves and using `u64` as
-/// an index. `ProofListIndex` requires that elements implement the [`BinaryForm`] trait.
+/// an index. `ProofListIndex` requires that elements implement the [`BinaryValue`] trait.
 ///
-/// [`BinaryForm`]: ../trait.BinaryForm.html
+/// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
 pub struct ProofListIndex<T, V> {
     base: BaseIndex<T>,
@@ -73,7 +73,7 @@ fn hash_pair(h1: &Hash, h2: &Hash) -> Hash {
 impl<T, V> ProofListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: BinaryForm + UniqueHash,
+    V: BinaryValue + UniqueHash,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -447,7 +447,7 @@ where
 
 impl<'a, V> ProofListIndex<&'a mut Fork, V>
 where
-    V: BinaryForm + UniqueHash,
+    V: BinaryValue + UniqueHash,
 {
     fn set_len(&mut self, len: u64) {
         self.base.put(&(), len);
@@ -600,7 +600,7 @@ where
 impl<'a, T, V> ::std::iter::IntoIterator for &'a ProofListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: BinaryForm + UniqueHash,
+    V: BinaryValue + UniqueHash,
 {
     type Item = V;
     type IntoIter = ProofListIndexIter<'a, V>;
@@ -612,7 +612,7 @@ where
 
 impl<'a, V> Iterator for ProofListIndexIter<'a, V>
 where
-    V: BinaryForm + UniqueHash,
+    V: BinaryValue + UniqueHash,
 {
     type Item = V;
 

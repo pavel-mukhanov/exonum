@@ -22,14 +22,14 @@ use failure::{self, ensure};
 use exonum_crypto::{self, Hash, HASH_SIZE};
 
 use super::{
-    super::{BinaryForm, BinaryKey, UniqueHash},
+    super::{BinaryValue, BinaryKey, UniqueHash},
     key::{ChildKind, ProofPath, PROOF_PATH_SIZE},
 };
 
 const BRANCH_NODE_SIZE: usize = 2 * (HASH_SIZE + PROOF_PATH_SIZE);
 
 #[derive(Debug)]
-pub enum Node<T: BinaryForm> {
+pub enum Node<T: BinaryValue> {
     Leaf(T),
     Branch(BranchNode),
 }
@@ -84,7 +84,7 @@ impl BranchNode {
     }
 }
 
-impl BinaryForm for BranchNode {
+impl BinaryValue for BranchNode {
     fn to_bytes(&self) -> Vec<u8> {
         self.raw.clone()
     }
@@ -135,7 +135,7 @@ mod tests {
     use exonum_crypto;
 
     use super::*;
-    use crate::{proof_map_index::key::BitsRange, BinaryForm, UniqueHash};
+    use crate::{proof_map_index::key::BitsRange, BinaryValue, UniqueHash};
 
     #[test]
     fn test_branch_node_layout() {

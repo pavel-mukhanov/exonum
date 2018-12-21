@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::BinaryForm;
+use crate::BinaryValue;
 use exonum_crypto::{self, Hash};
 
 /// A common trait for the ability to compute a unique hash.
@@ -20,7 +20,7 @@ use exonum_crypto::{self, Hash};
 /// Unlike `CryptoHash`, the hash value returned by the `UniqueHash::hash()`
 /// method isn't always irreversible. This hash is used, for example, in the
 /// storage as a key, as uniqueness is important in this case.
-pub trait UniqueHash: BinaryForm {
+pub trait UniqueHash: BinaryValue {
     /// Returns a hash of the value.
     ///
     /// Hash must be unique, but not necessary cryptographic.

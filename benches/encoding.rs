@@ -23,7 +23,7 @@ use rand_xorshift::XorShiftRng;
 use exonum_crypto::{self, Hash};
 use exonum_merkledb::{
     proof_map_index::{BranchNode, ProofPath},
-    BinaryForm, BinaryKey, UniqueHash,
+    BinaryValue, BinaryKey, UniqueHash,
 };
 
 const CHUNK_SIZE: usize = 64;
@@ -37,7 +37,7 @@ struct SimpleData {
     hash: Hash,
 }
 
-impl BinaryForm for SimpleData {
+impl BinaryValue for SimpleData {
     fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = vec![0; 40];
         LittleEndian::write_u16(&mut buffer[0..2], self.id);
@@ -72,7 +72,7 @@ struct CursorData {
     hash: Hash,
 }
 
-impl BinaryForm for CursorData {
+impl BinaryValue for CursorData {
     fn to_bytes(&self) -> Vec<u8> {
         let mut buf = vec![0; 40];
         let mut cursor = buf.as_mut_slice();
@@ -132,7 +132,7 @@ fn gen_branch_node_data() -> BranchNode {
 fn bench_binary_value<F, V>(c: &mut Criterion, name: &str, f: F)
 where
     F: Fn() -> V + 'static + Clone + Copy,
-    V: BinaryForm + UniqueHash + PartialEq + Debug,
+    V: BinaryValue + UniqueHash + PartialEq + Debug,
 {
     // Checks that binary value is correct.
     let val = f();
