@@ -78,12 +78,13 @@ struct CursorData {
 
 impl BinaryForm for CursorData {
     fn to_bytes(&self) -> Vec<u8> {
-        let mut cursor = Cursor::new(vec![0; 40]);
+        let mut buf = vec![0; 40];
+        let mut cursor = buf.as_mut_slice();
         cursor.write_u16::<LittleEndian>(self.id).unwrap();
         cursor.write_i16::<LittleEndian>(self.class).unwrap();
         cursor.write_i32::<LittleEndian>(self.value).unwrap();
         cursor.write_all(self.hash.as_ref()).unwrap();
-        cursor.into_inner()
+        buf
     }
 
     fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, failure::Error> {
