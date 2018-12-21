@@ -14,7 +14,7 @@
 
 //! A definition of `BinaryForm` trait and implementations for common types.
 
-use std::{io::Read};
+use std::io::Read;
 
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use chrono::{DateTime, NaiveDateTime, Utc};
