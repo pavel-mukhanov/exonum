@@ -65,6 +65,10 @@ use exonum_crypto::{Hash, PublicKey};
 pub trait BinaryForm: Sized {
     /// Serializes the given value to the vector of bytes.
     fn to_bytes(&self) -> Vec<u8>;
+    /// TODO
+    fn into_bytes(self) -> Vec<u8> {
+        self.to_bytes()
+    }
     /// Deserializes the value from the given bytes array.
     fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, failure::Error>;
 }
@@ -150,6 +154,10 @@ impl BinaryForm for Vec<u8> {
         self.clone()
     }
 
+    fn into_bytes(self) -> Vec<u8> {
+        self    
+    }    
+
     fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, failure::Error> {
         Ok(bytes.as_ref().to_owned())
     }
@@ -160,6 +168,10 @@ impl UniqueHash for Vec<u8> {}
 impl BinaryForm for String {
     fn to_bytes(&self) -> Vec<u8> {
         self.as_bytes().to_owned()
+    }
+
+    fn into_bytes(self) -> Vec<u8> {
+        Self::into_bytes(self)
     }
 
     fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, failure::Error> {

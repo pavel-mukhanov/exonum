@@ -141,11 +141,17 @@ where
     assert_eq!(val, val2);
     // Runs benchmarks.
     c.bench_function(
-        &format!("encoding/{}/into_bytes", name),
+        &format!("encoding/{}/to_bytes", name),
         move |b: &mut Bencher| {
             b.iter_with_setup(f, |data| black_box(data.to_bytes()));
         },
     );
+    c.bench_function(
+        &format!("encoding/{}/into_bytes", name),
+        move |b: &mut Bencher| {
+            b.iter_with_setup(f, |data| black_box(data.into_bytes()));
+        },
+    );    
     c.bench_function(
         &format!("encoding/{}/from_bytes", name),
         move |b: &mut Bencher| {
