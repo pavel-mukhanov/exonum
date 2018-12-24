@@ -16,7 +16,7 @@ use bytes::LittleEndian;
 use hex::FromHex;
 
 use crate::BinaryValue;
-use exonum_crypto::{CryptoHash, Hash, HashStream};
+use exonum_crypto::{Hash, HashStream};
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]
@@ -59,11 +59,8 @@ impl HashTag {
     }
 
     /// Convenience method to obtain a hashed value of the merkle tree leaf.
-    pub fn hash_leaf<V: StorageValue>(value: V) -> Hash {
-        HashTag::Leaf
-            .hash_stream()
-            .update(&value.into_bytes())
-            .hash()
+    pub fn hash_leaf(value: &[u8]) -> Hash {
+        HashTag::Leaf.hash_stream().update(value).hash()
     }
 
     /// Hash of the list object.
@@ -104,9 +101,12 @@ impl HashTag {
 fn root_hash(hashes: &[Hash]) -> Hash {
     match hashes.len() {
         0 => Hash::zero(),
-        1 => HashTag::hash_leaf(hashes[0]),
+        1 => HashTag::hash_leaf(&hashes[0].to_bytes()),
         _ => {
-            let hashes: Vec<Hash> = hashes.iter().map(|h| HashTag::hash_leaf(*h)).collect();
+            let hashes: Vec<Hash> = hashes
+                .iter()
+                .map(|h| HashTag::hash_leaf(&h.to_bytes()))
+                .collect();
 
             let mut current_hashes = combine_hash_list(&hashes);
 

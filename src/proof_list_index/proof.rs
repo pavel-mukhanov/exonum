@@ -17,10 +17,9 @@ use serde_json::{from_value, Error as SerdeJsonError, Value};
 
 use super::{
     super::{BinaryValue, UniqueHash},
-    hash_one, hash_pair,
     key::ProofListKey,
+    HashTag,
 };
-use super::{super::StorageValue, key::ProofListKey, HashTag};
 use exonum_crypto::Hash;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -117,7 +116,7 @@ where
                     return Err(ListProofError::UnexpectedLeaf);
                 }
                 vec.push((key.index(), value));
-                HashTag::hash_leaf(value.clone())
+                HashTag::hash_leaf(&value.to_bytes())
             }
             ListProof::Absent(ref proof) => {
                 HashTag::hash_list_node(proof.length, proof.merkle_root)
