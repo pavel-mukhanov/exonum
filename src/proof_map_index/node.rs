@@ -16,19 +16,20 @@
 
 use std::borrow::Cow;
 
+use failure::{self, ensure};
 use smallvec::{smallvec, SmallVec};
 
-use exonum_crypto::{hash, CryptoHash, Hash, HASH_SIZE};
+use exonum_crypto::{self, Hash, HASH_SIZE};
 
 use super::{
-    super::{StorageKey, StorageValue},
+    super::{BinaryKey, BinaryValue, UniqueHash},
     key::{ChildKind, ProofPath, PROOF_PATH_SIZE},
 };
 
 const BRANCH_NODE_SIZE: usize = 2 * (HASH_SIZE + PROOF_PATH_SIZE);
 
 #[derive(Debug)]
-pub enum Node<T: StorageValue> {
+pub enum Node<T: BinaryValue> {
     Leaf(T),
     Branch(BranchNode),
 }
@@ -41,7 +42,7 @@ pub struct BranchNode {
 impl BranchNode {
     pub fn empty() -> Self {
         Self {
-            raw: vec![0; BRANCH_NODE_SIZE],
+            raw: vec![0_u8; BRANCH_NODE_SIZE],
         }
     }
 
@@ -83,7 +84,23 @@ impl BranchNode {
     }
 }
 
-impl CryptoHash for BranchNode {
+impl BinaryValue for BranchNode {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.raw.clone()
+    }
+
+    fn into_bytes(self) -> Vec<u8> {
+        self.raw
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
+        let raw = bytes.into_owned();
+        ensure!(raw.len() == BRANCH_NODE_SIZE, "Wrong buffer size");
+        Ok(Self { raw })
+    }
+}
+
+impl UniqueHash for BranchNode {
     fn hash(&self) -> Hash {
         let mut bytes: SmallVec<[u8; 256]> = smallvec![0_u8; 132];
         let mut pos = HASH_SIZE * 2;
@@ -95,19 +112,7 @@ impl CryptoHash for BranchNode {
         pos += self
             .child_path(ChildKind::Right)
             .write_compressed(&mut bytes[pos..]);
-        hash(&bytes[0..pos])
-    }
-}
-
-impl StorageValue for BranchNode {
-    fn into_bytes(self) -> Vec<u8> {
-        self.raw
-    }
-
-    fn from_bytes(value: Cow<[u8]>) -> Self {
-        Self {
-            raw: value.into_owned(),
-        }
+        exonum_crypto::hash(&bytes[0..pos])
     }
 }
 
@@ -128,7 +133,7 @@ mod tests {
     use exonum_crypto;
 
     use super::*;
-    use crate::proof_map_index::key::BitsRange;
+    use crate::{proof_map_index::key::BitsRange, BinaryValue, UniqueHash};
 
     #[test]
     fn test_branch_node_layout() {
@@ -160,8 +165,8 @@ mod tests {
         branch.set_child(ChildKind::Left, &ls, &lh);
         branch.set_child(ChildKind::Right, &rs, &rh);
 
-        let buf = branch.clone().into_bytes();
-        let branch2 = BranchNode::from_bytes(buf.into());
+        let buf = branch.to_bytes();
+        let branch2 = BranchNode::from_bytes(buf.into()).unwrap();
         assert_eq!(branch, branch2);
         assert_eq!(branch.hash(), branch2.hash());
         assert_eq!(

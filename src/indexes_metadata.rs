@@ -17,9 +17,7 @@ use std::{borrow::Cow, fmt};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{self, Error as JsonError};
 
-use exonum_crypto::{self, CryptoHash, Hash};
-
-use crate::{base_index::BaseIndex, Fork, Snapshot, StorageValue};
+use crate::{base_index::BaseIndex, BinaryValue, Fork, Snapshot, UniqueHash};
 
 pub const INDEXES_METADATA_TABLE_NAME: &str = "__INDEXES_METADATA__";
 
@@ -69,41 +67,29 @@ impl From<u8> for IndexType {
     }
 }
 
-impl CryptoHash for IndexType {
-    fn hash(&self) -> Hash {
-        (*self as u8).hash()
+impl BinaryValue for IndexType {
+    fn to_bytes(&self) -> Vec<u8> {
+        (*self as u8).to_bytes()
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
+        <u8 as BinaryValue>::from_bytes(bytes).map(Self::from)
     }
 }
 
-impl StorageValue for IndexType {
-    fn into_bytes(self) -> Vec<u8> {
-        (self as u8).into_bytes()
-    }
-
-    fn from_bytes(value: Cow<[u8]>) -> Self {
-        <u8 as StorageValue>::from_bytes(value).into()
-    }
-}
-
-impl StorageValue for IndexMetadata {
-    fn into_bytes(self) -> Vec<u8> {
+impl BinaryValue for IndexMetadata {
+    fn to_bytes(&self) -> Vec<u8> {
         vec![self.index_type as u8, if self.is_family { 1 } else { 0 }]
     }
 
-    fn from_bytes(value: Cow<[u8]>) -> Self {
-        let value = value.as_ref();
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
+        let value = bytes.as_ref();
         let index_type = IndexType::from(value[0]);
         let is_family = value[1] != 0;
-        Self {
+        Ok(Self {
             index_type,
             is_family,
-        }
-    }
-}
-
-impl CryptoHash for IndexMetadata {
-    fn hash(&self) -> Hash {
-        self.into_bytes().hash()
+        })
     }
 }
 
@@ -177,22 +163,17 @@ impl StorageMetadata {
     }
 }
 
-impl CryptoHash for StorageMetadata {
-    fn hash(&self) -> Hash {
-        let vec_bytes = self.try_serialize().unwrap();
-        exonum_crypto::hash(&vec_bytes)
-    }
-}
-
-impl StorageValue for StorageMetadata {
-    fn into_bytes(self) -> Vec<u8> {
+impl BinaryValue for StorageMetadata {
+    fn to_bytes(&self) -> Vec<u8> {
         self.try_serialize().unwrap()
     }
 
-    fn from_bytes(v: ::std::borrow::Cow<[u8]>) -> Self {
-        Self::try_deserialize(v.as_ref()).unwrap()
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
+        Self::try_deserialize(bytes.as_ref()).map_err(From::from)
     }
 }
+
+impl UniqueHash for StorageMetadata {}
 
 impl fmt::Display for StorageMetadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

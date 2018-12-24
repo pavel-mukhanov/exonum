@@ -14,6 +14,8 @@
 
 //! An implementation of a Merkelized version of a map (Merkle Patricia tree).
 
+#[doc(hidden)]
+pub use self::node::{BranchNode, Node};
 pub use self::{
     key::{HashedKey, ProofMapKey, ProofPath, KEY_SIZE as PROOF_MAP_KEY_SIZE},
     proof::{CheckedMapProof, MapProof, MapProofError},
@@ -23,15 +25,14 @@ use std::{fmt, marker::PhantomData};
 
 use self::{
     key::{BitsRange, ChildKind, LEAF_KEY_PREFIX},
-    node::{BranchNode, Node},
     proof::{create_multiproof, create_proof},
 };
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageKey, StorageValue,
+    BinaryKey, BinaryValue, Fork, Snapshot, UniqueHash,
 };
-use exonum_crypto::{CryptoHash, Hash, HashStream};
+use exonum_crypto::{Hash, HashStream};
 
 mod key;
 mod node;
@@ -44,13 +45,13 @@ mod tests;
 ///
 /// `ProofMapIndex` implements a Merkle Patricia tree, storing values as leaves.
 /// `ProofMapIndex` requires that keys implement the [`ProofMapKey`] trait and
-/// values implement the [`StorageValue`] trait.
+/// values implement the [`BinaryValue`] trait.
 ///
 /// **The size of the proof map keys must be exactly 32 bytes and the keys must have a uniform
 /// distribution.** Usually, [`Hash`] and [`PublicKey`] are used as types of proof map keys.
 ///
 /// [`ProofMapKey`]: trait.ProofMapKey.html
-/// [`StorageValue`]: ../trait.StorageValue.html
+/// [`BinaryValue`]: ../trait.BinaryValue.html
 /// [`Hash`]: ../../../exonum_crypto/struct.Hash.html
 /// [`PublicKey`]: ../../../exonum_crypto/struct.PublicKey.html
 pub struct ProofMapIndex<T, K, V> {
@@ -111,7 +112,7 @@ impl<T, K, V> ProofMapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + UniqueHash,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -180,7 +181,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {
@@ -489,7 +490,7 @@ where
 impl<'a, K, V> ProofMapIndex<&'a mut Fork, K, V>
 where
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + UniqueHash,
 {
     fn insert_leaf(&mut self, key: &ProofPath, value: V) -> Hash {
         debug_assert!(key.is_leaf());
@@ -767,7 +768,7 @@ impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + UniqueHash,
 {
     type Item = (K::Output, V);
     type IntoIter = ProofMapIndexIter<'a, K, V>;
@@ -780,7 +781,7 @@ where
 impl<'a, K, V> Iterator for ProofMapIndexIter<'a, K, V>
 where
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + UniqueHash,
 {
     type Item = (K::Output, V);
 
@@ -804,7 +805,7 @@ where
 
 impl<'a, V> Iterator for ProofMapIndexValues<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue + UniqueHash,
 {
     type Item = V;
 
@@ -817,10 +818,10 @@ impl<T, K, V> fmt::Debug for ProofMapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
     K: ProofMapKey,
-    V: StorageValue + fmt::Debug,
+    V: BinaryValue + UniqueHash + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct Entry<'a, T: 'a, K: 'a, V: 'a + StorageValue> {
+        struct Entry<'a, T: 'a, K: 'a, V: 'a + BinaryValue> {
             index: &'a ProofMapIndex<T, K, V>,
             path: ProofPath,
             hash: Hash,
@@ -831,7 +832,7 @@ where
         where
             T: AsRef<dyn Snapshot>,
             K: ProofMapKey,
-            V: StorageValue,
+            V: BinaryValue + UniqueHash,
         {
             fn new(index: &'a ProofMapIndex<T, K, V>, hash: Hash, path: ProofPath) -> Self {
                 Entry {
@@ -855,7 +856,7 @@ where
         where
             T: AsRef<dyn Snapshot>,
             K: ProofMapKey,
-            V: StorageValue + fmt::Debug,
+            V: BinaryValue + UniqueHash + fmt::Debug,
         {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 match self.node {

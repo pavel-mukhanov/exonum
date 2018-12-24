@@ -15,7 +15,7 @@ use byteorder::ByteOrder;
 use bytes::LittleEndian;
 use hex::FromHex;
 
-use crate::StorageValue;
+use crate::BinaryValue;
 use exonum_crypto::{CryptoHash, Hash, HashStream};
 
 #[repr(u8)]
@@ -134,15 +134,18 @@ fn combine_hash_list(hashes: &[Hash]) -> Vec<Hash> {
 /// Unlike `CryptoHash`, the hash value returned by the `UniqueHash::hash()`
 /// method isn't always irreversible. This hash is used, for example, in the
 /// storage as a key, as uniqueness is important in this case.
-pub trait UniqueHash {
+pub trait UniqueHash: BinaryValue {
     /// Returns a hash of the value.
     ///
     /// Hash must be unique, but not necessary cryptographic.
-    fn hash(&self) -> Hash;
+    fn hash(&self) -> Hash {
+        exonum_crypto::hash(&self.to_bytes())
+    }
 }
 
-impl<T: CryptoHash + StorageValue + Clone> UniqueHash for T {
+/// Just returns the origin hash.
+impl UniqueHash for Hash {
     fn hash(&self) -> Hash {
-        CryptoHash::hash(self)
+        *self
     }
 }

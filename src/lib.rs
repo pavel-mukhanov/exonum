@@ -42,10 +42,10 @@
 //! as a [`Patch`]. A patch can be atomically [`merge`]d into a database. Different threads
 //! may call `merge` concurrently.
 //!
-//! # `StorageKey` and `StorageValue` traits
+//! # `BinaryKey` and `BinaryValue` traits
 //!
 //! If you need to use your own data types as keys or values in the storage, you need to implement
-//! the [`StorageKey`] or [`StorageValue`] traits respectively. These traits have already been
+//! the [`BinaryKey`] or [`BinaryValue`] traits respectively. These traits have already been
 //! implemented for most standard types.
 //!
 //! # Indices
@@ -88,8 +88,8 @@
 //! [1]: trait.Database.html#tymethod.snapshot
 //! [2]: trait.Database.html#method.fork
 //! [`merge`]: trait.Database.html#tymethod.merge
-//! [`StorageKey`]: trait.StorageKey.html
-//! [`StorageValue`]: trait.StorageValue.html
+//! [`BinaryKey`]: trait.BinaryKey.html
+//! [`BinaryValue`]: trait.BinaryValue.html
 //! [`Entry`]: struct.Entry.html
 //! [`ListIndex`]: list_index/struct.ListIndex.html
 //! [`SparseListIndex`]: sparse_list_index/struct.SparseListIndex.html
@@ -134,14 +134,14 @@ pub use self::{
     hash::{HashTag, UniqueHash},
     indexes_metadata::StorageMetadata,
     key_set_index::KeySetIndex,
-    keys::StorageKey,
+    keys::BinaryKey,
     list_index::ListIndex,
     map_index::MapIndex,
     options::DbOptions,
     proof_list_index::{ListProof, ProofListIndex},
     sparse_list_index::SparseListIndex,
     value_set_index::ValueSetIndex,
-    values::StorageValue,
+    values::BinaryValue,
 };
 
 /// A specialized `Result` type for I/O operations with storage.

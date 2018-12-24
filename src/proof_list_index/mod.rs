@@ -26,7 +26,7 @@ use self::{key::ProofListKey, proof::ProofOfAbsence};
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageKey, StorageValue,
+    BinaryKey, BinaryValue, Fork, Snapshot, UniqueHash,
 };
 use crate::hash::HashTag;
 use exonum_crypto::Hash;
@@ -41,9 +41,9 @@ mod tests;
 /// A Merkelized version of an array list that provides proofs of existence for the list items.
 ///
 /// `ProofListIndex` implements a Merkle tree, storing elements as leaves and using `u64` as
-/// an index. `ProofListIndex` requires that elements implement the [`StorageValue`] trait.
+/// an index. `ProofListIndex` requires that elements implement the [`BinaryValue`] trait.
 ///
-/// [`StorageValue`]: ../trait.StorageValue.html
+/// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
 pub struct ProofListIndex<T, V> {
     base: BaseIndex<T>,
@@ -67,7 +67,7 @@ pub struct ProofListIndexIter<'a, V> {
 impl<T, V> ProofListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue + UniqueHash,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -129,7 +129,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {
@@ -465,7 +465,7 @@ where
 
 impl<'a, V> ProofListIndex<&'a mut Fork, V>
 where
-    V: StorageValue + Clone,
+    V: BinaryValue + UniqueHash,
 {
     fn set_len(&mut self, len: u64) {
         self.base.put(&(), len);
@@ -619,7 +619,7 @@ where
 impl<'a, T, V> ::std::iter::IntoIterator for &'a ProofListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue + UniqueHash,
 {
     type Item = V;
     type IntoIter = ProofListIndexIter<'a, V>;
@@ -631,7 +631,7 @@ where
 
 impl<'a, V> Iterator for ProofListIndexIter<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue + UniqueHash,
 {
     type Item = V;
 

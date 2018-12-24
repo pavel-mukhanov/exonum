@@ -15,6 +15,11 @@
 use serde::{de::Error, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{from_value, Error as SerdeJsonError, Value};
 
+use super::{
+    super::{BinaryValue, UniqueHash},
+    hash_one, hash_pair,
+    key::ProofListKey,
+};
 use super::{super::StorageValue, key::ProofListKey, HashTag};
 use exonum_crypto::Hash;
 
@@ -81,7 +86,10 @@ pub enum ListProofError {
     UnmatchedRootHash,
 }
 
-impl<V: StorageValue + Clone> ListProof<V> {
+impl<V> ListProof<V>
+where
+    V: BinaryValue + UniqueHash,
+{
     fn collect<'a>(
         &'a self,
         key: ProofListKey,

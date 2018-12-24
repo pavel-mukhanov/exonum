@@ -14,7 +14,7 @@
 
 #![allow(unsafe_code)]
 
-//! A definition of `StorageKey` trait and implementations for common types.
+//! A definition of `BinaryKey` trait and implementations for common types.
 
 use byteorder::{BigEndian, ByteOrder};
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -34,7 +34,7 @@ use exonum_crypto::{Hash, PublicKey, Signature, HASH_SIZE, PUBLIC_KEY_LENGTH, SI
 ///
 /// ```
 /// use std::mem;
-/// use exonum_merkledb::StorageKey;
+/// use exonum_merkledb::BinaryKey;
 ///
 /// #[derive(Clone)]
 /// struct Key {
@@ -42,14 +42,15 @@ use exonum_crypto::{Hash, PublicKey, Signature, HASH_SIZE, PUBLIC_KEY_LENGTH, SI
 ///     b: u32,
 /// }
 ///
-/// impl StorageKey for Key {
+/// impl BinaryKey for Key {
 ///     fn size(&self) -> usize {
 ///         mem::size_of_val(&self.a) + mem::size_of_val(&self.b)
 ///     }
 ///
-///     fn write(&self, buffer: &mut [u8]) {
+///     fn write(&self, buffer: &mut [u8]) -> usize {
 ///         self.a.write(&mut buffer[0..2]);
 ///         self.b.write(&mut buffer[2..6]);
+///         self.size()
 ///     }
 ///
 ///     fn read(buffer: &[u8]) -> Self {
@@ -70,16 +71,16 @@ use exonum_crypto::{Hash, PublicKey, Signature, HASH_SIZE, PUBLIC_KEY_LENGTH, SI
 /// # assert_eq!(key.b, 2);
 /// # }
 /// ```
-pub trait StorageKey: ToOwned {
+pub trait BinaryKey: ToOwned {
     /// Returns the size of the serialized key in bytes.
     fn size(&self) -> usize;
 
     /// Serializes the key into the specified buffer of bytes.
     ///
     /// The caller must guarantee that the size of the buffer is equal to the precalculated size
-    /// of the serialized key.
+    /// of the serialized key. Returns number of written bytes.
     // TODO: Should be unsafe? (ECR-174)
-    fn write(&self, buffer: &mut [u8]);
+    fn write(&self, buffer: &mut [u8]) -> usize;
 
     /// Deserializes the key from the specified buffer of bytes.
     // TODO: Should be unsafe? (ECR-174)
@@ -87,25 +88,27 @@ pub trait StorageKey: ToOwned {
 }
 
 /// No-op implementation.
-impl StorageKey for () {
+impl BinaryKey for () {
     fn size(&self) -> usize {
         0
     }
 
-    fn write(&self, _buffer: &mut [u8]) {
+    fn write(&self, _buffer: &mut [u8]) -> usize {
         // no-op
+        self.size()
     }
 
     fn read(_buffer: &[u8]) -> Self::Owned {}
 }
 
-impl StorageKey for u8 {
+impl BinaryKey for u8 {
     fn size(&self) -> usize {
         1
     }
 
-    fn write(&self, buffer: &mut [u8]) {
-        buffer[0] = *self
+    fn write(&self, buffer: &mut [u8]) -> usize {
+        buffer[0] = *self;
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
@@ -115,13 +118,14 @@ impl StorageKey for u8 {
 
 /// Uses encoding with the values mapped to `u8`
 /// by adding the corresponding constant (`128`) to the value.
-impl StorageKey for i8 {
+impl BinaryKey for i8 {
     fn size(&self) -> usize {
         1
     }
 
-    fn write(&self, buffer: &mut [u8]) {
+    fn write(&self, buffer: &mut [u8]) -> usize {
         buffer[0] = self.wrapping_add(Self::min_value()) as u8;
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
@@ -134,13 +138,14 @@ impl StorageKey for i8 {
 macro_rules! storage_key_for_ints {
     ($utype:ident, $itype:ident, $size:expr, $read_method:ident, $write_method:ident) => {
         /// Uses big-endian encoding.
-        impl StorageKey for $utype {
+        impl BinaryKey for $utype {
             fn size(&self) -> usize {
                 $size
             }
 
-            fn write(&self, buffer: &mut [u8]) {
+            fn write(&self, buffer: &mut [u8]) -> usize {
                 BigEndian::$write_method(buffer, *self);
+                self.size()
             }
 
             fn read(buffer: &[u8]) -> Self {
@@ -150,13 +155,14 @@ macro_rules! storage_key_for_ints {
 
         /// Uses big-endian encoding with the values mapped to the unsigned format
         /// by adding the corresponding constant to the value.
-        impl StorageKey for $itype {
+        impl BinaryKey for $itype {
             fn size(&self) -> usize {
                 $size
             }
 
-            fn write(&self, buffer: &mut [u8]) {
+            fn write(&self, buffer: &mut [u8]) -> usize {
                 BigEndian::$write_method(buffer, self.wrapping_add($itype::min_value()) as $utype);
+                self.size()
             }
 
             fn read(buffer: &[u8]) -> Self {
@@ -173,13 +179,14 @@ storage_key_for_ints! {u64, i64, 8, read_u64, write_u64}
 
 macro_rules! storage_key_for_crypto_types {
     ($type:ident, $size:expr) => {
-        impl StorageKey for $type {
+        impl BinaryKey for $type {
             fn size(&self) -> usize {
                 $size
             }
 
-            fn write(&self, buffer: &mut [u8]) {
-                buffer.copy_from_slice(self.as_ref())
+            fn write(&self, buffer: &mut [u8]) -> usize {
+                buffer[..self.size()].copy_from_slice(self.as_ref());
+                self.size()
             }
 
             fn read(buffer: &[u8]) -> Self {
@@ -193,13 +200,14 @@ storage_key_for_crypto_types! {Hash, HASH_SIZE}
 storage_key_for_crypto_types! {PublicKey, PUBLIC_KEY_LENGTH}
 storage_key_for_crypto_types! {Signature, SIGNATURE_LENGTH}
 
-impl StorageKey for Vec<u8> {
+impl BinaryKey for Vec<u8> {
     fn size(&self) -> usize {
         self.len()
     }
 
-    fn write(&self, buffer: &mut [u8]) {
-        buffer.copy_from_slice(self)
+    fn write(&self, buffer: &mut [u8]) -> usize {
+        buffer[..self.size()].copy_from_slice(self);
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self {
@@ -207,13 +215,14 @@ impl StorageKey for Vec<u8> {
     }
 }
 
-impl StorageKey for [u8] {
+impl BinaryKey for [u8] {
     fn size(&self) -> usize {
         self.len()
     }
 
-    fn write(&self, buffer: &mut [u8]) {
-        buffer.copy_from_slice(self)
+    fn write(&self, buffer: &mut [u8]) -> usize {
+        buffer[..self.size()].copy_from_slice(self);
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
@@ -222,13 +231,14 @@ impl StorageKey for [u8] {
 }
 
 /// Uses UTF-8 string serialization.
-impl StorageKey for String {
+impl BinaryKey for String {
     fn size(&self) -> usize {
         self.len()
     }
 
-    fn write(&self, buffer: &mut [u8]) {
-        buffer.copy_from_slice(self.as_bytes())
+    fn write(&self, buffer: &mut [u8]) -> usize {
+        buffer[..self.size()].copy_from_slice(self.as_bytes());
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
@@ -236,13 +246,14 @@ impl StorageKey for String {
     }
 }
 
-impl StorageKey for str {
+impl BinaryKey for str {
     fn size(&self) -> usize {
         self.len()
     }
 
-    fn write(&self, buffer: &mut [u8]) {
-        buffer.copy_from_slice(self.as_bytes())
+    fn write(&self, buffer: &mut [u8]) -> usize {
+        buffer[..self.size()].copy_from_slice(self.as_bytes());
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
@@ -251,19 +262,20 @@ impl StorageKey for str {
 }
 
 /// `chrono::DateTime` uses only 12 bytes in the storage. It is represented by number of seconds
-/// since `1970-01-01 00:00:00 UTC`, which are stored in the first 8 bytes as per the `StorageKey`
+/// since `1970-01-01 00:00:00 UTC`, which are stored in the first 8 bytes as per the `BinaryKey`
 /// implementation for `i64`, and nanoseconds, which are stored in the remaining 4 bytes as per
-/// the `StorageKey` implementation for `u32`.
-impl StorageKey for DateTime<Utc> {
+/// the `BinaryKey` implementation for `u32`.
+impl BinaryKey for DateTime<Utc> {
     fn size(&self) -> usize {
         12
     }
 
-    fn write(&self, buffer: &mut [u8]) {
+    fn write(&self, buffer: &mut [u8]) -> usize {
         let secs = self.timestamp();
         let nanos = self.timestamp_subsec_nanos();
         secs.write(&mut buffer[0..8]);
         nanos.write(&mut buffer[8..12]);
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
@@ -273,13 +285,14 @@ impl StorageKey for DateTime<Utc> {
     }
 }
 
-impl StorageKey for Uuid {
+impl BinaryKey for Uuid {
     fn size(&self) -> usize {
         16
     }
 
-    fn write(&self, buffer: &mut [u8]) {
+    fn write(&self, buffer: &mut [u8]) -> usize {
         buffer.copy_from_slice(self.as_bytes());
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
@@ -287,13 +300,14 @@ impl StorageKey for Uuid {
     }
 }
 
-impl StorageKey for Decimal {
+impl BinaryKey for Decimal {
     fn size(&self) -> usize {
         16
     }
 
-    fn write(&self, buffer: &mut [u8]) {
+    fn write(&self, buffer: &mut [u8]) -> usize {
         buffer.copy_from_slice(&self.serialize());
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
@@ -415,24 +429,25 @@ mod tests {
         assert_eq!(index.values().collect::<Vec<_>>(), vec![200, 100]);
     }
 
-    // Example how to migrate from Exonum <= 0.5 implementation of `StorageKey`
+    // Example how to migrate from Exonum <= 0.5 implementation of `BinaryKey`
     // for signed integers.
     #[test]
     fn test_old_signed_int_key_in_index() {
         use crate::{Database, MapIndex, TemporaryDB};
 
-        // Simple wrapper around a signed integer type with the `StorageKey` implementation,
+        // Simple wrapper around a signed integer type with the `BinaryKey` implementation,
         // which was used in Exonum <= 0.5.
         #[derive(Debug, PartialEq, Clone)]
         struct QuirkyI32Key(i32);
 
-        impl StorageKey for QuirkyI32Key {
+        impl BinaryKey for QuirkyI32Key {
             fn size(&self) -> usize {
                 4
             }
 
-            fn write(&self, buffer: &mut [u8]) {
+            fn write(&self, buffer: &mut [u8]) -> usize {
                 BigEndian::write_i32(buffer, self.0);
+                self.size()
             }
 
             fn read(buffer: &[u8]) -> Self {
@@ -573,7 +588,7 @@ mod tests {
         for val in values.iter() {
             let mut buffer = get_buffer(*val);
             val.write(&mut buffer);
-            let new_val = <[u8] as StorageKey>::read(&buffer);
+            let new_val = <[u8] as BinaryKey>::read(&buffer);
             assert_eq!(new_val, *val);
         }
     }
@@ -629,18 +644,18 @@ mod tests {
 
     fn assert_round_trip_eq<T>(values: &[T])
     where
-        T: StorageKey + PartialEq<<T as ToOwned>::Owned> + Debug,
+        T: BinaryKey + PartialEq<<T as ToOwned>::Owned> + Debug,
         <T as ToOwned>::Owned: Debug,
     {
         for original_value in values.iter() {
             let mut buffer = get_buffer(original_value);
             original_value.write(&mut buffer);
-            let new_value = <T as StorageKey>::read(&buffer);
+            let new_value = <T as BinaryKey>::read(&buffer);
             assert_eq!(*original_value, new_value);
         }
     }
 
-    fn get_buffer<T: StorageKey + ?Sized>(key: &T) -> Vec<u8> {
+    fn get_buffer<T: BinaryKey + ?Sized>(key: &T) -> Vec<u8> {
         vec![0; key.size()]
     }
 }

@@ -17,19 +17,15 @@
 //! The given section contains methods related to `SparseListIndex` and iterators
 //! over the items of this index.
 
-// TODO: Remove when https://github.com/rust-lang-nursery/rust-clippy/issues/2190 is fixed.
-#![cfg_attr(feature="cargo-clippy", allow(clippy::doc_markdown))]
-
-use byteorder::{BigEndian, ByteOrder};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 
 use std::{borrow::Cow, cell::Cell, marker::PhantomData};
 
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageKey, StorageValue,
+    BinaryKey, BinaryValue, Fork, Snapshot,
 };
-use exonum_crypto::{hash, CryptoHash, Hash};
 
 #[derive(Debug, Default, Clone, Copy)]
 struct SparseListSize {
@@ -39,31 +35,19 @@ struct SparseListSize {
     length: u64,
 }
 
-impl SparseListSize {
-    fn to_array(&self) -> [u8; 16] {
-        let mut buf = [0; 16];
-        BigEndian::write_u64(&mut buf[0..8], self.capacity);
-        BigEndian::write_u64(&mut buf[8..16], self.length);
+impl BinaryValue for SparseListSize {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = vec![0; 16];
+        LittleEndian::write_u64(&mut buf[0..8], self.capacity);
+        LittleEndian::write_u64(&mut buf[8..16], self.length);
         buf
     }
-}
 
-impl CryptoHash for SparseListSize {
-    fn hash(&self) -> Hash {
-        hash(&self.to_array())
-    }
-}
-
-impl StorageValue for SparseListSize {
-    fn into_bytes(self) -> Vec<u8> {
-        self.to_array().to_vec()
-    }
-
-    fn from_bytes(value: Cow<[u8]>) -> Self {
-        let buf = value.as_ref();
-        let capacity = BigEndian::read_u64(&buf[0..8]);
-        let length = BigEndian::read_u64(&buf[8..16]);
-        Self { capacity, length }
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
+        let mut buf = bytes.as_ref();
+        let capacity = buf.read_u64::<LittleEndian>()?;
+        let length = buf.read_u64::<LittleEndian>()?;
+        Ok(Self { capacity, length })
     }
 }
 
@@ -81,9 +65,9 @@ impl StorageValue for SparseListSize {
 ///
 /// `SparseListIndex` implements an array list, storing an element as a value and using `u64`
 /// as an index.
-/// `SparseListIndex` requires that elements should implement the [`StorageValue`] trait.
+/// `SparseListIndex` requires that elements should implement the [`BinaryValue`] trait.
 ///
-/// [`StorageValue`]: ../trait.StorageValue.html
+/// [`BinaryValue`]: ../trait.BinaryValue.html
 /// [`ListIndex`]: <../list_index/struct.ListIndex.html>
 #[derive(Debug)]
 pub struct SparseListIndex<T, V> {
@@ -131,7 +115,7 @@ pub struct SparseListIndexValues<'a, V> {
 impl<T, V> SparseListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -187,7 +171,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {
@@ -398,7 +382,7 @@ where
 
 impl<'a, V> SparseListIndex<&'a mut Fork, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     fn set_size(&mut self, size: SparseListSize) {
         self.base.put(&(), size);
@@ -592,7 +576,7 @@ where
 impl<'a, T, V> ::std::iter::IntoIterator for &'a SparseListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = (u64, V);
     type IntoIter = SparseListIndexIter<'a, V>;
@@ -604,7 +588,7 @@ where
 
 impl<'a, V> Iterator for SparseListIndexIter<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = (u64, V);
 
@@ -623,7 +607,7 @@ impl<'a> Iterator for SparseListIndexKeys<'a> {
 
 impl<'a, V> Iterator for SparseListIndexValues<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = V;
 
