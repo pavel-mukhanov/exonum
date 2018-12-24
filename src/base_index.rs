@@ -22,7 +22,7 @@
 
 use std::{borrow::Cow, marker::PhantomData};
 
-use super::{Fork, Iter, Snapshot, StorageKey, StorageValue};
+use super::{BinaryKey, BinaryValue, Fork, Iter, Snapshot};
 use crate::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
 
 /// Basic struct for all indices that implements common features.
@@ -30,12 +30,12 @@ use crate::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
 /// This structure is not intended for direct use, rather it is the basis for building other types
 /// of indices.
 ///
-/// `BaseIndex` requires that keys should implement the [`StorageKey`] trait and
-/// values should implement the [`StorageValue`] trait. However, this structure
+/// `BaseIndex` requires that keys should implement the [`BinaryKey`] trait and
+/// values should implement the [`BinaryValue`] trait. However, this structure
 /// is not bound to specific types and allows the use of *any* types as keys or values.
 ///
-/// [`StorageKey`]: ../trait.StorageKey.html
-/// [`StorageValue`]: ../trait.StorageValue.html
+/// [`BinaryKey`]: ../trait.BinaryKey.html
+/// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
 pub struct BaseIndex<T> {
     name: String,
@@ -107,7 +107,7 @@ where
     /// [`&mut Fork`]: ../struct.Fork.html
     pub fn new_in_family<S, P>(family_name: S, index_id: &P, index_type: IndexType, view: T) -> Self
     where
-        P: StorageKey,
+        P: BinaryKey,
         P: ?Sized,
         S: AsRef<str>,
     {
@@ -146,11 +146,11 @@ where
         }
     }
 
-    fn prefixed_key<K: StorageKey + ?Sized>(&self, key: &K) -> Vec<u8> {
+    fn prefixed_key<K: BinaryKey + ?Sized>(&self, key: &K) -> Vec<u8> {
         if let Some(ref prefix) = self.index_id {
-            let mut v = vec![0; prefix.len() + key.size()];
-            v[..prefix.len()].copy_from_slice(prefix);
-            key.write(&mut v[prefix.len()..]);
+            let mut v = vec![0; prefix.size() + key.size()];
+            let pos = prefix.write(&mut v);
+            key.write(&mut v[pos..]);
             v
         } else {
             let mut v = vec![0; key.size()];
@@ -162,20 +162,20 @@ where
     /// Returns a value of *any* type corresponding to the key of *any* type.
     pub fn get<K, V>(&self, key: &K) -> Option<V>
     where
-        K: StorageKey + ?Sized,
-        V: StorageValue,
+        K: BinaryKey + ?Sized,
+        V: BinaryValue,
     {
         self.view
             .as_ref()
             .get(&self.name, &self.prefixed_key(key))
-            .map(|v| StorageValue::from_bytes(Cow::Owned(v)))
+            .map(get_value)
     }
 
     /// Returns `true` if the index contains a value of *any* type for the specified key of
     /// *any* type.
     pub fn contains<K>(&self, key: &K) -> bool
     where
-        K: StorageKey + ?Sized,
+        K: BinaryKey + ?Sized,
     {
         self.view
             .as_ref()
@@ -187,9 +187,9 @@ where
     /// for iteration.
     pub fn iter<P, K, V>(&self, subprefix: &P) -> BaseIndexIter<K, V>
     where
-        P: StorageKey,
-        K: StorageKey,
-        V: StorageValue,
+        P: BinaryKey,
+        K: BinaryKey,
+        V: BinaryValue,
     {
         let iter_prefix = self.prefixed_key(subprefix);
         BaseIndexIter {
@@ -207,10 +207,10 @@ where
     /// allows specifying a subset of iteration.
     pub fn iter_from<P, F, K, V>(&self, subprefix: &P, from: &F) -> BaseIndexIter<K, V>
     where
-        P: StorageKey,
-        F: StorageKey + ?Sized,
-        K: StorageKey,
-        V: StorageValue,
+        P: BinaryKey,
+        F: BinaryKey + ?Sized,
+        K: BinaryKey,
+        V: BinaryValue,
     {
         let iter_prefix = self.prefixed_key(subprefix);
         let iter_from = self.prefixed_key(from);
@@ -241,8 +241,8 @@ impl<'a> BaseIndex<&'a mut Fork> {
     /// Inserts the key-value pair into the index. Both key and value may be of *any* types.
     pub fn put<K, V>(&mut self, key: &K, value: V)
     where
-        K: StorageKey,
-        V: StorageValue,
+        K: BinaryKey,
+        V: BinaryValue,
     {
         self.set_index_type();
         let key = self.prefixed_key(key);
@@ -252,7 +252,7 @@ impl<'a> BaseIndex<&'a mut Fork> {
     /// Removes the key of *any* type from the index.
     pub fn remove<K>(&mut self, key: &K)
     where
-        K: StorageKey + ?Sized,
+        K: BinaryKey + ?Sized,
     {
         self.set_index_type();
         let key = self.prefixed_key(key);
@@ -276,8 +276,8 @@ impl<'a> BaseIndex<&'a mut Fork> {
 
 impl<'a, K, V> Iterator for BaseIndexIter<'a, K, V>
 where
-    K: StorageKey,
-    V: StorageValue,
+    K: BinaryKey,
+    V: BinaryValue,
 {
     type Item = (K::Owned, V);
 
@@ -287,10 +287,7 @@ where
         }
         if let Some((k, v)) = self.base_iter.next() {
             if k.starts_with(&self.index_id) {
-                return Some((
-                    K::read(&k[self.base_prefix_len..]),
-                    V::from_bytes(Cow::Borrowed(v)),
-                ));
+                return Some((K::read(&k[self.base_prefix_len..]), get_value(v)));
             }
         }
         self.ended = true;
@@ -302,6 +299,17 @@ impl<'a, K, V> ::std::fmt::Debug for BaseIndexIter<'a, K, V> {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "BaseIndexIter(..)")
     }
+}
+
+/// Decodes given bytes into the given value.
+/// This function panics if the given value can not be decoded from the given buffer.
+fn get_value<'a, B, V>(bytes: B) -> V
+where
+    B: Into<Cow<'a, [u8]>>,
+    V: BinaryValue,
+{
+    let bytes = bytes.into();
+    V::from_bytes(bytes).expect("Unable to decode value from bytes, an error occurred")
 }
 
 /// A function that validates an index name. Allowable characters in name: ASCII characters, digits
@@ -351,5 +359,12 @@ mod tests {
     #[should_panic(expected = "Wrong characters using in name. Use: a-zA-Z0-9 and _")]
     fn test_check_invalid_name() {
         assert_valid_name("invalid-name");
+    }
+
+    #[test]
+    #[should_panic(expected = "Unable to decode value from bytes")]
+    fn test_get_value_panic() {
+        let wrong_buf = vec![0_u8; 31];
+        let _hash: exonum_crypto::Hash = get_value(wrong_buf);
     }
 }

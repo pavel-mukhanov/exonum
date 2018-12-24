@@ -14,8 +14,8 @@
 
 //! An implementation of a key-value map.
 //!
-//! `MapIndex` requires that keys implement the [`StorageKey`] trait and values implement
-//! the [`StorageValue`] trait. The given section contains methods related to
+//! `MapIndex` requires that keys implement the [`BinaryKey`] trait and values implement
+//! the [`BinaryValue`] trait. The given section contains methods related to
 //! `MapIndex` and iterators over the items of this map.
 
 use std::{borrow::Borrow, marker::PhantomData};
@@ -23,16 +23,16 @@ use std::{borrow::Borrow, marker::PhantomData};
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageKey, StorageValue,
+    BinaryKey, BinaryValue, Fork, Snapshot,
 };
 
 /// A map of keys and values. Access to the elements of this map is obtained using the keys.
 ///
-/// `MapIndex` requires that keys implement the [`StorageKey`] trait and values implement
-/// the [`StorageValue`] trait.
+/// `MapIndex` requires that keys implement the [`BinaryKey`] trait and values implement
+/// the [`BinaryValue`] trait.
 ///
-/// [`StorageKey`]: ../trait.StorageKey.html
-/// [`StorageValue`]: ../trait.StorageValue.html
+/// [`BinaryKey`]: ../trait.BinaryKey.html
+/// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
 pub struct MapIndex<T, K, V> {
     base: BaseIndex<T>,
@@ -82,8 +82,8 @@ pub struct MapIndexValues<'a, V> {
 impl<T, K, V> MapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
-    K: StorageKey,
-    V: StorageValue,
+    K: BinaryKey,
+    V: BinaryValue,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -136,7 +136,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {
@@ -166,7 +166,7 @@ where
     pub fn get<Q>(&self, key: &Q) -> Option<V>
     where
         K: Borrow<Q>,
-        Q: StorageKey + ?Sized,
+        Q: BinaryKey + ?Sized,
     {
         self.base.get(key)
     }
@@ -189,7 +189,7 @@ where
     pub fn contains<Q>(&self, key: &Q) -> bool
     where
         K: Borrow<Q>,
-        Q: StorageKey + ?Sized,
+        Q: BinaryKey + ?Sized,
     {
         self.base.contains(key)
     }
@@ -283,7 +283,7 @@ where
     pub fn iter_from<Q>(&self, from: &Q) -> MapIndexIter<K, V>
     where
         K: Borrow<Q>,
-        Q: StorageKey + ?Sized,
+        Q: BinaryKey + ?Sized,
     {
         MapIndexIter {
             base_iter: self.base.iter_from(&(), from),
@@ -310,7 +310,7 @@ where
     pub fn keys_from<Q>(&self, from: &Q) -> MapIndexKeys<K>
     where
         K: Borrow<Q>,
-        Q: StorageKey + ?Sized,
+        Q: BinaryKey + ?Sized,
     {
         MapIndexKeys {
             base_iter: self.base.iter_from(&(), from),
@@ -336,7 +336,7 @@ where
     pub fn values_from<Q>(&self, from: &Q) -> MapIndexValues<V>
     where
         K: Borrow<Q>,
-        Q: StorageKey + ?Sized,
+        Q: BinaryKey + ?Sized,
     {
         MapIndexValues {
             base_iter: self.base.iter_from(&(), from),
@@ -346,8 +346,8 @@ where
 
 impl<'a, K, V> MapIndex<&'a mut Fork, K, V>
 where
-    K: StorageKey,
-    V: StorageValue,
+    K: BinaryKey,
+    V: BinaryValue,
 {
     /// Inserts a key-value pair into a map.
     ///
@@ -387,7 +387,7 @@ where
     pub fn remove<Q>(&mut self, key: &Q)
     where
         K: Borrow<Q>,
-        Q: StorageKey + ?Sized,
+        Q: BinaryKey + ?Sized,
     {
         self.base.remove(key)
     }
@@ -422,8 +422,8 @@ where
 impl<'a, T, K, V> ::std::iter::IntoIterator for &'a MapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
-    K: StorageKey,
-    V: StorageValue,
+    K: BinaryKey,
+    V: BinaryValue,
 {
     type Item = (K::Owned, V);
     type IntoIter = MapIndexIter<'a, K, V>;
@@ -435,8 +435,8 @@ where
 
 impl<'a, K, V> Iterator for MapIndexIter<'a, K, V>
 where
-    K: StorageKey,
-    V: StorageValue,
+    K: BinaryKey,
+    V: BinaryValue,
 {
     type Item = (K::Owned, V);
 
@@ -447,7 +447,7 @@ where
 
 impl<'a, K> Iterator for MapIndexKeys<'a, K>
 where
-    K: StorageKey,
+    K: BinaryKey,
 {
     type Item = K::Owned;
 
@@ -458,7 +458,7 @@ where
 
 impl<'a, V> Iterator for MapIndexValues<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = V;
 
