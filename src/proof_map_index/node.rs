@@ -29,8 +29,8 @@ use super::{
 const BRANCH_NODE_SIZE: usize = 2 * (HASH_SIZE + PROOF_PATH_SIZE);
 
 #[derive(Debug)]
-pub enum Node<T: BinaryValue> {
-    Leaf(T),
+pub enum Node {
+    Leaf(Hash),
     Branch(BranchNode),
 }
 
