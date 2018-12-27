@@ -40,6 +40,7 @@ use exonum_crypto::{Hash, PublicKey};
 /// use failure;
 /// use exonum_merkledb::BinaryValue;
 ///
+/// #[derive(Clone)]
 /// struct Data {
 ///     a: i16,
 ///     b: u32,

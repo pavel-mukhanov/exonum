@@ -17,12 +17,49 @@ use serde_json::{from_value, Error as SerdeJsonError, Value};
 
 use super::{
     super::{BinaryValue, UniqueHash},
-    hash_one, hash_pair,
     key::ProofListKey,
+    HashTag,
 };
 use exonum_crypto::Hash;
 
-/// An enum that represents a proof of existence for a proof list elements.
+/// Encapsulates a proof of absence for `ProofListIndex`.
+///
+/// Proof of absence for an element with the specified index consists of
+/// `merkle_root` of `ProofListIndex` and `length` of the list.
+///
+/// Element with `index` is absent in the list with provided `length`
+/// and `merkle_root` when two conditions are met:
+/// ```text
+/// 1. list_hash == sha256( HashTag::List || length || merkle_root )
+/// 2. index > length
+/// ```
+///
+/// In case of a range proof this rule applies to the whole range.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ProofOfAbsence {
+    length: u64,
+    merkle_root: Hash,
+}
+
+impl ProofOfAbsence {
+    /// New `ProofOfAbsence` for specified list `length` and `merkle_root`.
+    pub fn new(length: u64, merkle_root: Hash) -> Self {
+        Self {
+            length,
+            merkle_root,
+        }
+    }
+
+    pub fn length(&self) -> u64 {
+        self.length
+    }
+
+    pub fn merkle_root(&self) -> Hash {
+        self.merkle_root
+    }
+}
+
+/// An enum that represents a proof of existence for proof list elements.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ListProof<V> {
     /// A branch of proof in which both children contain requested elements.
@@ -31,8 +68,10 @@ pub enum ListProof<V> {
     Left(Box<ListProof<V>>, Option<Hash>),
     /// A branch of proof in which only the right child contains requested elements.
     Right(Hash, Box<ListProof<V>>),
-    /// A leaf of proof with requested element.
+    /// A leaf of the proof with the requested element.
     Leaf(V),
+    /// Proof of absence of an element with the specified index.
+    Absent(ProofOfAbsence),
 }
 
 /// An error that is returned when the list proof is invalid.
@@ -59,38 +98,66 @@ where
             return Err(ListProofError::UnexpectedBranch);
         }
         let hash = match *self {
-            ListProof::Full(ref left, ref right) => hash_pair(
+            ListProof::Full(ref left, ref right) => HashTag::hash_node(
                 &left.collect(key.left(), vec)?,
                 &right.collect(key.right(), vec)?,
             ),
             ListProof::Left(ref left, Some(ref right)) => {
-                hash_pair(&left.collect(key.left(), vec)?, right)
+                HashTag::hash_node(&left.collect(key.left(), vec)?, right)
             }
-            ListProof::Left(ref left, None) => hash_one(&left.collect(key.left(), vec)?),
+            ListProof::Left(ref left, None) => {
+                HashTag::hash_single_node(&left.collect(key.left(), vec)?)
+            }
             ListProof::Right(ref left, ref right) => {
-                hash_pair(left, &right.collect(key.right(), vec)?)
+                HashTag::hash_node(left, &right.collect(key.right(), vec)?)
             }
             ListProof::Leaf(ref value) => {
                 if key.height() > 1 {
                     return Err(ListProofError::UnexpectedLeaf);
                 }
                 vec.push((key.index(), value));
-                value.hash()
+                HashTag::hash_leaf(&value.to_bytes())
+            }
+            ListProof::Absent(ref proof) => {
+                HashTag::hash_list_node(proof.length, proof.merkle_root)
             }
         };
         Ok(hash)
     }
 
-    /// Verifies the correctness of the proof by the trusted Merkle root hash and the number of
+    /// Verifies the correctness of the proof by the trusted list hash and the number of
     /// elements in the tree.
+    ///
+    /// To validate the proof one needs to provide `expected_list_hash` calculated as follows:
+    /// ```text
+    /// h = sha-256( HashTag::List || len as u64 || merkle_root )
+    /// ```
+    /// and `length` of the `ProofListIndex`.
     ///
     /// If the proof is valid, a vector with indices and references to elements is returned.
     /// Otherwise, `Err` is returned.
-    pub fn validate(&self, merkle_root: Hash, len: u64) -> Result<Vec<(u64, &V)>, ListProofError> {
+    ///
+    /// If the proof is the proof of absence, then empty vector will be returned.
+    pub fn validate(
+        &self,
+        expected_list_hash: Hash,
+        len: u64,
+    ) -> Result<Vec<(u64, &V)>, ListProofError> {
         let mut vec = Vec::new();
         let height = len.next_power_of_two().trailing_zeros() as u8 + 1;
-        if self.collect(ProofListKey::new(height, 0), &mut vec)? != merkle_root {
-            return Err(ListProofError::UnmatchedRootHash);
+        let root_hash = self.collect(ProofListKey::new(height, 0), &mut vec)?;
+
+        match *self {
+            ListProof::Absent(_) => {
+                if expected_list_hash != root_hash {
+                    return Err(ListProofError::UnmatchedRootHash);
+                }
+            }
+            _ => {
+                if HashTag::hash_list_node(len, root_hash) != expected_list_hash {
+                    return Err(ListProofError::UnmatchedRootHash);
+                }
+            }
         }
         Ok(vec)
     }
@@ -127,6 +194,11 @@ impl<V: Serialize> Serialize for ListProof<V> {
             Leaf(ref val) => {
                 state = ser.serialize_struct("Leaf", 1)?;
                 state.serialize_field("val", val)?;
+            }
+            ListProof::Absent(ref proof) => {
+                state = ser.serialize_struct("Absent", 2)?;
+                state.serialize_field("length", &proof.length)?;
+                state.serialize_field("hash", &proof.merkle_root)?;
             }
         }
         state.end()
