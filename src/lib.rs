@@ -131,7 +131,7 @@ pub use self::{
     },
     entry::Entry,
     error::Error,
-    hash::UniqueHash,
+    hash::{HashTag, UniqueHash},
     indexes_metadata::StorageMetadata,
     key_set_index::KeySetIndex,
     keys::BinaryKey,
