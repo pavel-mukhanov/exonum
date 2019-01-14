@@ -113,7 +113,7 @@ mod proof_map_index {
 
     impl<'a, V> Modifier<ProofMapIndex<&'a mut Fork, [u8; 32], V>> for MapAction<[u8; 32], V>
     where
-        V: BinaryValue + UniqueHash + Clone,
+        V: BinaryValue + UniqueHash,
     {
         fn modify(self, map: &mut ProofMapIndex<&mut Fork, [u8; 32], V>) {
             match self {
