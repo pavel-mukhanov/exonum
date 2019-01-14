@@ -109,7 +109,7 @@ impl ProofPath {
     }
 
     /// Constructs the `ProofPath` from the raw bytes.
-    /// 
+    ///
     /// # Panics
     ///
     /// Panics if the given bytes has different length than the `KEY_SIZE`.

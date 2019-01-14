@@ -15,7 +15,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use hex::FromHex;
 
 use crate::BinaryValue;
-use exonum_crypto::{Hash, HashStream};
+use exonum_crypto::{Hash, HashStream, HASH_SIZE};
 
 const EMPTY_LIST_HASH: &str = "c6c0aa07f27493d2f2e5cff56c890a353a20086d6c25ec825128e12ae752b2d9";
 
@@ -152,5 +152,12 @@ pub trait UniqueHash: BinaryValue {
 impl UniqueHash for Hash {
     fn hash(&self) -> Hash {
         *self
+    }
+}
+
+/// Just returns the origin array.
+impl UniqueHash for [u8; HASH_SIZE] {
+    fn hash(&self) -> Hash {
+        Hash::new(*self)
     }
 }
