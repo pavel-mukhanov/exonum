@@ -14,7 +14,7 @@
 
 use std::{cmp, collections::HashSet, fmt::Debug, hash::Hash as StdHash};
 
-use byteorder::{ByteOrder, LittleEndian};
+use pretty_assertions::assert_eq;
 use rand::{
     self,
     seq::{IteratorRandom, SliceRandom},
@@ -24,15 +24,15 @@ use rand_xorshift::XorShiftRng;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{self, json};
 
-use exonum_crypto::{hash, CryptoHash, Hash, HashStream};
+use exonum_crypto::{hash, Hash, HashStream};
 
 use super::{
     key::{BitsRange, ChildKind, KEY_SIZE, LEAF_KEY_PREFIX},
     node::BranchNode,
     proof::MapProofBuilder,
-    HashedKey, MapProof, MapProofError, ProofMapIndex, ProofMapKey, ProofPath,
+    MapProof, MapProofError, ProofMapIndex, ProofPath,
 };
-use crate::{BinaryValue, Database, Fork, TemporaryDB, UniqueHash};
+use crate::{BinaryKey, BinaryValue, Database, Fork, TemporaryDB, UniqueHash};
 
 const IDX_NAME: &'static str = "idx_name";
 
@@ -64,18 +64,21 @@ fn generate_random_data(len: usize) -> Vec<([u8; KEY_SIZE], Vec<u8>)> {
 }
 
 // Makes large data set with unique keys
-fn generate_random_data_keys<R: Rng>(len: usize, rng: &mut R) -> Vec<([u8; KEY_SIZE], Vec<u8>)> {
-    let mut exists_keys = HashSet::new();
-
+fn generate_random_data_keys<R: Rng>(
+    exists_keys: &mut HashSet<Vec<u8>>,
+    len: usize,
+    rng: &mut R,
+) -> Vec<(Vec<u8>, Vec<u8>)> {
     let kv_generator = |_| {
-        let mut v = vec![0; 8];
-        let mut new_key = [0; KEY_SIZE];
+        let mut new_key = vec![0; rng.gen_range(0, 64)];
         rng.fill_bytes(&mut new_key);
-
         while exists_keys.contains(&new_key) {
+            new_key = vec![0; rng.gen_range(0, 64)];
             rng.fill_bytes(&mut new_key);
         }
         exists_keys.insert(new_key.clone());
+
+        let mut v = vec![0; 8];
         rng.fill_bytes(&mut v);
         (new_key, v)
     };
@@ -291,6 +294,23 @@ fn test_remove_reverse() {
 }
 
 #[test]
+fn test_merkle_root_leaf() {
+    let db = TemporaryDB::default();
+    let mut storage = db.fork();
+    let mut index = ProofMapIndex::new(IDX_NAME, &mut storage);
+
+    let key = vec![1, 2, 3];
+    let value = vec![4, 5, 6];
+    index.put(&key, value.clone());
+
+    let merkle_root = HashStream::new()
+        .update(ProofPath::new(&key).as_bytes())
+        .update(UniqueHash::hash(&value).as_ref())
+        .hash();
+    assert_eq!(merkle_root, index.merkle_root());
+}
+
+#[test]
 fn test_fuzz_insert() {
     let db1 = TemporaryDB::default();
     let db2 = TemporaryDB::default();
@@ -344,7 +364,7 @@ fn check_map_proof<K, V>(
     key: Option<K>,
     table: &ProofMapIndex<&mut Fork, K, V>,
 ) where
-    K: ProofMapKey + PartialEq + Debug + Serialize + DeserializeOwned,
+    K: BinaryKey + UniqueHash + PartialEq + Debug + Serialize + DeserializeOwned,
     V: BinaryValue + UniqueHash + PartialEq + Debug + Serialize + DeserializeOwned,
 {
     let serialized_proof = serde_json::to_value(&proof).unwrap();
@@ -381,7 +401,7 @@ fn check_map_multiproof<K, V>(
     keys: Vec<K>,
     table: &ProofMapIndex<&mut Fork, K, V>,
 ) where
-    K: ProofMapKey + Clone + PartialEq + Debug,
+    K: BinaryKey + UniqueHash + PartialEq + Debug,
     V: BinaryValue + UniqueHash + PartialEq + Debug,
 {
     let (entries, missing_keys) = {
@@ -435,7 +455,7 @@ const MAX_CHECKED_ELEMENTS: usize = 1_024;
 
 fn check_proofs_for_data<K, V>(db: &dyn Database, data: Vec<(K, V)>, nonexisting_keys: Vec<K>)
 where
-    K: ProofMapKey + Copy + PartialEq + Debug + Serialize + DeserializeOwned,
+    K: BinaryKey + UniqueHash + Clone + PartialEq + Debug + Serialize + DeserializeOwned,
     V: BinaryValue + UniqueHash + Clone + PartialEq + Debug + Serialize + DeserializeOwned,
 {
     let mut storage = db.fork();
@@ -453,8 +473,8 @@ where
     };
 
     for i in indexes {
-        let key = data[i].0;
-        let proof = table.get_proof(key);
+        let key = data[i].0.clone();
+        let proof = table.get_proof(key.clone());
         check_map_proof(proof, Some(key), &table);
     }
 
@@ -469,7 +489,7 @@ where
 
 fn check_multiproofs_for_data<K, V>(db: &dyn Database, data: Vec<(K, V)>, nonexisting_keys: Vec<K>)
 where
-    K: ProofMapKey + Copy + Ord + PartialEq + StdHash + Debug + Serialize,
+    K: BinaryKey + UniqueHash + Clone + Ord + PartialEq + StdHash + Debug + Serialize,
     V: BinaryValue + UniqueHash + Clone + PartialEq + Debug + Serialize,
 {
     let mut storage = db.fork();
@@ -485,7 +505,7 @@ where
         // Check the multiproof only for existing keys
         let keys = data
             .iter()
-            .map(|&(k, _)| k)
+            .map(|(k, _)| k.clone())
             .choose_multiple(&mut rng, proof_size);
         let proof = table.get_multiproof(keys.clone());
         check_map_multiproof(proof, keys, &table);
@@ -493,7 +513,7 @@ where
         // Check the multiproof for the equal number of existing and non-existing keys
         let mut keys = data
             .iter()
-            .map(|&(k, _)| k)
+            .map(|(k, _)| k.clone())
             .choose_multiple(&mut rng, proof_size);
         let non_keys = nonexisting_keys
             .iter()
@@ -1034,16 +1054,19 @@ fn test_fuzz_insert_build_proofs_in_table_filled_with_hashes() {
     let batch_sizes = (7..9).map(|x| 1 << x);
 
     for batch_size in batch_sizes {
-        let data: Vec<(Hash, Hash)> = generate_random_data_keys(batch_size, &mut rng)
-            .into_iter()
-            .map(|(key, val)| (hash(&key), hash(&val)))
-            .collect();
+        let mut exists_keys = HashSet::default();
+        let data: Vec<(Hash, Hash)> =
+            generate_random_data_keys(&mut exists_keys, batch_size, &mut rng)
+                .into_iter()
+                .map(|(key, val)| (hash(&key), hash(&val)))
+                .collect();
 
         let nonexisting_count = cmp::min(MAX_CHECKED_ELEMENTS, batch_size);
-        let nonexisting_keys: Vec<_> = generate_random_data_keys(nonexisting_count / 2, &mut rng)
-            .into_iter()
-            .flat_map(|(key, val)| vec![hash(&key), hash(&val)])
-            .collect();
+        let nonexisting_keys: Vec<_> =
+            generate_random_data_keys(&mut exists_keys, nonexisting_count / 2, &mut rng)
+                .into_iter()
+                .flat_map(|(key, val)| vec![hash(&key), hash(&val)])
+                .collect();
 
         check_proofs_for_data(&db, data, nonexisting_keys);
     }
@@ -1056,13 +1079,15 @@ fn test_fuzz_insert_build_proofs() {
     let batch_sizes = (7..9).map(|x| (1 << x) - 1);
 
     for batch_size in batch_sizes {
-        let data = generate_random_data_keys(batch_size, &mut rng);
+        let mut exists_keys = HashSet::default();
+        let data = generate_random_data_keys(&mut exists_keys, batch_size, &mut rng);
 
         let nonexisting_count = cmp::min(MAX_CHECKED_ELEMENTS, batch_size);
-        let nonexisting_keys: Vec<_> = generate_random_data_keys(nonexisting_count, &mut rng)
-            .into_iter()
-            .map(|(key, _)| key)
-            .collect();
+        let nonexisting_keys: Vec<_> =
+            generate_random_data_keys(&mut exists_keys, nonexisting_count, &mut rng)
+                .into_iter()
+                .map(|(key, _)| key)
+                .collect();
 
         check_proofs_for_data(&db, data, nonexisting_keys);
     }
@@ -1075,13 +1100,15 @@ fn test_fuzz_insert_build_multiproofs() {
     let batch_sizes = (7..9).map(|x| 1 << x);
 
     for batch_size in batch_sizes {
-        let data = generate_random_data_keys(batch_size, &mut rng);
+        let mut exists_keys = HashSet::default();
+        let data = generate_random_data_keys(&mut exists_keys, batch_size, &mut rng);
 
         let nonexisting_count = cmp::min(MAX_CHECKED_ELEMENTS, batch_size);
-        let nonexisting_keys: Vec<_> = generate_random_data_keys(nonexisting_count, &mut rng)
-            .into_iter()
-            .map(|(key, _)| key)
-            .collect();
+        let nonexisting_keys: Vec<_> =
+            generate_random_data_keys(&mut exists_keys, nonexisting_count, &mut rng)
+                .into_iter()
+                .map(|(key, _)| key)
+                .collect();
 
         check_multiproofs_for_data(&db, data, nonexisting_keys);
     }
@@ -1093,7 +1120,8 @@ fn test_fuzz_delete_build_proofs() {
     const SAMPLE_SIZE: usize = 200;
 
     let mut rng = XorShiftRng::from_seed(rand::random());
-    let data = generate_random_data_keys(SAMPLE_SIZE, &mut rng);
+    let mut exists_keys = HashSet::default();
+    let data = generate_random_data_keys(&mut exists_keys, SAMPLE_SIZE, &mut rng);
 
     let mut storage = db.fork();
     let mut table = ProofMapIndex::new(IDX_NAME, &mut storage);
@@ -1120,7 +1148,7 @@ fn test_fuzz_delete_build_proofs() {
     }
 
     for key in keys_to_remove_seq {
-        let proof = table.get_proof(key);
+        let proof = table.get_proof(key.clone());
         check_map_proof(proof, Some(key.clone()), &table);
         table.remove(&key);
         let proof = table.get_proof(key);
@@ -1301,10 +1329,13 @@ fn test_iter() {
 
 #[test]
 fn test_tree_with_hashed_key() {
-    let db = TemporaryDB::default();
-    use std::iter::FromIterator;
+    use crate::UniqueHash;
+    use byteorder::{ByteOrder, LittleEndian};
+    use exonum_crypto::Hash;
+    use failure::{self, ensure};
+    use std::{borrow::Cow, iter::FromIterator};
 
-    #[derive(Debug, Copy, Clone, PartialEq)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
     struct Point {
         x: u16,
         y: u16,
@@ -1316,16 +1347,48 @@ fn test_tree_with_hashed_key() {
         }
     }
 
-    impl CryptoHash for Point {
-        fn hash(&self) -> Hash {
-            let mut buffer = [0; 4];
+    impl BinaryKey for Point {
+        fn write(&self, buffer: &mut [u8]) -> usize {
             LittleEndian::write_u16(&mut buffer[0..2], self.x);
             LittleEndian::write_u16(&mut buffer[2..4], self.y);
-            exonum_crypto::hash(&buffer)
+            self.size()
+        }
+
+        fn read(buffer: &[u8]) -> Self {
+            let x = LittleEndian::read_u16(&buffer[0..2]);
+            let y = LittleEndian::read_u16(&buffer[2..4]);
+            Self { x, y }
+        }
+
+        fn size(&self) -> usize {
+            4
         }
     }
 
-    impl HashedKey for Point {}
+    impl BinaryValue for Point {
+        fn to_bytes(&self) -> Vec<u8> {
+            let mut buf = vec![0_u8; self.size()];
+            self.write(&mut buf);
+            buf
+        }
+
+        fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
+            let bytes = bytes.as_ref();
+            ensure!(
+                bytes.len() == 4,
+                "Unable to decode Point: wrong buffer size"
+            );
+            Ok(Self::read(bytes))
+        }
+    }
+
+    impl UniqueHash for Point {
+        fn hash(&self) -> Hash {
+            let mut buffer = [0; 4];
+            self.write(&mut buffer);
+            exonum_crypto::hash(&buffer)
+        }
+    }
 
     fn hash_isolated_node(key: &ProofPath, h: &Hash) -> Hash {
         HashStream::new()
@@ -1334,6 +1397,7 @@ fn test_tree_with_hashed_key() {
             .hash()
     }
 
+    let db = TemporaryDB::default();
     let mut storage = db.fork();
     let mut table = ProofMapIndex::new(IDX_NAME, &mut storage);
 
@@ -1346,15 +1410,15 @@ fn test_tree_with_hashed_key() {
     let keys: HashSet<_> = table.keys().collect();
     assert_eq!(
         keys,
-        HashSet::from_iter(vec![Point::new(3, 4).hash(), Point::new(1, 2).hash()])
+        HashSet::from_iter(vec![Point::new(3, 4), Point::new(1, 2)])
     );
 
     let kvs: HashSet<_> = table.iter().collect();
     assert_eq!(
         kvs,
         HashSet::from_iter(vec![
-            (Point::new(3, 4).hash(), vec![2, 3, 4]),
-            (Point::new(1, 2).hash(), vec![1, 2, 3]),
+            (Point::new(3, 4), vec![2, 3, 4]),
+            (Point::new(1, 2), vec![1, 2, 3]),
         ])
     );
 
@@ -1374,11 +1438,11 @@ fn test_tree_with_hashed_key() {
     let other_key = Point::new(1, 2);
     table.remove(&key);
     let keys: Vec<_> = table.keys().collect();
-    assert_eq!(keys, vec![other_key.hash()]);
+    assert_eq!(keys, vec![other_key]);
     assert_eq!(table.get(&key), None);
     assert_eq!(table.get(&other_key), Some(vec![1, 2, 3]));
     assert_eq!(
         table.merkle_root(),
-        hash_isolated_node(&ProofPath::new(&other_key.hash()), &hash(&vec![1, 2, 3]))
+        hash_isolated_node(&ProofPath::new(&other_key), &hash(&vec![1, 2, 3]))
     );
 }
