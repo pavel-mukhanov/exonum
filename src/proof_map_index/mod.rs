@@ -27,12 +27,12 @@ use self::{
     key::{BitsRange, ChildKind, LEAF_KEY_PREFIX},
     proof::{create_multiproof, create_proof},
 };
-use super::{
-    base_index::{BaseIndex, BaseIndexIter},
-    indexes_metadata::IndexType,
+use crate::{
+    views::{Iter as ViewIter, View, IndexAccess},
     BinaryKey, BinaryValue, Fork, Snapshot, UniqueHash,
 };
 use exonum_crypto::{Hash, HashStream};
+use crate::views::Mount;
 
 mod key;
 mod node;
@@ -54,8 +54,8 @@ mod tests;
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 /// [`Hash`]: ../../../exonum_crypto/struct.Hash.html
 /// [`PublicKey`]: ../../../exonum_crypto/struct.PublicKey.html
-pub struct ProofMapIndex<T, K, V> {
-    base: BaseIndex<T>,
+pub struct ProofMapIndex<T: IndexAccess, K, V> {
+    base: View<T>,
     _k: PhantomData<K>,
     _v: PhantomData<V>,
 }
@@ -70,7 +70,7 @@ pub struct ProofMapIndex<T, K, V> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexIter<'a, K, V> {
-    base_iter: BaseIndexIter<'a, ProofPath, V>,
+    base_iter: ViewIter<'a, ProofPath, V>,
     _k: PhantomData<K>,
 }
 
@@ -84,7 +84,7 @@ pub struct ProofMapIndexIter<'a, K, V> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexKeys<'a, K> {
-    base_iter: BaseIndexIter<'a, ProofPath, ()>,
+    base_iter: ViewIter<'a, ProofPath, ()>,
     _k: PhantomData<K>,
 }
 
@@ -98,7 +98,7 @@ pub struct ProofMapIndexKeys<'a, K> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexValues<'a, V> {
-    base_iter: BaseIndexIter<'a, ProofPath, V>,
+    base_iter: ViewIter<'a, ProofPath, V>,
 }
 
 enum RemoveResult {
@@ -110,7 +110,7 @@ enum RemoveResult {
 
 impl<T, K, V> ProofMapIndex<T, K, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: ProofMapKey,
     V: BinaryValue + UniqueHash,
 {
@@ -139,7 +139,7 @@ where
     /// ```
     pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
         Self {
-            base: BaseIndex::new(index_name, IndexType::ProofMap, view),
+            base: Mount::new(view).mount(index_name),
             _k: PhantomData,
             _v: PhantomData,
         }
@@ -186,7 +186,7 @@ where
         S: AsRef<str>,
     {
         Self {
-            base: BaseIndex::new_in_family(family_name, index_id, IndexType::ProofMap, view),
+            base: Mount::new(view).mount2(family_name, index_id),
             _k: PhantomData,
             _v: PhantomData,
         }
@@ -487,7 +487,7 @@ where
     }
 }
 
-impl<'a, K, V> ProofMapIndex<&'a mut Fork, K, V>
+impl<'a, K, V> ProofMapIndex<&'a Fork, K, V>
 where
     K: ProofMapKey,
     V: BinaryValue + UniqueHash,
@@ -766,7 +766,7 @@ where
 
 impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<T, K, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: ProofMapKey,
     V: BinaryValue + UniqueHash,
 {
@@ -816,12 +816,12 @@ where
 
 impl<T, K, V> fmt::Debug for ProofMapIndex<T, K, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: ProofMapKey,
     V: BinaryValue + UniqueHash + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct Entry<'a, T: 'a, K: 'a, V: 'a + BinaryValue> {
+        struct Entry<'a, T: 'a + IndexAccess, K: 'a, V: 'a + BinaryValue> {
             index: &'a ProofMapIndex<T, K, V>,
             path: ProofPath,
             hash: Hash,
@@ -830,7 +830,7 @@ where
 
         impl<'a, T, K, V> Entry<'a, T, K, V>
         where
-            T: AsRef<dyn Snapshot>,
+            T: IndexAccess,
             K: ProofMapKey,
             V: BinaryValue + UniqueHash,
         {
@@ -854,7 +854,7 @@ where
 
         impl<'a, T, K, V> fmt::Debug for Entry<'a, T, K, V>
         where
-            T: AsRef<dyn Snapshot>,
+            T: IndexAccess,
             K: ProofMapKey,
             V: BinaryValue + UniqueHash + fmt::Debug,
         {
