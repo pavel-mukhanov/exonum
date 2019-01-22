@@ -1,4 +1,4 @@
-// Copyright 2018 The Exonum Team
+// Copyright 2019 The Exonum Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ use serde_derive::{Deserialize, Serialize};
 use exonum_crypto::{Hash, HashStream};
 
 use super::{
-    key::{BitsRange, ChildKind, ProofMapKey, ProofPath, KEY_SIZE},
+    key::{BitsRange, ChildKind, ProofPath, KEY_SIZE},
     node::{BranchNode, Node},
 };
-use crate::{BinaryValue, UniqueHash};
+use crate::{BinaryKey, BinaryValue, UniqueHash};
 
 // Expected size of the proof, in number of hashed entries.
 const DEFAULT_PROOF_CAPACITY: usize = 8;
@@ -87,9 +87,9 @@ impl<'de> Deserialize<'de> for ProofPath {
                 }
 
                 Ok(if len == 8 * KEY_SIZE {
-                    ProofPath::new(&bytes)
+                    ProofPath::from_bytes(&bytes)
                 } else {
-                    ProofPath::new(&bytes).prefix(len as u16)
+                    ProofPath::from_bytes(&bytes).prefix(len as u16)
                 })
             }
         }
@@ -474,7 +474,7 @@ impl<K, V> MapProof<K, V> {
 
 impl<K, V> MapProof<K, V>
 where
-    K: ProofMapKey,
+    K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash,
 {
     fn precheck(&self) -> Result<(), MapProofError> {
@@ -623,15 +623,17 @@ impl<K, V> CheckedMapProof<K, V> {
 }
 
 /// Creates a proof for a single key.
-pub fn create_proof<K, V, F>(
+pub fn create_proof<K, V, F, M>(
     key: K,
-    root_node: Option<(ProofPath, Node<V>)>,
+    root_node: Option<(ProofPath, Node)>,
     lookup: F,
+    get_value: M,
 ) -> MapProof<K, V>
 where
-    K: ProofMapKey,
+    K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash,
-    F: Fn(&ProofPath) -> Node<V>,
+    F: Fn(&ProofPath) -> Node,
+    M: Fn(&K) -> V,
 {
     fn combine(
         mut left_hashes: Vec<(ProofPath, Hash)>,
@@ -672,10 +674,11 @@ where
                     let node = lookup(&node_path);
                     match node {
                         Node::Branch(branch_) => branch = branch_,
-                        Node::Leaf(value) => {
+                        Node::Leaf(_hash) => {
                             // We have reached the leaf node and haven't diverged!
                             // The key is there, we've just gotten the value, so we just
                             // need to return it.
+                            let value = get_value(&key);
                             return MapProofBuilder::new()
                                 .add_entry(key, value)
                                 .add_proof_entries(combine(left_hashes, right_hashes))
@@ -699,13 +702,14 @@ where
             }
         }
 
-        Some((root_path, Node::Leaf(root_value))) => {
+        Some((root_path, Node::Leaf(hash))) => {
             if root_path == searched_path {
-                MapProofBuilder::new().add_entry(key, root_value).create()
+                let value = get_value(&key);
+                MapProofBuilder::new().add_entry(key, value).create()
             } else {
                 MapProofBuilder::new()
                     .add_missing(key)
-                    .add_proof_entry(root_path, root_value.hash())
+                    .add_proof_entry(root_path, hash)
                     .create()
             }
         }
@@ -758,16 +762,18 @@ impl ContourNode {
 }
 
 /// Processes a single key in a map with multiple entries.
-fn process_key<K, V, F>(
+fn process_key<K, V, F, M>(
     contour: &mut Vec<ContourNode>,
     mut builder: MapProofBuilder<K, V>,
     proof_path: &ProofPath,
     key: K,
     lookup: &F,
+    get_value: &M,
 ) -> MapProofBuilder<K, V>
 where
     V: BinaryValue + UniqueHash,
-    F: Fn(&ProofPath) -> Node<V>,
+    F: Fn(&ProofPath) -> Node,
+    M: Fn(&K) -> V,
 {
     // `unwrap()` is safe: there is at least 1 element in the contour by design
     let common_prefix = proof_path.common_prefix_len(&contour.last().unwrap().key);
@@ -818,9 +824,9 @@ where
             Node::Branch(branch) => {
                 contour.push(ContourNode::new(node_path, branch));
             }
-
-            Node::Leaf(value) => {
+            Node::Leaf(_hash) => {
                 // We have reached the leaf node and haven't diverged!
+                let value = get_value(&key);
                 builder = builder.add_entry(key, value);
                 break 'traverse;
             }
@@ -830,16 +836,18 @@ where
     builder
 }
 
-pub fn create_multiproof<K, V, KI, F>(
+pub fn create_multiproof<K, V, KI, F, M>(
     keys: KI,
-    root_node: Option<(ProofPath, Node<V>)>,
+    root_node: Option<(ProofPath, Node)>,
     lookup: F,
+    get_value: M,
 ) -> MapProof<K, V>
 where
-    K: ProofMapKey,
+    K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash,
     KI: IntoIterator<Item = K>,
-    F: Fn(&ProofPath) -> Node<V>,
+    F: Fn(&ProofPath) -> Node,
+    M: Fn(&K) -> V,
 {
     match root_node {
         Some((root_path, Node::Branch(root_branch))) => {
@@ -865,7 +873,7 @@ where
                     continue;
                 }
 
-                builder = process_key(&mut contour, builder, &proof_path, key, &lookup);
+                builder = process_key(&mut contour, builder, &proof_path, key, &lookup, &get_value);
                 last_searched_path = Some(proof_path);
             }
 
@@ -877,7 +885,7 @@ where
             builder.create()
         }
 
-        Some((root_path, Node::Leaf(root_value))) => {
+        Some((root_path, Node::Leaf(root_hash))) => {
             let mut builder = MapProofBuilder::new();
             // (One of) keys corresponding to the existing table entry.
             let mut found_key: Option<K> = None;
@@ -892,9 +900,10 @@ where
             }
 
             builder = if let Some(key) = found_key {
-                builder.add_entry(key, root_value)
+                let value = get_value(&key);
+                builder.add_entry(key, value)
             } else {
-                builder.add_proof_entry(root_path, root_value.hash())
+                builder.add_proof_entry(root_path, root_hash)
             };
 
             builder.create()

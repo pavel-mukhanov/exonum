@@ -1,4 +1,4 @@
-// Copyright 2018 The Exonum Team
+// Copyright 2019 The Exonum Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,13 @@ use std::{borrow::Cow, io::Read};
 
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use failure::{self, format_err};
+use failure::{self, ensure, format_err};
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
+use exonum_crypto::{Hash, PublicKey, HASH_SIZE};
+
 use super::UniqueHash;
-use exonum_crypto::{Hash, PublicKey};
 
 /// A type that can be (de)serialized as a value in the blockchain storage.
 ///
@@ -263,6 +264,23 @@ impl BinaryValue for Decimal {
 
 impl UniqueHash for Decimal {}
 
+impl BinaryValue for [u8; HASH_SIZE] {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_vec()
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
+        let bytes = bytes.as_ref();
+        ensure!(
+            bytes.len() == HASH_SIZE,
+            "Unable to decode array from bytes: buffer size does not match"
+        );
+        let mut value = [0_u8; HASH_SIZE];
+        value.copy_from_slice(bytes);
+        Ok(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fmt::Debug;
@@ -378,6 +396,12 @@ mod tests {
             Decimal::from_str("0").unwrap(),
             Decimal::from_str("-0.000000000000000000019").unwrap(),
         ];
+        assert_round_trip_eq(&values);
+    }
+
+    #[test]
+    fn test_binary_form_array_hash_size() {
+        let values = [[1; HASH_SIZE]];
         assert_round_trip_eq(&values);
     }
 }

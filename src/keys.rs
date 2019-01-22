@@ -1,4 +1,4 @@
-// Copyright 2018 The Exonum Team
+// Copyright 2019 The Exonum Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -227,6 +227,23 @@ impl BinaryKey for [u8] {
 
     fn read(buffer: &[u8]) -> Self::Owned {
         Vec::<u8>::read(buffer)
+    }
+}
+
+impl BinaryKey for [u8; 32] {
+    fn size(&self) -> usize {
+        self.len()
+    }
+
+    fn write(&self, buffer: &mut [u8]) -> usize {
+        buffer[..self.size()].copy_from_slice(self);
+        self.size()
+    }
+
+    fn read(buffer: &[u8]) -> Self::Owned {
+        let mut value = [0_u8; 32];
+        value.copy_from_slice(buffer);
+        value
     }
 }
 

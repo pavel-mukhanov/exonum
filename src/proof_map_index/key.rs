@@ -1,4 +1,4 @@
-// Copyright 2018 The Exonum Team
+// Copyright 2019 The Exonum Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,14 +18,18 @@ use std::ops;
 
 use leb128;
 
-use exonum_crypto::{CryptoHash, Hash, PublicKey, HASH_SIZE};
+use exonum_crypto::HASH_SIZE;
 
-use crate::BinaryKey;
+use crate::{BinaryKey, UniqueHash};
 
+/// This prefix defines a node as a branch.
 pub const BRANCH_KEY_PREFIX: u8 = 0;
+/// This prefix defines a node as a leaf.
 pub const LEAF_KEY_PREFIX: u8 = 1;
+/// This prefix defines a node as a value.
+pub const VALUE_KEY_PREFIX: u8 = 2;
 
-/// Size in bytes of the `ProofMapKey`.
+/// Size in bytes of the `Hash`.
 ///
 /// Equal to the size of the hash function output (32).
 pub const KEY_SIZE: usize = HASH_SIZE;
@@ -51,131 +55,6 @@ fn reset_bits(value: &mut u8, pos: u16) {
     *value &= reset_bits_mask;
 }
 
-/// A trait that defines a subset of storage key types which are suitable for use with
-/// `ProofMapIndex`.
-///
-/// The size of the keys must be exactly [`PROOF_MAP_KEY_SIZE`] bytes and the keys must have
-/// a uniform distribution.
-///
-/// [`PROOF_MAP_KEY_SIZE`]: constant.PROOF_MAP_KEY_SIZE.html
-pub trait ProofMapKey
-where
-    Self::Output: ProofMapKey,
-{
-    /// The type of keys as read from the database.
-    ///
-    /// `Output` is not necessarily equal to `Self`, which provides flexibility
-    /// for [`HashedKey`]s and similar cases
-    /// where the key cannot be uniquely restored from the database.
-    ///
-    /// [`HashedKey`]: trait.HashedKey.html
-    type Output;
-
-    /// Writes this key into a byte buffer.
-    ///
-    /// The buffer is guaranteed to have size [`PROOF_MAP_KEY_SIZE`].
-    ///
-    /// [`PROOF_MAP_KEY_SIZE`]: constant.PROOF_MAP_KEY_SIZE.html
-    fn write_key(&self, to: &mut [u8]);
-
-    /// Reads this key from the buffer.
-    fn read_key(from: &[u8]) -> Self::Output;
-}
-
-/// A trait denoting that a certain storage value is suitable for use as a key for
-/// `ProofMapIndex` after hashing.
-///
-/// **Warning:** The implementation of the [`ProofMapKey.write_key()`] method provided
-/// by this trait is not efficient; it calculates the hash anew on each call.
-///
-/// # Example
-///
-/// ```
-/// # use byteorder::{LittleEndian, ByteOrder};
-/// # use exonum_merkledb::{TemporaryDB, Database, ProofMapIndex, HashedKey};
-///
-/// #[derive(Debug, Copy, Clone, PartialEq)]
-/// struct Point {
-///     y: i16,
-///     x: i16,
-/// }
-///
-/// impl exonum_crypto::CryptoHash for Point {
-///     fn hash(&self) -> exonum_crypto::Hash {
-///         let mut buffer = [0; 4];
-///         LittleEndian::write_i16(&mut buffer[0..2], self.x);
-///         LittleEndian::write_i16(&mut buffer[2..4], self.y);
-///         exonum_crypto::hash(&buffer)
-///     }
-/// }
-///
-/// impl HashedKey for Point {}
-///
-///
-///
-/// # fn main() {
-/// let fork = { let db = TemporaryDB::new(); db.fork() };
-/// let mut map = ProofMapIndex::new("index", &mut fork);
-/// map.put(&Point { x: 3, y: -4 }, 5u32);
-/// assert_eq!(map.get(&Point { x: 3, y: -4 }), Some(5));
-/// assert_eq!(map.get(&Point { x: 3, y: 4 }), None);
-/// # }
-/// ```
-///
-/// [`ProofMapIndex`]: struct.ProofMapIndex.html
-/// [`ProofMapKey.write_key()`]: trait.ProofMapKey.html#tymethod.write_key
-pub trait HashedKey: CryptoHash {}
-
-impl<T: HashedKey> ProofMapKey for T {
-    type Output = Hash;
-
-    fn write_key(&self, buffer: &mut [u8]) {
-        self.hash().write(buffer);
-    }
-
-    fn read_key(buffer: &[u8]) -> Hash {
-        <Hash as BinaryKey>::read(buffer)
-    }
-}
-
-impl ProofMapKey for PublicKey {
-    type Output = Self;
-
-    fn write_key(&self, buffer: &mut [u8]) {
-        BinaryKey::write(self, buffer);
-    }
-
-    fn read_key(raw: &[u8]) -> Self {
-        <Self as BinaryKey>::read(raw)
-    }
-}
-
-impl ProofMapKey for Hash {
-    type Output = Self;
-
-    fn write_key(&self, buffer: &mut [u8]) {
-        BinaryKey::write(self, buffer);
-    }
-
-    fn read_key(raw: &[u8]) -> Self {
-        <Self as BinaryKey>::read(raw)
-    }
-}
-
-impl ProofMapKey for [u8; 32] {
-    type Output = [u8; 32];
-
-    fn write_key(&self, buffer: &mut [u8]) {
-        buffer.copy_from_slice(self);
-    }
-
-    fn read_key(raw: &[u8]) -> [u8; 32] {
-        let mut value = [0; KEY_SIZE];
-        value.copy_from_slice(raw);
-        value
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChildKind {
     Left,
@@ -193,7 +72,7 @@ impl ops::Not for ChildKind {
     }
 }
 
-/// Bit slice type used internally to serialize `ProofMapKey`s.
+/// Bit slice type used internally to serialize `Hash`s.
 ///
 /// A single slice can contain from 1 to [`PROOF_MAP_KEY_SIZE`]`* 8` bits.
 ///
@@ -202,8 +81,8 @@ impl ops::Not for ChildKind {
 /// | Position in bytes     | Description                   	                    |
 /// |-------------------    |----------------------------------------------         |
 /// | 0               	    | `ProofPath` kind: (0 is branch, 1 is leaf)            |
-/// | 1..33                 | `ProofMapKey` bytes.    	                            |
-/// | 33                    | Total length in bits of `ProofMapKey` for branches.   |
+/// | 1..33                 | `Hash` bytes.    	                                    |
+/// | 33                    | Total length in bits of `Hash` for branches.          |
 ///
 /// # JSON serialization
 ///
@@ -218,12 +97,8 @@ pub struct ProofPath {
 
 impl ProofPath {
     /// Creates a path from the given key.
-    pub fn new<K: ProofMapKey>(key: &K) -> Self {
-        let mut data = [0; PROOF_PATH_SIZE];
-        data[0] = LEAF_KEY_PREFIX;
-        key.write_key(&mut data[PROOF_PATH_KEY_POS..PROOF_PATH_KEY_POS + KEY_SIZE]);
-        data[PROOF_PATH_LEN_POS] = 0;
-        Self::from_raw(data)
+    pub fn new(key: &impl UniqueHash) -> Self {
+        Self::from_bytes(key.hash())
     }
 
     /// Checks if this is a path to a leaf `ProofMapIndex` node.
@@ -231,22 +106,32 @@ impl ProofPath {
         self.bytes[0] == LEAF_KEY_PREFIX
     }
 
-    /// Returns the byte representation of contained `ProofMapKey`.
+    /// Returns the byte representation of contained `Hash`.
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
     }
 
-    /// Constructs the `ProofPath` from raw bytes.
-    fn from_raw(raw: [u8; PROOF_PATH_SIZE]) -> Self {
+    /// Constructs the `ProofPath` from the raw bytes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given bytes has different length than the `KEY_SIZE`.
+    pub(crate) fn from_bytes(bytes: impl AsRef<[u8]>) -> Self {
+        let mut inner = [0; PROOF_PATH_SIZE];
+        inner[0] = LEAF_KEY_PREFIX;
+        inner[PROOF_PATH_KEY_POS..PROOF_PATH_KEY_POS + KEY_SIZE].copy_from_slice(bytes.as_ref());
+        inner[PROOF_PATH_LEN_POS] = 0;
+        Self::from_inner(inner)
+    }
+
+    /// Constructs the `ProofPath` from the inner buffer.
+    fn from_inner(bytes: [u8; PROOF_PATH_SIZE]) -> Self {
         debug_assert!(
-            (raw[PROOF_PATH_KIND_POS] != LEAF_KEY_PREFIX) || (raw[PROOF_PATH_LEN_POS] == 0),
+            (bytes[PROOF_PATH_KIND_POS] != LEAF_KEY_PREFIX) || (bytes[PROOF_PATH_LEN_POS] == 0),
             "ProofPath is inconsistent"
         );
 
-        Self {
-            bytes: raw,
-            start: 0,
-        }
+        Self { bytes, start: 0 }
     }
 
     /// Sets the right border of the bit range.
@@ -299,10 +184,13 @@ pub(crate) trait BitsRange {
     fn start_from(&self, pos: u16) -> Self;
 
     /// Returns a copy of this bit range shortened to the specified length.
+    /// This action changes the ProofPath's type to a branch as well.
+    /// TODO Clarify documentation. [ECR-2820]
     fn prefix(&self, len: u16) -> Self;
 
     /// Returns a copy of this bit range where the start is shifted by the `len`
-    /// bits to the right.
+    /// bits to the right. This action doesn't affect a type of ProofPath.
+    /// TODO Clarify documentation. [ECR-2820]
     fn suffix(&self, len: u16) -> Self;
 
     /// Checks if this bit range contains the other bit range as a prefix,
@@ -371,7 +259,7 @@ impl BitsRange for ProofPath {
     fn start_from(&self, pos: u16) -> Self {
         debug_assert!(pos <= self.end());
 
-        let mut key = Self::from_raw(self.bytes);
+        let mut key = Self::from_inner(self.bytes);
         key.start = pos;
         key
     }
@@ -381,7 +269,7 @@ impl BitsRange for ProofPath {
         let key_len = KEY_SIZE as u16 * 8;
         debug_assert!(end < key_len);
 
-        let mut key = Self::from_raw(self.bytes);
+        let mut key = Self::from_inner(self.bytes);
         key.start = self.start;
         key.set_end(Some(end as u8));
         key
@@ -451,7 +339,7 @@ impl BinaryKey for ProofPath {
         debug_assert_eq!(buffer.len(), PROOF_PATH_SIZE);
         let mut data = [0; PROOF_PATH_SIZE];
         data.copy_from_slice(buffer);
-        Self::from_raw(data)
+        Self::from_inner(data)
     }
 }
 
@@ -560,13 +448,13 @@ mod tests {
                 raw[PROOF_PATH_KIND_POS] = BRANCH_KEY_PREFIX;
                 raw[PROOF_PATH_LEN_POS] = bits_len as u8;
             }
-            Self::from_raw(raw)
+            Self::from_inner(raw)
         }
     }
 
     /// Creates a random non-leaf, non-empty path.
     fn random_path<T: Rng>(rng: &mut T) -> ProofPath {
-        ProofPath::new(&{
+        ProofPath::from_bytes(&{
             let mut buf = [0; 32];
             rng.fill_bytes(&mut buf);
             buf
@@ -576,10 +464,10 @@ mod tests {
 
     #[test]
     fn test_proof_path_serialization_fuzz() {
-        let path = ProofPath::new(&[1; 32]).prefix(3);
+        let path = ProofPath::from_bytes(&[1; 32]).prefix(3);
         assert_eq!(serde_json::to_value(&path).unwrap(), json!("100"));
         let path: ProofPath = serde_json::from_value(json!("101001")).unwrap();
-        assert_eq!(path, ProofPath::new(&[0b00_100101; 32]).prefix(6));
+        assert_eq!(path, ProofPath::from_bytes(&[0b00_100101; 32]).prefix(6));
 
         // Fuzz tests for roundtrip.
         let mut rng = rand::thread_rng();
@@ -628,11 +516,16 @@ mod tests {
 
     #[test]
     fn test_proof_path_ordering_fuzz() {
-        assert!(ProofPath::new(&[1; 32]) > ProofPath::new(&[254; 32]));
-        assert!(ProofPath::new(&[0b0001_0001; 32]) > ProofPath::new(&[0b0010_0001; 32]));
-        assert!(ProofPath::new(&[1; 32]) == ProofPath::new(&[1; 32]));
-        assert!(ProofPath::new(&[1; 32]).prefix(6) == ProofPath::new(&[129; 32]).prefix(6));
-        assert!(ProofPath::new(&[1; 32]).prefix(254) < ProofPath::new(&[1; 32]));
+        assert!(ProofPath::from_bytes(&[1; 32]) > ProofPath::from_bytes(&[254; 32]));
+        assert!(
+            ProofPath::from_bytes(&[0b0001_0001; 32]) > ProofPath::from_bytes(&[0b0010_0001; 32])
+        );
+        assert!(ProofPath::from_bytes(&[1; 32]) == ProofPath::from_bytes(&[1; 32]));
+        assert!(
+            ProofPath::from_bytes(&[1; 32]).prefix(6)
+                == ProofPath::from_bytes(&[129; 32]).prefix(6)
+        );
+        assert!(ProofPath::from_bytes(&[1; 32]).prefix(254) < ProofPath::from_bytes(&[1; 32]));
 
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
@@ -689,7 +582,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_storage_key_leaf() {
-        let key = ProofPath::new(&[250; 32]);
+        let key = ProofPath::from_bytes(&[250; 32]);
         let mut buf = vec![0; PROOF_PATH_SIZE];
         key.write(&mut buf);
         let key2 = ProofPath::read(&buf);
@@ -702,7 +595,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_storage_key_branch_regular() {
-        let mut key = ProofPath::new(&[255_u8; 32]);
+        let mut key = ProofPath::from_bytes(&[255_u8; 32]);
         key = key.prefix(11);
         key = key.suffix(5);
 
@@ -720,7 +613,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_storage_key_roundtrip() {
-        let origin = ProofPath::new(&[255_u8; 32]);
+        let origin = ProofPath::from_bytes(&[255_u8; 32]);
         for i in 0..MAX_PROOF_PATH_BITS {
             let key = origin.prefix(i);
             let mut buf = vec![0; PROOF_PATH_SIZE];
@@ -736,7 +629,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_compress_leaf_regular() {
-        let key = ProofPath::new(&[250; 32]);
+        let key = ProofPath::from_bytes(&[250; 32]);
         let buf = key.compressed();
         let key2 = ProofPath::read_compressed(buf.as_ref());
         assert_eq!(key2, key);
@@ -744,7 +637,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_compress_leaf_shortest() {
-        let mut key = ProofPath::new(&[250; 32]);
+        let mut key = ProofPath::from_bytes(&[250; 32]);
         key = key.prefix(0);
         let buf = key.compressed();
         let key2 = ProofPath::read_compressed(buf.as_ref());
@@ -753,7 +646,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_compress_leaf_longest() {
-        let mut key = ProofPath::new(&[250; 32]);
+        let mut key = ProofPath::from_bytes(&[250; 32]);
         key = key.prefix(255);
         let buf = key.compressed();
         let key2 = ProofPath::read_compressed(buf.as_ref());
@@ -762,7 +655,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_compress_branch() {
-        let mut key = ProofPath::new(&[255_u8; 32]);
+        let mut key = ProofPath::from_bytes(&[255_u8; 32]);
         key = key.prefix(11);
         key = key.suffix(5);
 
@@ -784,7 +677,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_compress_roundtrip() {
-        let origin = ProofPath::new(&[255_u8; 32]);
+        let origin = ProofPath::from_bytes(&[255_u8; 32]);
         for i in 0..MAX_PROOF_PATH_BITS {
             let key = origin.prefix(i);
             let buf = key.compressed();
@@ -799,7 +692,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_suffix() {
-        let b = ProofPath::from_raw(*b"\x00\x01\x02\xFF\x0C0000000000000000000000000000\x20");
+        let b = ProofPath::from_inner(*b"\x00\x01\x02\xFF\x0C0000000000000000000000000000\x20");
 
         assert_eq!(b.len(), 32);
         assert_eq!(b.bit(0), ChildKind::Right);
@@ -831,7 +724,7 @@ mod tests {
     #[test]
     fn test_proof_path_prefix() {
         // spell-checker:disable
-        let b = ProofPath::from_raw(*b"\x00\x83wertyuiopasdfghjklzxcvbnm123456\x08");
+        let b = ProofPath::from_inner(*b"\x00\x83wertyuiopasdfghjklzxcvbnm123456\x08");
         assert_eq!(b.len(), 8);
         assert_eq!(b.prefix(1).bit(0), ChildKind::Right);
         assert_eq!(b.prefix(1).len(), 1);
@@ -839,21 +732,21 @@ mod tests {
 
     #[test]
     fn test_proof_path_len() {
-        let b = ProofPath::from_raw(*b"\x01qwertyuiopasdfghjklzxcvbnm123456\x00");
+        let b = ProofPath::from_inner(*b"\x01qwertyuiopasdfghjklzxcvbnm123456\x00");
         assert_eq!(b.len(), 256);
     }
 
     #[test]
     #[should_panic(expected = "self.start() + idx < self.end()")]
     fn test_proof_path_at_overflow() {
-        let b = ProofPath::from_raw(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\x0F");
+        let b = ProofPath::from_inner(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\x0F");
         b.bit(32);
     }
 
     #[test]
     #[should_panic(expected = "pos <= self.end()")]
     fn test_proof_path_suffix_overflow() {
-        let b = ProofPath::from_raw(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\xFF");
+        let b = ProofPath::from_inner(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\xFF");
         assert_eq!(b"\x01qwertyuiopasdfghjklzxcvbnm123456\x00".len(), 34);
         b.suffix(255).suffix(2);
     }
@@ -861,14 +754,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "self.start() + idx < self.end()")]
     fn test_proof_path_suffix_bit_overflow() {
-        let b = ProofPath::from_raw(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\xFF");
+        let b = ProofPath::from_inner(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\xFF");
         b.suffix(1).bit(255);
     }
 
     #[test]
     fn test_proof_path_common_prefix_len() {
-        let b1 = ProofPath::from_raw(*b"\x01abcd0000000000000000000000000000\x00");
-        let b2 = ProofPath::from_raw(*b"\x01abef0000000000000000000000000000\x00");
+        let b1 = ProofPath::from_inner(*b"\x01abcd0000000000000000000000000000\x00");
+        let b2 = ProofPath::from_inner(*b"\x01abef0000000000000000000000000000\x00");
         assert_eq!(b1.common_prefix_len(&b1), 256);
         let c = b1.common_prefix_len(&b2);
         assert_eq!(c, 17);
@@ -878,8 +771,8 @@ mod tests {
         let b2 = b2.suffix(9);
         let c = b1.common_prefix_len(&b2);
         assert_eq!(c, 8);
-        let b3 = ProofPath::from_raw(*b"\x01\xFF0000000000000000000000000000000\x00");
-        let b4 = ProofPath::from_raw(*b"\x01\xF70000000000000000000000000000000\x00");
+        let b3 = ProofPath::from_inner(*b"\x01\xFF0000000000000000000000000000000\x00");
+        let b4 = ProofPath::from_inner(*b"\x01\xF70000000000000000000000000000000\x00");
         assert_eq!(b3.common_prefix_len(&b4), 3);
         assert_eq!(b4.common_prefix_len(&b3), 3);
         assert_eq!(b3.common_prefix_len(&b3), 256);
@@ -887,14 +780,14 @@ mod tests {
         assert_eq!(b3.common_prefix_len(&b3), 226);
         let b3 = b3.prefix(200);
         assert_eq!(b3.common_prefix_len(&b3), 200);
-        let b5 = ProofPath::from_raw(*b"\x01\xF00000000000000000000000000000000\x00");
+        let b5 = ProofPath::from_inner(*b"\x01\xF00000000000000000000000000000000\x00");
         assert_eq!(b5.prefix(0).common_prefix_len(&b3), 0);
     }
 
     #[test]
     fn test_proof_path_match_len() {
-        let b1 = ProofPath::from_raw(*b"\x01abcd0000000000000000000000000000\x00");
-        let b2 = ProofPath::from_raw(*b"\x01abef0000000000000000000000000000\x00");
+        let b1 = ProofPath::from_inner(*b"\x01abcd0000000000000000000000000000\x00");
+        let b2 = ProofPath::from_inner(*b"\x01abef0000000000000000000000000000\x00");
 
         for start in 0..256 {
             assert_eq!(b1.match_len(&b1, start), 256);
@@ -908,7 +801,7 @@ mod tests {
             assert_eq!(b2.match_len(&b1, start), 256);
         }
 
-        let b2 = ProofPath::from_raw(*b"\x01abce0000000000000000000000000000\x00");
+        let b2 = ProofPath::from_inner(*b"\x01abce0000000000000000000000000000\x00");
         for start in 0..25 {
             assert_eq!(b1.match_len(&b2, start), 24);
             assert_eq!(b2.match_len(&b1, start), 24);
@@ -923,7 +816,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_is_leaf() {
-        let b = ProofPath::from_raw(*b"\x01qwertyuiopasdfghjklzxcvbnm123456\x00");
+        let b = ProofPath::from_inner(*b"\x01qwertyuiopasdfghjklzxcvbnm123456\x00");
         assert_eq!(b.len(), 256);
         assert_eq!(b.suffix(4).is_leaf(), true);
         assert_eq!(b.suffix(8).is_leaf(), true);
@@ -933,7 +826,7 @@ mod tests {
 
     #[test]
     fn test_proof_path_is_branch() {
-        let b = ProofPath::from_raw(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\xFF");
+        let b = ProofPath::from_inner(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\xFF");
         assert_eq!(b.len(), 255);
         assert_eq!(b.is_leaf(), false);
     }
@@ -941,7 +834,7 @@ mod tests {
     #[test]
     fn test_proof_path_debug_leaf() {
         use std::fmt::Write;
-        let b = ProofPath::from_raw(*b"\x01qwertyuiopasdfghjklzxcvbnm123456\x00");
+        let b = ProofPath::from_inner(*b"\x01qwertyuiopasdfghjklzxcvbnm123456\x00");
         let mut buf = String::new();
         write!(&mut buf, "{:?}", b).unwrap();
         assert_eq!(
@@ -956,7 +849,7 @@ mod tests {
     #[test]
     fn test_proof_path_debug_branch() {
         use std::fmt::Write;
-        let b = ProofPath::from_raw(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\xF0").suffix(12);
+        let b = ProofPath::from_inner(*b"\x00qwertyuiopasdfghjklzxcvbnm123456\xF0").suffix(12);
         let mut buf = String::new();
         write!(&mut buf, "{:?}", b).unwrap();
         assert_eq!(

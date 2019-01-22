@@ -1,4 +1,4 @@
-// Copyright 2018 The Exonum Team
+// Copyright 2019 The Exonum Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
 #[doc(hidden)]
 pub use self::node::{BranchNode, Node};
 pub use self::{
-    key::{HashedKey, ProofMapKey, ProofPath, KEY_SIZE as PROOF_MAP_KEY_SIZE},
+    key::{ProofPath, KEY_SIZE as PROOF_MAP_KEY_SIZE},
     proof::{CheckedMapProof, MapProof, MapProofError},
 };
 
 use std::{fmt, marker::PhantomData};
 
 use self::{
-    key::{BitsRange, ChildKind, LEAF_KEY_PREFIX},
+    key::{BitsRange, ChildKind, VALUE_KEY_PREFIX},
     proof::{create_multiproof, create_proof},
 };
 use crate::views::Mount;
@@ -44,13 +44,10 @@ mod tests;
 /// keys.
 ///
 /// `ProofMapIndex` implements a Merkle Patricia tree, storing values as leaves.
-/// `ProofMapIndex` requires that keys implement the [`ProofMapKey`] trait and
+/// `ProofMapIndex` requires that keys implement the [`BinaryKey`] trait and
 /// values implement the [`BinaryValue`] trait.
 ///
-/// **The size of the proof map keys must be exactly 32 bytes and the keys must have a uniform
-/// distribution.** Usually, [`Hash`] and [`PublicKey`] are used as types of proof map keys.
-///
-/// [`ProofMapKey`]: trait.ProofMapKey.html
+/// [`BinaryKey`]: ../trait.BinaryKey.html
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 /// [`Hash`]: ../../../exonum_crypto/struct.Hash.html
 /// [`PublicKey`]: ../../../exonum_crypto/struct.PublicKey.html
@@ -70,7 +67,7 @@ pub struct ProofMapIndex<T: IndexAccess, K, V> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexIter<'a, K, V> {
-    base_iter: ViewIter<'a, ProofPath, V>,
+    base_iter: BaseIndexIter<'a, Vec<u8>, V>,
     _k: PhantomData<K>,
 }
 
@@ -84,7 +81,7 @@ pub struct ProofMapIndexIter<'a, K, V> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexKeys<'a, K> {
-    base_iter: ViewIter<'a, ProofPath, ()>,
+    base_iter: BaseIndexIter<'a, Vec<u8>, ()>,
     _k: PhantomData<K>,
 }
 
@@ -98,20 +95,44 @@ pub struct ProofMapIndexKeys<'a, K> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexValues<'a, V> {
-    base_iter: ViewIter<'a, ProofPath, V>,
+    base_iter: BaseIndexIter<'a, Vec<u8>, V>,
 }
 
-enum RemoveResult {
+enum RemoveAction {
     KeyNotFound,
     Leaf,
     Branch((ProofPath, Hash)),
     UpdateHash(Hash),
 }
 
+/// The internal key representation that uses to address values.
+///
+/// Represents the original key bytes with the `VALUE_KEY_PREFIX` prefix.
+/// TODO Clarify documentation. [ECR-2820]
+trait ValuePath: ToOwned {
+    /// Converts the given key to the value path bytes.
+    fn to_value_path(&self) -> Vec<u8>;
+    /// Extracts the given key from the value path bytes.
+    fn from_value_path(bytes: &[u8]) -> Self::Owned;
+}
+
+impl<T: BinaryKey> ValuePath for T {
+    fn to_value_path(&self) -> Vec<u8> {
+        let mut buf = vec![0_u8; self.size() + 1];
+        buf[0] = VALUE_KEY_PREFIX;
+        self.write(&mut buf[1..]);
+        buf
+    }
+
+    fn from_value_path(buffer: &[u8]) -> Self::Owned {
+        Self::read(&buffer[1..])
+    }
+}
+
 impl<T, K, V> ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: ProofMapKey,
+    K: BinaryKey + UniqueHas,
     V: BinaryValue + UniqueHash,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -199,20 +220,24 @@ where
             .map(|(k, _): (ProofPath, ())| k)
     }
 
-    fn get_root_node(&self) -> Option<(ProofPath, Node<V>)> {
+    fn get_root_node(&self) -> Option<(ProofPath, Node)> {
         self.get_root_path().map(|key| {
             let node = self.get_node_unchecked(&key);
             (key, node)
         })
     }
 
-    fn get_node_unchecked(&self, key: &ProofPath) -> Node<V> {
+    fn get_node_unchecked(&self, key: &ProofPath) -> Node {
         // TODO: Unwraps? (ECR-84)
         if key.is_leaf() {
             Node::Leaf(self.base.get(key).unwrap())
         } else {
             Node::Branch(self.base.get(key).unwrap())
         }
+    }
+
+    fn get_value_unchecked(&self, key: &K) -> V {
+        self.get(key).expect("Value for the given key is absent")
     }
 
     /// Returns the root hash of the proof map or default hash value if it is empty.
@@ -238,9 +263,9 @@ where
     /// ```
     pub fn merkle_root(&self) -> Hash {
         match self.get_root_node() {
-            Some((k, Node::Leaf(v))) => HashStream::new()
-                .update(k.as_bytes())
-                .update(v.hash().as_ref())
+            Some((path, Node::Leaf(hash))) => HashStream::new()
+                .update(path.as_bytes())
+                .update(hash.as_ref())
                 .hash(),
             Some((_, Node::Branch(branch))) => branch.hash(),
             None => Hash::zero(),
@@ -267,7 +292,7 @@ where
     /// assert_eq!(Some(2), index.get(&hash));
     /// ```
     pub fn get(&self, key: &K) -> Option<V> {
-        self.base.get(&ProofPath::new(key))
+        self.base.get(&key.to_value_path())
     }
 
     /// Returns `true` if the map contains a value for the specified key.
@@ -290,7 +315,7 @@ where
     /// assert!(index.contains(&hash));
     /// ```
     pub fn contains(&self, key: &K) -> bool {
-        self.base.contains(&ProofPath::new(key))
+        self.base.contains(&key.to_value_path())
     }
 
     /// Returns the proof of existence or non-existence for the specified key.
@@ -308,9 +333,12 @@ where
     /// let proof = index.get_proof(Hash::default());
     /// ```
     pub fn get_proof(&self, key: K) -> MapProof<K, V> {
-        create_proof(key, self.get_root_node(), |path| {
-            self.get_node_unchecked(path)
-        })
+        create_proof(
+            key,
+            self.get_root_node(),
+            |path| self.get_node_unchecked(path),
+            |key| self.get_value_unchecked(key),
+        )
     }
 
     /// Returns the combined proof of existence or non-existence for the multiple specified keys.
@@ -322,17 +350,20 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let snapshot = db.snapshot();
-    /// let index: ProofMapIndex<_, [u8; 32], u8> = ProofMapIndex::new("index", &snapshot);
+    /// let index: ProofMapIndex<_, Vec<u8>, u8> = ProofMapIndex::new("index", &snapshot);
     ///
-    /// let proof = index.get_multiproof(vec![[0; 32], [1; 32]]);
+    /// let proof = index.get_multiproof(vec![vec![0; 32], vec![1; 32]]);
     /// ```
     pub fn get_multiproof<KI>(&self, keys: KI) -> MapProof<K, V>
     where
         KI: IntoIterator<Item = K>,
     {
-        create_multiproof(keys, self.get_root_node(), |path| {
-            self.get_node_unchecked(path)
-        })
+        create_multiproof(
+            keys,
+            self.get_root_node(),
+            |path| self.get_node_unchecked(path),
+            |key| self.get_value_unchecked(key),
+        )
     }
 
     /// Returns an iterator over the entries of the map in ascending order. The iterator element
@@ -355,7 +386,7 @@ where
     /// ```
     pub fn iter(&self) -> ProofMapIndexIter<K, V> {
         ProofMapIndexIter {
-            base_iter: self.base.iter(&LEAF_KEY_PREFIX),
+            base_iter: self.base.iter(&VALUE_KEY_PREFIX),
             _k: PhantomData,
         }
     }
@@ -380,7 +411,7 @@ where
     /// ```
     pub fn keys(&self) -> ProofMapIndexKeys<K> {
         ProofMapIndexKeys {
-            base_iter: self.base.iter(&LEAF_KEY_PREFIX),
+            base_iter: self.base.iter(&VALUE_KEY_PREFIX),
             _k: PhantomData,
         }
     }
@@ -405,7 +436,7 @@ where
     /// ```
     pub fn values(&self) -> ProofMapIndexValues<V> {
         ProofMapIndexValues {
-            base_iter: self.base.iter(&LEAF_KEY_PREFIX),
+            base_iter: self.base.iter(&VALUE_KEY_PREFIX),
         }
     }
 
@@ -430,7 +461,9 @@ where
     /// ```
     pub fn iter_from(&self, from: &K) -> ProofMapIndexIter<K, V> {
         ProofMapIndexIter {
-            base_iter: self.base.iter_from(&LEAF_KEY_PREFIX, &ProofPath::new(from)),
+            base_iter: self
+                .base
+                .iter_from(&VALUE_KEY_PREFIX, &from.to_value_path()),
             _k: PhantomData,
         }
     }
@@ -456,7 +489,9 @@ where
     /// ```
     pub fn keys_from(&self, from: &K) -> ProofMapIndexKeys<K> {
         ProofMapIndexKeys {
-            base_iter: self.base.iter_from(&LEAF_KEY_PREFIX, &ProofPath::new(from)),
+            base_iter: self
+                .base
+                .iter_from(&VALUE_KEY_PREFIX, &from.to_value_path()),
             _k: PhantomData,
         }
     }
@@ -482,21 +517,29 @@ where
     /// ```
     pub fn values_from(&self, from: &K) -> ProofMapIndexValues<V> {
         ProofMapIndexValues {
-            base_iter: self.base.iter_from(&LEAF_KEY_PREFIX, &ProofPath::new(from)),
+            base_iter: self
+                .base
+                .iter_from(&VALUE_KEY_PREFIX, &from.to_value_path()),
         }
     }
 }
 
 impl<'a, K, V> ProofMapIndex<&'a Fork, K, V>
 where
-    K: ProofMapKey,
+    K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash,
 {
-    fn insert_leaf(&mut self, key: &ProofPath, value: V) -> Hash {
-        debug_assert!(key.is_leaf());
+    fn insert_leaf(&mut self, proof_path: &ProofPath, key: &K, value: V) -> Hash {
+        debug_assert!(proof_path.is_leaf());
         let hash = value.hash();
-        self.base.put(key, value);
+        self.base.put(proof_path, hash);
+        self.base.put(&key.to_value_path(), value);
         hash
+    }
+
+    fn remove_leaf(&mut self, proof_path: &ProofPath, key: &K) {
+        self.base.remove(proof_path);
+        self.base.remove(&key.to_value_path());
     }
 
     // Inserts a new node of the current branch and returns the updated hash
@@ -505,6 +548,7 @@ where
         &mut self,
         parent: &BranchNode,
         proof_path: &ProofPath,
+        key: &K,
         value: V,
     ) -> (Option<u16>, Hash) {
         let child_path = parent
@@ -516,7 +560,7 @@ where
             // check that child is leaf to avoid unnecessary read
             if child_path.is_leaf() {
                 // there is a leaf in branch and we needs to update its value
-                let hash = self.insert_leaf(proof_path, value);
+                let hash = self.insert_leaf(proof_path, key, value);
                 (None, hash)
             } else {
                 match self.get_node_unchecked(&child_path) {
@@ -525,7 +569,7 @@ where
                     }
                     // There is a child in branch and we needs to lookup it recursively
                     Node::Branch(mut branch) => {
-                        let (j, h) = self.insert_branch(&branch, &proof_path.suffix(i), value);
+                        let (j, h) = self.insert_branch(&branch, &proof_path.suffix(i), key, value);
                         match j {
                             Some(j) => {
                                 branch.set_child(
@@ -547,7 +591,7 @@ where
             let suffix_path = proof_path.suffix(i);
             let mut new_branch = BranchNode::empty();
             // Add a new leaf
-            let hash = self.insert_leaf(&suffix_path, value);
+            let hash = self.insert_leaf(&suffix_path, key, value);
             new_branch.set_child(suffix_path.bit(0), &suffix_path, &hash);
             // Move current branch
             new_branch.set_child(
@@ -586,7 +630,7 @@ where
                 let prefix_path = prefix;
                 let i = prefix_path.common_prefix_len(&proof_path);
 
-                let leaf_hash = self.insert_leaf(&proof_path, value);
+                let leaf_hash = self.insert_leaf(&proof_path, key, value);
                 if i < proof_path.len() {
                     let mut branch = BranchNode::empty();
                     branch.set_child(proof_path.bit(i), &proof_path.suffix(i), &leaf_hash);
@@ -606,7 +650,7 @@ where
                 if i == prefix_path.len() {
                     let suffix_path = proof_path.suffix(i);
                     // Just cut the prefix and recursively descent on.
-                    let (j, h) = self.insert_branch(&branch, &suffix_path, value);
+                    let (j, h) = self.insert_branch(&branch, &suffix_path, key, value);
                     match j {
                         Some(j) => branch.set_child(suffix_path.bit(0), &suffix_path.prefix(j), &h),
                         None => branch.set_child_hash(suffix_path.bit(0), &h),
@@ -614,7 +658,7 @@ where
                     self.base.put(&prefix_path, branch);
                 } else {
                     // Inserts a new branch and adds current branch as its child
-                    let hash = self.insert_leaf(&proof_path, value);
+                    let hash = self.insert_leaf(&proof_path, key, value);
                     let mut new_branch = BranchNode::empty();
                     new_branch.set_child(
                         prefix_path.bit(i),
@@ -628,12 +672,17 @@ where
                 }
             }
             None => {
-                self.insert_leaf(&proof_path, value);
+                self.insert_leaf(&proof_path, key, value);
             }
         }
     }
 
-    fn remove_node(&mut self, parent: &BranchNode, proof_path: &ProofPath) -> RemoveResult {
+    fn remove_node(
+        &mut self,
+        parent: &BranchNode,
+        proof_path: &ProofPath,
+        key: &K,
+    ) -> RemoveAction {
         let child_path = parent
             .child_path(proof_path.bit(0))
             .start_from(proof_path.start());
@@ -642,41 +691,41 @@ where
         if i == child_path.len() {
             match self.get_node_unchecked(&child_path) {
                 Node::Leaf(_) => {
-                    self.base.remove(proof_path);
-                    return RemoveResult::Leaf;
+                    self.remove_leaf(proof_path, key);
+                    return RemoveAction::Leaf;
                 }
                 Node::Branch(mut branch) => {
                     let suffix_path = proof_path.suffix(i);
-                    match self.remove_node(&branch, &suffix_path) {
-                        RemoveResult::Leaf => {
+                    match self.remove_node(&branch, &suffix_path, key) {
+                        RemoveAction::Leaf => {
                             let child = !suffix_path.bit(0);
                             let key = branch.child_path(child);
                             let hash = branch.child_hash(child);
 
                             self.base.remove(&child_path);
-
-                            return RemoveResult::Branch((key, hash));
+                            return RemoveAction::Branch((key, hash));
                         }
-                        RemoveResult::Branch((key, hash)) => {
+                        RemoveAction::Branch((key, hash)) => {
                             let new_child_path = key.start_from(suffix_path.start());
-
                             branch.set_child(suffix_path.bit(0), &new_child_path, &hash);
                             let h = branch.hash();
+
                             self.base.put(&child_path, branch);
-                            return RemoveResult::UpdateHash(h);
+                            return RemoveAction::UpdateHash(h);
                         }
-                        RemoveResult::UpdateHash(hash) => {
+                        RemoveAction::UpdateHash(hash) => {
                             branch.set_child_hash(suffix_path.bit(0), &hash);
                             let h = branch.hash();
+
                             self.base.put(&child_path, branch);
-                            return RemoveResult::UpdateHash(h);
+                            return RemoveAction::UpdateHash(h);
                         }
-                        RemoveResult::KeyNotFound => return RemoveResult::KeyNotFound,
+                        RemoveAction::KeyNotFound => return RemoveAction::KeyNotFound,
                     }
                 }
             }
         }
-        RemoveResult::KeyNotFound
+        RemoveAction::KeyNotFound
     }
 
     /// Removes a key from the proof map.
@@ -704,9 +753,8 @@ where
         match self.get_root_node() {
             // If we have only on leaf, then we just need to remove it (if any)
             Some((prefix, Node::Leaf(_))) => {
-                let key = proof_path;
-                if key == prefix {
-                    self.base.remove(&key);
+                if proof_path == prefix {
+                    self.remove_leaf(&proof_path, key);
                 }
             }
             Some((prefix, Node::Branch(mut branch))) => {
@@ -714,18 +762,18 @@ where
                 let i = prefix.common_prefix_len(&proof_path);
                 if i == prefix.len() {
                     let suffix_path = proof_path.suffix(i);
-                    match self.remove_node(&branch, &suffix_path) {
-                        RemoveResult::Leaf => self.base.remove(&prefix),
-                        RemoveResult::Branch((key, hash)) => {
+                    match self.remove_node(&branch, &suffix_path, key) {
+                        RemoveAction::Leaf => self.base.remove(&prefix),
+                        RemoveAction::Branch((key, hash)) => {
                             let new_child_path = key.start_from(suffix_path.start());
                             branch.set_child(suffix_path.bit(0), &new_child_path, &hash);
                             self.base.put(&prefix, branch);
                         }
-                        RemoveResult::UpdateHash(hash) => {
+                        RemoveAction::UpdateHash(hash) => {
                             branch.set_child_hash(suffix_path.bit(0), &hash);
                             self.base.put(&prefix, branch);
                         }
-                        RemoveResult::KeyNotFound => return,
+                        RemoveAction::KeyNotFound => return,
                     }
                 }
             }
@@ -767,10 +815,10 @@ where
 impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: ProofMapKey,
+    K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash,
 {
-    type Item = (K::Output, V);
+    type Item = (K::Owned, V);
     type IntoIter = ProofMapIndexIter<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -780,32 +828,32 @@ where
 
 impl<'a, K, V> Iterator for ProofMapIndexIter<'a, K, V>
 where
-    K: ProofMapKey,
-    V: BinaryValue + UniqueHash,
+    K: BinaryKey,
+    V: BinaryValue,
 {
-    type Item = (K::Output, V);
+    type Item = (K::Owned, V);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.base_iter
             .next()
-            .map(|(k, v)| (K::read_key(k.raw_key()), v))
+            .map(|(k, v)| (K::from_value_path(&k), v))
     }
 }
 
 impl<'a, K> Iterator for ProofMapIndexKeys<'a, K>
 where
-    K: ProofMapKey,
+    K: BinaryKey,
 {
-    type Item = K::Output;
+    type Item = K::Owned;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.base_iter.next().map(|(k, _)| K::read_key(k.raw_key()))
+        self.base_iter.next().map(|(k, _)| K::from_value_path(&k))
     }
 }
 
 impl<'a, V> Iterator for ProofMapIndexValues<'a, V>
 where
-    V: BinaryValue + UniqueHash,
+    V: BinaryValue,
 {
     type Item = V;
 
@@ -817,7 +865,7 @@ where
 impl<T, K, V> fmt::Debug for ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: ProofMapKey,
+    K: BinaryKey + UniqueHas,
     V: BinaryValue + UniqueHash + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -825,13 +873,13 @@ where
             index: &'a ProofMapIndex<T, K, V>,
             path: ProofPath,
             hash: Hash,
-            node: Node<V>,
+            node: Node,
         }
 
         impl<'a, T, K, V> Entry<'a, T, K, V>
         where
             T: IndexAccess,
-            K: ProofMapKey,
+            K: BinaryKey + UniqueHash,
             V: BinaryValue + UniqueHash,
         {
             fn new(index: &'a ProofMapIndex<T, K, V>, hash: Hash, path: ProofPath) -> Self {
@@ -854,8 +902,8 @@ where
 
         impl<'a, T, K, V> fmt::Debug for Entry<'a, T, K, V>
         where
-            T: IndexAccess,
-            K: ProofMapKey,
+            T: IndexAccess>,
+            K: BinaryKey + UniqueHash,
             V: BinaryValue + UniqueHash + fmt::Debug,
         {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
