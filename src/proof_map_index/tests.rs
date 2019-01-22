@@ -339,11 +339,8 @@ fn test_fuzz_insert() {
     assert_eq!(index2.merkle_root(), index1.merkle_root());
 }
 
-fn check_map_proof<K, V>(
-    proof: MapProof<K, V>,
-    key: Option<K>,
-    table: &ProofMapIndex<&Fork, K, V>,
-) where
+fn check_map_proof<K, V>(proof: MapProof<K, V>, key: Option<K>, table: &ProofMapIndex<&Fork, K, V>)
+where
     K: ProofMapKey + PartialEq + Debug + Serialize + DeserializeOwned,
     V: BinaryValue + UniqueHash + PartialEq + Debug + Serialize + DeserializeOwned,
 {
