@@ -29,7 +29,7 @@ use self::{
 };
 use crate::{
     views::{Iter as ViewIter, View, IndexAccess},
-    BinaryKey, BinaryValue, Fork, Snapshot, UniqueHash,
+    BinaryKey, BinaryValue, Fork, UniqueHash,
 };
 use exonum_crypto::{Hash, HashStream};
 use crate::views::Mount;
@@ -134,7 +134,7 @@ where
     /// let snapshot = db.snapshot();
     /// let index: ProofMapIndex<_, Hash, u8> = ProofMapIndex::new(name, &snapshot);
     ///
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut mut_index: ProofMapIndex<_, Hash, u8> = ProofMapIndex::new(name, &mut fork);
     /// ```
     pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
@@ -172,7 +172,7 @@ where
     ///     &snapshot,
     ///  );
     ///
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut mut_index: ProofMapIndex<_, Hash, u8> = ProofMapIndex::new_in_family(
     ///     name,
     ///     &index_id,
@@ -226,7 +226,7 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut index = ProofMapIndex::new(name, &mut fork);
     ///
     /// let default_hash = index.merkle_root();
@@ -257,7 +257,7 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut index = ProofMapIndex::new(name, &mut fork);
     ///
     /// let hash = Hash::default();
@@ -280,7 +280,7 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut index = ProofMapIndex::new(name, &mut fork);
     ///
     /// let hash = Hash::default();
@@ -572,7 +572,7 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut index = ProofMapIndex::new(name, &mut fork);
     ///
     /// let hash = Hash::default();
@@ -689,7 +689,7 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut index = ProofMapIndex::new(name, &mut fork);
     ///
     /// let hash = Hash::default();
@@ -749,7 +749,7 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut index = ProofMapIndex::new(name, &mut fork);
     ///
     /// let hash = Hash::default();

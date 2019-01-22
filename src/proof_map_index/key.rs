@@ -114,7 +114,7 @@ where
 ///
 ///
 /// # fn main() {
-/// let mut fork = { let db = TemporaryDB::new(); db.fork() };
+/// let fork = { let db = TemporaryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &mut fork);
 /// map.put(&Point { x: 3, y: -4 }, 5u32);
 /// assert_eq!(map.get(&Point { x: 3, y: -4 }), Some(5));
