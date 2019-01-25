@@ -21,8 +21,8 @@ use super::{
     BinaryKey, BinaryValue, Fork, Iter as BytesIter, Iterator as BytesIterator, Snapshot,
 };
 
-//#[cfg(test)]
-//mod tests;
+#[cfg(test)]
+mod tests;
 
 /// Base view struct responsible for accessing indexes.
 // TODO: add documentation [ECR-2820]
@@ -134,7 +134,7 @@ pub struct IndexAddress {
 impl IndexAddress {
     pub fn root() -> Self {
         Self {
-            name: "".to_owned(),
+            name: String::new(),
             bytes: None,
         }
     }
@@ -282,12 +282,12 @@ impl<T: IndexAccess> View<T> {
             .as_ref()
             .map(|changes| changes.data.range::<[u8], _>((Included(from), Unbounded)));
 
-        let is_cleared = self
+        let is_empty = self
             .changes
             .as_ref()
             .map_or(false, |changes| changes.is_empty());
 
-        if is_cleared {
+        if is_empty {
             // Ignore all changes from the snapshot
             Box::new(ChangesIter::new(changes_iter.unwrap()))
         } else {
