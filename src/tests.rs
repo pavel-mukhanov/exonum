@@ -17,13 +17,14 @@ use super::{
     Snapshot, SparseListIndex, TemporaryDB, ValueSetIndex,
 };
 use exonum_crypto::Hash;
+use crate::views::IndexAccess;
 
 const IDX_NAME: &'static str = "idx_name";
 
 #[test]
 fn test_fork_iter() {
     let db = TemporaryDB::default();
-    let mut fork = db.fork();
+    let fork = db.fork();
 
     fork.put(IDX_NAME, vec![10], vec![10]);
     fork.put(IDX_NAME, vec![20], vec![20]);
@@ -33,7 +34,7 @@ fn test_fork_iter() {
 
     db.merge(fork.into_patch()).unwrap();
 
-    let mut fork = db.fork();
+    let fork = db.fork();
 
     assert!(fork.contains(IDX_NAME, &[10]));
 
@@ -89,7 +90,7 @@ fn test_fork_iter() {
     );
 
     // Replaced
-    let mut fork = db.fork();
+    let fork = db.fork();
 
     fork.put(IDX_NAME, vec![10], vec![11]);
     assert_iter(&fork, 0, &[(10, 11), (20, 20), (30, 30)]);
@@ -97,7 +98,7 @@ fn test_fork_iter() {
     assert_iter(&fork, 0, &[(10, 11), (20, 20), (30, 31)]);
 
     // Deleted
-    let mut fork = db.fork();
+    let fork = db.fork();
 
     fork.remove(IDX_NAME, vec![20]);
     assert_iter(&fork, 0, &[(10, 10), (30, 30)]);
@@ -109,7 +110,7 @@ fn test_fork_iter() {
     assert_iter(&fork, 0, &[(30, 30)]);
 
     // MissDeleted
-    let mut fork = db.fork();
+    let fork = db.fork();
 
     fork.remove(IDX_NAME, vec![5]);
     assert_iter(&fork, 0, &[(10, 10), (20, 20), (30, 30)]);
@@ -122,7 +123,7 @@ fn test_fork_iter() {
 #[test]
 fn test_changelog() {
     let db = TemporaryDB::default();
-    let mut fork = db.fork();
+    let fork = db.fork();
 
     fork.put(IDX_NAME, vec![1], vec![1]);
     fork.put(IDX_NAME, vec![2], vec![2]);
@@ -192,14 +193,14 @@ fn test_changelog() {
 fn test_multiple_patch() {
     let db = TemporaryDB::default();
 
-    fn list_index<View: AsRef<dyn Snapshot>>(view: View) -> ListIndex<View, u64> {
+    fn list_index<View: IndexAccess>(view: View) -> ListIndex<View, u64> {
         ListIndex::new("list_index", view)
     }
     // create first patch
     let patch1 = {
-        let mut fork = db.fork();
+        let fork = db.fork();
         {
-            let mut index = list_index(&mut fork);
+            let mut index = list_index(&fork);
             index.push(1);
             index.push(3);
             index.push(4);
@@ -208,9 +209,9 @@ fn test_multiple_patch() {
     };
     // create second patch
     let patch2 = {
-        let mut fork = db.fork();
+        let fork = db.fork();
         {
-            let mut index = list_index(&mut fork);
+            let mut index = list_index(&fork);
             index.push(2);
         }
         fork.into_patch()
@@ -227,12 +228,12 @@ fn test_multiple_patch() {
 #[allow(dead_code, unreachable_code, unused_variables)]
 fn should_compile() {
     let fork: Fork = unimplemented!();
-    let _: Entry<_, ()> = Entry::new_in_family("", "", &mut fork);
-    let _: KeySetIndex<_, Hash> = KeySetIndex::new_in_family("", "", &mut fork);
-    let _: ListIndex<_, ()> = ListIndex::new_in_family("", "", &mut fork);
-    let _: MapIndex<_, Hash, ()> = MapIndex::new_in_family("", "", &mut fork);
-    let _: ProofListIndex<_, ()> = ProofListIndex::new_in_family("", "", &mut fork);
-    let _: ProofMapIndex<_, Hash, ()> = ProofMapIndex::new_in_family("", "", &mut fork);
-    let _: SparseListIndex<_, ()> = SparseListIndex::new_in_family("", "", &mut fork);
-    let _: ValueSetIndex<_, ()> = ValueSetIndex::new_in_family("", "", &mut fork);
+    let _: Entry<_, ()> = Entry::new_in_family("", "", &fork);
+    let _: KeySetIndex<_, Hash> = KeySetIndex::new_in_family("", "", &fork);
+    let _: ListIndex<_, ()> = ListIndex::new_in_family("", "", &fork);
+    let _: MapIndex<_, Hash, ()> = MapIndex::new_in_family("", "", &fork);
+    let _: ProofListIndex<_, ()> = ProofListIndex::new_in_family("", "", &fork);
+    let _: ProofMapIndex<_, Hash, ()> = ProofMapIndex::new_in_family("", "", &fork);
+    let _: SparseListIndex<_, ()> = SparseListIndex::new_in_family("", "", &fork);
+    let _: ValueSetIndex<_, ()> = ValueSetIndex::new_in_family("", "", &fork);
 }

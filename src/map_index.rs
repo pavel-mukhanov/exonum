@@ -21,9 +21,8 @@
 use std::{borrow::Borrow, marker::PhantomData};
 
 use super::{
-    base_index::{BaseIndex, BaseIndexIter},
-    indexes_metadata::IndexType,
-    BinaryKey, BinaryValue, Fork, Snapshot,
+    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    BinaryKey, BinaryValue, Fork,
 };
 
 /// A map of keys and values. Access to the elements of this map is obtained using the keys.
@@ -34,8 +33,8 @@ use super::{
 /// [`BinaryKey`]: ../trait.BinaryKey.html
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
-pub struct MapIndex<T, K, V> {
-    base: BaseIndex<T>,
+pub struct MapIndex<T: IndexAccess, K, V> {
+    base: View<T>,
     _k: PhantomData<K>,
     _v: PhantomData<V>,
 }
@@ -50,7 +49,7 @@ pub struct MapIndex<T, K, V> {
 /// [`MapIndex`]: struct.MapIndex.html
 #[derive(Debug)]
 pub struct MapIndexIter<'a, K, V> {
-    base_iter: BaseIndexIter<'a, K, V>,
+    base_iter: ViewIter<'a, K, V>,
 }
 
 /// Returns an iterator over the keys of a `MapIndex`.
@@ -63,7 +62,7 @@ pub struct MapIndexIter<'a, K, V> {
 /// [`MapIndex`]: struct.MapIndex.html
 #[derive(Debug)]
 pub struct MapIndexKeys<'a, K> {
-    base_iter: BaseIndexIter<'a, K, ()>,
+    base_iter: ViewIter<'a, K, ()>,
 }
 
 /// Returns an iterator over the values of a `MapIndex`.
@@ -76,12 +75,12 @@ pub struct MapIndexKeys<'a, K> {
 /// [`MapIndex`]: struct.MapIndex.html
 #[derive(Debug)]
 pub struct MapIndexValues<'a, V> {
-    base_iter: BaseIndexIter<'a, (), V>,
+    base_iter: ViewIter<'a, (), V>,
 }
 
 impl<T, K, V> MapIndex<T, K, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: BinaryKey,
     V: BinaryValue,
 {
@@ -104,9 +103,9 @@ where
     /// let snapshot = db.snapshot();
     /// let index: MapIndex<_, u8, u8> = MapIndex::new(name, &snapshot);
     /// ```
-    pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: BaseIndex::new(index_name, IndexType::Map, view),
+            base: IndexBuilder::from_view(view).index_name(index_name).build(),
             _k: PhantomData,
             _v: PhantomData,
         }
@@ -138,10 +137,13 @@ where
     where
         I: BinaryKey,
         I: ?Sized,
-        S: AsRef<str>,
+        S: Into<String>,
     {
         Self {
-            base: BaseIndex::new_in_family(family_name, index_id, IndexType::Map, view),
+            base: IndexBuilder::from_view(view)
+                .index_name(family_name)
+                .family_id(index_id)
+                .build(),
             _k: PhantomData,
             _v: PhantomData,
         }
@@ -156,8 +158,8 @@ where
     ///
     /// let db = TemporaryDB::default();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = MapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = MapIndex::new(name, &fork);
     /// assert!(index.get(&1).is_none());
     ///
     /// index.put(&1, 2);
@@ -180,8 +182,8 @@ where
     ///
     /// let db = TemporaryDB::default();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = MapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = MapIndex::new(name, &fork);
     /// assert!(!index.contains(&1));
     ///
     /// index.put(&1, 2);
@@ -344,7 +346,7 @@ where
     }
 }
 
-impl<'a, K, V> MapIndex<&'a mut Fork, K, V>
+impl<'a, K, V> MapIndex<&'a Fork, K, V>
 where
     K: BinaryKey,
     V: BinaryValue,
@@ -358,8 +360,8 @@ where
     ///
     /// let db = TemporaryDB::default();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = MapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = MapIndex::new(name, &fork);
     ///
     /// index.put(&1, 2);
     /// assert!(index.contains(&1));
@@ -376,8 +378,8 @@ where
     ///
     /// let db = TemporaryDB::default();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = MapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = MapIndex::new(name, &fork);
     ///
     /// index.put(&1, 2);
     /// assert!(index.contains(&1));
@@ -406,8 +408,8 @@ where
     ///
     /// let db = TemporaryDB::default();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = MapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = MapIndex::new(name, &fork);
     ///
     /// index.put(&1, 2);
     /// assert!(index.contains(&1));
@@ -421,7 +423,7 @@ where
 
 impl<'a, T, K, V> ::std::iter::IntoIterator for &'a MapIndex<T, K, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: BinaryKey,
     V: BinaryValue,
 {
@@ -477,11 +479,11 @@ mod tests {
     #[test]
     fn test_str_key() {
         let db = TemporaryDB::default();
-        let mut fork = db.fork();
+        let fork = db.fork();
 
         const KEY: &str = "key_1";
 
-        let mut index: MapIndex<_, String, _> = MapIndex::new(IDX_NAME, &mut fork);
+        let mut index: MapIndex<_, String, _> = MapIndex::new(IDX_NAME, &fork);
         assert_eq!(false, index.contains(KEY));
 
         index.put(&KEY.to_owned(), 0);
@@ -494,11 +496,11 @@ mod tests {
     #[test]
     fn test_u8_slice_key() {
         let db = TemporaryDB::default();
-        let mut fork = db.fork();
+        let fork = db.fork();
 
         const KEY: &[u8] = &[1, 2, 3];
 
-        let mut index: MapIndex<_, Vec<u8>, _> = MapIndex::new(IDX_NAME, &mut fork);
+        let mut index: MapIndex<_, Vec<u8>, _> = MapIndex::new(IDX_NAME, &fork);
         assert_eq!(false, index.contains(KEY));
 
         index.put(&KEY.to_owned(), 0);
@@ -511,8 +513,8 @@ mod tests {
     #[test]
     fn test_methods() {
         let db = TemporaryDB::default();
-        let mut fork = db.fork();
-        let mut map_index = MapIndex::new(IDX_NAME, &mut fork);
+        let fork = db.fork();
+        let mut map_index = MapIndex::new(IDX_NAME, &fork);
 
         assert_eq!(map_index.get(&1u8), None);
         assert!(!map_index.contains(&1u8));
@@ -538,8 +540,8 @@ mod tests {
     #[test]
     fn test_iter() {
         let db = TemporaryDB::default();
-        let mut fork = db.fork();
-        let mut map_index = MapIndex::new(IDX_NAME, &mut fork);
+        let fork = db.fork();
+        let mut map_index = MapIndex::new(IDX_NAME, &fork);
 
         map_index.put(&1u8, 1u8);
         map_index.put(&2u8, 2u8);

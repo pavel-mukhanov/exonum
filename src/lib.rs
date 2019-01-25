@@ -132,7 +132,6 @@ pub use self::{
     entry::Entry,
     error::Error,
     hash::{HashTag, UniqueHash},
-    indexes_metadata::StorageMetadata,
     key_set_index::KeySetIndex,
     keys::BinaryKey,
     list_index::ListIndex,
@@ -142,21 +141,21 @@ pub use self::{
     sparse_list_index::SparseListIndex,
     value_set_index::ValueSetIndex,
     values::BinaryValue,
+    views::IndexBuilder,
 };
 
 /// A specialized `Result` type for I/O operations with storage.
 pub type Result<T> = ::std::result::Result<T, Error>;
 
 mod backends;
-mod base_index;
 mod db;
 mod entry;
 mod error;
 mod hash;
-mod indexes_metadata;
 mod keys;
 mod options;
 mod values;
+mod views;
 
 pub mod key_set_index;
 pub mod list_index;
@@ -165,6 +164,3 @@ pub mod proof_list_index;
 pub mod proof_map_index;
 pub mod sparse_list_index;
 pub mod value_set_index;
-
-#[cfg(test)]
-mod tests;

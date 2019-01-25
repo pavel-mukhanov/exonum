@@ -20,10 +20,9 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use super::{
-    base_index::{BaseIndex, BaseIndexIter},
-    indexes_metadata::IndexType,
-    BinaryKey, Fork, Snapshot,
+use crate::{
+    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    BinaryKey, Fork,
 };
 
 /// A set of key items.
@@ -33,8 +32,8 @@ use super::{
 ///
 /// [`BinaryKey`]: ../trait.BinaryKey.html
 #[derive(Debug)]
-pub struct KeySetIndex<T, K> {
-    base: BaseIndex<T>,
+pub struct KeySetIndex<T: IndexAccess, K> {
+    base: View<T>,
     _k: PhantomData<K>,
 }
 
@@ -48,12 +47,12 @@ pub struct KeySetIndex<T, K> {
 /// [`KeySetIndex`]: struct.KeySetIndex.html
 #[derive(Debug)]
 pub struct KeySetIndexIter<'a, K> {
-    base_iter: BaseIndexIter<'a, K, ()>,
+    base_iter: ViewIter<'a, K, ()>,
 }
 
 impl<T, K> KeySetIndex<T, K>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: BinaryKey,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -75,9 +74,9 @@ where
     /// let name = "name";
     /// let index: KeySetIndex<_, u8> = KeySetIndex::new(name, &snapshot);
     /// ```
-    pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: BaseIndex::new(index_name, IndexType::KeySet, view),
+            base: IndexBuilder::from_view(view).index_name(index_name).build(),
             _k: PhantomData,
         }
     }
@@ -107,10 +106,13 @@ where
     where
         I: BinaryKey,
         I: ?Sized,
-        S: AsRef<str>,
+        S: Into<String>,
     {
         Self {
-            base: BaseIndex::new_in_family(family_name, index_id, IndexType::KeySet, view),
+            base: IndexBuilder::from_view(view)
+                .index_name(family_name)
+                .family_id(index_id)
+                .build(),
             _k: PhantomData,
         }
     }
@@ -122,10 +124,10 @@ where
     /// ```
     /// use exonum_merkledb::{TemporaryDB, Database, KeySetIndex};
     ///
-    /// let db = TemporaryDB::default();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = KeySetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = KeySetIndex::new(name, &fork);
     /// assert!(!index.contains(&1));
     ///
     /// index.insert(1);
@@ -146,7 +148,7 @@ where
     /// ```
     /// use exonum_merkledb::{TemporaryDB, Database, KeySetIndex};
     ///
-    /// let db = TemporaryDB::default();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let snapshot = db.snapshot();
     /// let index: KeySetIndex<_, u8> = KeySetIndex::new(name, &snapshot);
@@ -169,7 +171,7 @@ where
     /// ```
     /// use exonum_merkledb::{TemporaryDB, Database, KeySetIndex};
     ///
-    /// let db = TemporaryDB::default();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
     /// let snapshot = db.snapshot();
     /// let index: KeySetIndex<_, u8> = KeySetIndex::new(name, &snapshot);
@@ -185,7 +187,7 @@ where
     }
 }
 
-impl<'a, K> KeySetIndex<&'a mut Fork, K>
+impl<'a, K> KeySetIndex<&'a Fork, K>
 where
     K: BinaryKey,
 {
@@ -196,10 +198,10 @@ where
     /// ```
     /// use exonum_merkledb::{TemporaryDB, Database, KeySetIndex};
     ///
-    /// let db = TemporaryDB::default();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = KeySetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = KeySetIndex::new(name, &fork);
     ///
     /// index.insert(1);
     /// assert!(index.contains(&1));
@@ -216,10 +218,10 @@ where
     /// ```
     /// use exonum_merkledb::{TemporaryDB, Database, KeySetIndex};
     ///
-    /// let db = TemporaryDB::default();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = KeySetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = KeySetIndex::new(name, &fork);
     ///
     /// index.insert(1);
     /// assert!(index.contains(&1));
@@ -247,10 +249,10 @@ where
     /// ```
     /// use exonum_merkledb::{TemporaryDB, Database, KeySetIndex};
     ///
-    /// let db = TemporaryDB::default();
+    /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = KeySetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = KeySetIndex::new(name, &fork);
     ///
     /// index.insert(1);
     /// assert!(index.contains(&1));
@@ -265,7 +267,7 @@ where
 
 impl<'a, T, K> ::std::iter::IntoIterator for &'a KeySetIndex<T, K>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: BinaryKey,
 {
     type Item = K::Owned;
@@ -289,19 +291,19 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Database, TemporaryDB};
     use super::*;
+    use crate::{Database, TemporaryDB};
 
     const INDEX_NAME: &str = "test_index_name";
 
     #[test]
-    fn test_str_key() {
-        let db = TemporaryDB::default();
-        let mut fork = db.fork();
+    fn str_key() {
+        let db = TemporaryDB::new();
+        let fork = db.fork();
+        let mut index: KeySetIndex<_, String> = KeySetIndex::new(INDEX_NAME, &fork);
 
         const KEY: &str = "key_1";
 
-        let mut index: KeySetIndex<_, String> = KeySetIndex::new(INDEX_NAME, &mut fork);
         assert_eq!(false, index.contains(KEY));
 
         index.insert(KEY.to_owned());
@@ -312,13 +314,13 @@ mod tests {
     }
 
     #[test]
-    fn test_u8_slice_key() {
-        let db = TemporaryDB::default();
-        let mut fork = db.fork();
+    fn u8_slice_key() {
+        let db = TemporaryDB::new();
+        let fork = db.fork();
 
         const KEY: &[u8] = &[1, 2, 3];
 
-        let mut index: KeySetIndex<_, Vec<u8>> = KeySetIndex::new(INDEX_NAME, &mut fork);
+        let mut index: KeySetIndex<_, Vec<u8>> = KeySetIndex::new(INDEX_NAME, &fork);
         assert_eq!(false, index.contains(KEY));
 
         index.insert(KEY.to_owned());

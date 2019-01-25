@@ -21,9 +21,8 @@
 use std::marker::PhantomData;
 
 use super::{
-    base_index::{BaseIndex, BaseIndexIter},
-    indexes_metadata::IndexType,
-    BinaryKey, BinaryValue, Fork, Snapshot, UniqueHash,
+    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    BinaryKey, BinaryValue, Fork, UniqueHash,
 };
 use exonum_crypto::Hash;
 
@@ -34,8 +33,8 @@ use exonum_crypto::Hash;
 ///
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
-pub struct ValueSetIndex<T, V> {
-    base: BaseIndex<T>,
+pub struct ValueSetIndex<T: IndexAccess, V> {
+    base: View<T>,
     _v: PhantomData<V>,
 }
 
@@ -49,7 +48,7 @@ pub struct ValueSetIndex<T, V> {
 /// [`ValueSetIndex`]: struct.ValueSetIndex.html
 #[derive(Debug)]
 pub struct ValueSetIndexIter<'a, V> {
-    base_iter: BaseIndexIter<'a, Hash, V>,
+    base_iter: ViewIter<'a, Hash, V>,
 }
 
 /// Returns an iterator over the hashes of items of a `ValueSetIndex`.
@@ -62,12 +61,12 @@ pub struct ValueSetIndexIter<'a, V> {
 /// [`ValueSetIndex`]: struct.ValueSetIndex.html
 #[derive(Debug)]
 pub struct ValueSetIndexHashes<'a> {
-    base_iter: BaseIndexIter<'a, Hash, ()>,
+    base_iter: ViewIter<'a, Hash, ()>,
 }
 
 impl<T, V> ValueSetIndex<T, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     V: BinaryValue + UniqueHash,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -89,9 +88,9 @@ where
     /// let snapshot = db.snapshot();
     /// let index: ValueSetIndex<_, u8> = ValueSetIndex::new(name, &snapshot);
     /// ```
-    pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: BaseIndex::new(index_name, IndexType::ValueSet, view),
+            base: IndexBuilder::from_view(view).index_name(index_name).build(),
             _v: PhantomData,
         }
     }
@@ -121,10 +120,13 @@ where
     where
         I: BinaryKey,
         I: ?Sized,
-        S: AsRef<str>,
+        S: Into<String>,
     {
         Self {
-            base: BaseIndex::new_in_family(family_name, index_id, IndexType::ValueSet, view),
+            base: IndexBuilder::from_view(view)
+                .index_name(family_name)
+                .family_id(index_id)
+                .build(),
             _v: PhantomData,
         }
     }
@@ -138,8 +140,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name  = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ValueSetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ValueSetIndex::new(name, &fork);
     /// assert!(!index.contains(&1));
     ///
     /// index.insert(1);
@@ -159,8 +161,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name  = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ValueSetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ValueSetIndex::new(name, &fork);
     ///
     /// let data = vec![1, 2, 3];
     /// let data_hash = exonum_crypto::hash(&data);
@@ -270,7 +272,7 @@ where
     }
 }
 
-impl<'a, V> ValueSetIndex<&'a mut Fork, V>
+impl<'a, V> ValueSetIndex<&'a Fork, V>
 where
     V: BinaryValue + UniqueHash,
 {
@@ -283,8 +285,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name  = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ValueSetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ValueSetIndex::new(name, &fork);
     ///
     /// index.insert(1);
     /// assert!(index.contains(&1));
@@ -302,8 +304,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name  = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ValueSetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ValueSetIndex::new(name, &fork);
     ///
     /// index.insert(1);
     /// assert!(index.contains(&1));
@@ -325,8 +327,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name  = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ValueSetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ValueSetIndex::new(name, &fork);
     ///
     /// let data = vec![1, 2, 3];
     /// let data_hash = exonum_crypto::hash(&data);
@@ -353,8 +355,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name  = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ValueSetIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ValueSetIndex::new(name, &fork);
     ///
     /// index.insert(1);
     /// assert!(index.contains(&1));
@@ -369,7 +371,7 @@ where
 
 impl<'a, T, V> ::std::iter::IntoIterator for &'a ValueSetIndex<T, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     V: BinaryValue + UniqueHash,
 {
     type Item = (Hash, V);

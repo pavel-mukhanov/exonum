@@ -422,16 +422,16 @@ mod tests {
         use crate::{Database, MapIndex, TemporaryDB};
 
         let db: Box<dyn Database> = Box::new(TemporaryDB::default());
-        let mut fork = db.fork();
+        let fork = db.fork();
         {
-            let mut index: MapIndex<_, i32, u64> = MapIndex::new("test_index", &mut fork);
+            let mut index: MapIndex<_, i32, u64> = MapIndex::new("test_index", &fork);
             index.put(&5, 100);
             index.put(&-3, 200);
         }
         db.merge(fork.into_patch()).unwrap();
 
         let snapshot = db.snapshot();
-        let index: MapIndex<_, i32, u64> = MapIndex::new("test_index", snapshot);
+        let index: MapIndex<_, i32, u64> = MapIndex::new("test_index", &snapshot);
         assert_eq!(index.get(&5), Some(100));
         assert_eq!(index.get(&-3), Some(200));
 
@@ -473,16 +473,16 @@ mod tests {
         }
 
         let db: Box<dyn Database> = Box::new(TemporaryDB::default());
-        let mut fork = db.fork();
+        let fork = db.fork();
         {
-            let mut index: MapIndex<_, QuirkyI32Key, u64> = MapIndex::new("test_index", &mut fork);
+            let mut index: MapIndex<_, QuirkyI32Key, u64> = MapIndex::new("test_index", &fork);
             index.put(&QuirkyI32Key(5), 100);
             index.put(&QuirkyI32Key(-3), 200);
         }
         db.merge(fork.into_patch()).unwrap();
 
         let snapshot = db.snapshot();
-        let index: MapIndex<_, QuirkyI32Key, u64> = MapIndex::new("test_index", snapshot);
+        let index: MapIndex<_, QuirkyI32Key, u64> = MapIndex::new("test_index", &snapshot);
         assert_eq!(index.get(&QuirkyI32Key(5)), Some(100));
         assert_eq!(index.get(&QuirkyI32Key(-3)), Some(200));
 
@@ -553,10 +553,10 @@ mod tests {
         let x2 = Utc.timestamp(10, 0);
         let y1 = Utc::now();
         let y2 = y1 + Duration::seconds(10);
-        let mut fork = db.fork();
+        let fork = db.fork();
         {
             let mut index: MapIndex<_, DateTime<Utc>, DateTime<Utc>> =
-                MapIndex::new("test_index", &mut fork);
+                MapIndex::new("test_index", &fork);
             index.put(&x1, y1);
             index.put(&x2, y2);
         }
@@ -564,7 +564,7 @@ mod tests {
 
         let snapshot = db.snapshot();
         let index: MapIndex<_, DateTime<Utc>, DateTime<Utc>> =
-            MapIndex::new("test_index", snapshot);
+            MapIndex::new("test_index", &snapshot);
         assert_eq!(index.get(&x1), Some(y1));
         assert_eq!(index.get(&x2), Some(y2));
 

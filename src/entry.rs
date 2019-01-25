@@ -16,9 +16,9 @@
 
 use std::marker::PhantomData;
 
-use super::{
-    base_index::BaseIndex, indexes_metadata::IndexType, BinaryKey, BinaryValue, Fork, Snapshot,
-    UniqueHash,
+use crate::{
+    views::{IndexAccess, IndexBuilder, View},
+    BinaryKey, BinaryValue, Fork, UniqueHash,
 };
 use exonum_crypto::Hash;
 
@@ -29,14 +29,14 @@ use exonum_crypto::Hash;
 ///
 /// [`BinaryValue`]: trait.BinaryValue.html
 #[derive(Debug)]
-pub struct Entry<T, V> {
-    base: BaseIndex<T>,
+pub struct Entry<T: IndexAccess, V> {
+    base: View<T>,
     _v: PhantomData<V>,
 }
 
 impl<T, V> Entry<T, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     V: BinaryValue + UniqueHash,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -58,9 +58,9 @@ where
     /// let snapshot = db.snapshot();
     /// let index: Entry<_, u8> = Entry::new(name, &snapshot);
     /// ```
-    pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: BaseIndex::new(index_name.as_ref(), IndexType::Entry, view),
+            base: IndexBuilder::from_view(view).index_name(index_name).build(),
             _v: PhantomData,
         }
     }
@@ -90,10 +90,13 @@ where
     where
         I: BinaryKey,
         I: ?Sized,
-        S: AsRef<str>,
+        S: Into<String>,
     {
         Self {
-            base: BaseIndex::new_in_family(family_name, index_id, IndexType::Entry, view),
+            base: IndexBuilder::from_view(view)
+                .index_name(family_name)
+                .family_id(index_id)
+                .build(),
             _v: PhantomData,
         }
     }
@@ -107,8 +110,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = Entry::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = Entry::new(name, &fork);
     /// assert_eq!(None, index.get());
     ///
     /// index.set(10);
@@ -127,8 +130,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = Entry::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = Entry::new(name, &fork);
     /// assert!(!index.exists());
     ///
     /// index.set(10);
@@ -148,8 +151,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = Entry::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = Entry::new(name, &fork);
     /// assert_eq!(Hash::default(), index.hash());
     ///
     /// let value = 10;
@@ -164,7 +167,7 @@ where
     }
 }
 
-impl<'a, V> Entry<&'a mut Fork, V>
+impl<'a, V> Entry<&'a Fork, V>
 where
     V: BinaryValue + UniqueHash,
 {
@@ -177,8 +180,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = Entry::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = Entry::new(name, &fork);
     ///
     /// index.set(10);
     /// assert_eq!(Some(10), index.get());
@@ -196,8 +199,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = Entry::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = Entry::new(name, &fork);
     ///
     /// index.set(10);
     /// assert_eq!(Some(10), index.get());
@@ -218,8 +221,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = Entry::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = Entry::new(name, &fork);
     ///
     /// index.set(10);
     /// assert_eq!(Some(10), index.get());
@@ -245,8 +248,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = Entry::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = Entry::new(name, &fork);
     ///
     /// index.set(10);
     /// assert_eq!(Some(10), index.get());

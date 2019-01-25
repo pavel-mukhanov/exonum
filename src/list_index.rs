@@ -19,10 +19,9 @@
 
 use std::{cell::Cell, marker::PhantomData};
 
-use super::{
-    base_index::{BaseIndex, BaseIndexIter},
-    indexes_metadata::IndexType,
-    BinaryKey, BinaryValue, Fork, Snapshot,
+use crate::{
+    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    BinaryKey, BinaryValue, Fork,
 };
 
 /// A list of items where elements are added to the end of the list and are
@@ -35,8 +34,8 @@ use super::{
 ///
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
-pub struct ListIndex<T, V> {
-    base: BaseIndex<T>,
+pub struct ListIndex<T: IndexAccess, V> {
+    base: View<T>,
     length: Cell<Option<u64>>,
     _v: PhantomData<V>,
 }
@@ -51,12 +50,12 @@ pub struct ListIndex<T, V> {
 /// [`ListIndex`]: struct.ListIndex.html
 #[derive(Debug)]
 pub struct ListIndexIter<'a, V> {
-    base_iter: BaseIndexIter<'a, u64, V>,
+    base_iter: ViewIter<'a, u64, V>,
 }
 
 impl<T, V> ListIndex<T, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     V: BinaryValue,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -78,9 +77,9 @@ where
     /// let snapshot = db.snapshot();
     /// let index: ListIndex<_, u8> = ListIndex::new(name, &snapshot);
     /// ```
-    pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: BaseIndex::new(index_name, IndexType::List, view),
+            base: IndexBuilder::from_view(view).index_name(index_name).build(),
             length: Cell::new(None),
             _v: PhantomData,
         }
@@ -111,10 +110,13 @@ where
     where
         I: BinaryKey,
         I: ?Sized,
-        S: AsRef<str>,
+        S: Into<String>,
     {
         Self {
-            base: BaseIndex::new_in_family(family_name, index_id, IndexType::List, view),
+            base: IndexBuilder::from_view(view)
+                .index_name(family_name)
+                .family_id(index_id)
+                .build(),
             length: Cell::new(None),
             _v: PhantomData,
         }
@@ -130,8 +132,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     /// assert_eq!(None, index.get(0));
     ///
     /// index.push(42);
@@ -150,8 +152,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     /// assert_eq!(None, index.last());
     ///
     /// index.push(42);
@@ -173,8 +175,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     /// assert!(index.is_empty());
     ///
     /// index.push(42);
@@ -193,8 +195,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     /// assert_eq!(0, index.len());
     ///
     /// index.push(10);
@@ -221,8 +223,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     ///
     /// index.extend([1, 2, 3, 4, 5].iter().cloned());
     ///
@@ -246,8 +248,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     ///
     /// index.extend([1, 2, 3, 4, 5].iter().cloned());
     ///
@@ -262,7 +264,7 @@ where
     }
 }
 
-impl<'a, V> ListIndex<&'a mut Fork, V>
+impl<'a, V> ListIndex<&'a Fork, V>
 where
     V: BinaryValue,
 {
@@ -280,8 +282,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     ///
     /// index.push(1);
     /// assert!(!index.is_empty());
@@ -301,8 +303,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     /// assert_eq!(None, index.pop());
     ///
     /// index.push(1);
@@ -329,8 +331,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     /// assert!(index.is_empty());
     ///
     /// index.extend([1, 2, 3].iter().cloned());
@@ -361,8 +363,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     ///
     /// index.extend([1, 2, 3, 4, 5].iter().cloned());
     /// assert_eq!(5, index.len());
@@ -391,8 +393,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     ///
     /// index.push(1);
     /// assert_eq!(Some(1), index.get(0));
@@ -427,8 +429,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ListIndex::new(name, &fork);
     ///
     /// index.push(1);
     /// assert!(!index.is_empty());
@@ -444,7 +446,7 @@ where
 
 impl<'a, T, V> ::std::iter::IntoIterator for &'a ListIndex<T, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     V: BinaryValue,
 {
     type Item = V;
@@ -468,10 +470,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{Fork, ListIndex, Snapshot};
-    use crate::{Database, TemporaryDB};
+    use crate::{list_index::ListIndex, views::IndexAccess, Database, Fork, TemporaryDB};
 
-    fn list_index_methods(list_index: &mut ListIndex<&mut Fork, i32>) {
+    use std::string::String;
+
+    fn list_index_methods(list_index: &mut ListIndex<&Fork, i32>) {
         assert!(list_index.is_empty());
         assert_eq!(0, list_index.len());
         assert!(list_index.last().is_none());
@@ -514,7 +517,7 @@ mod tests {
         assert_eq!(0, list_index.len());
     }
 
-    fn list_index_iter(list_index: &mut ListIndex<&mut Fork, u8>) {
+    fn list_index_iter(list_index: &mut ListIndex<&Fork, u8>) {
         list_index.extend(vec![1u8, 2, 3]);
 
         assert_eq!(list_index.iter().collect::<Vec<u8>>(), vec![1, 2, 3]);
@@ -533,19 +536,19 @@ mod tests {
 
         fn list<T>(index: u32, view: T) -> ListIndex<T, String>
         where
-            T: AsRef<dyn Snapshot>,
+            T: IndexAccess,
         {
             ListIndex::new_in_family("family", &index, view)
         }
 
         // Write data to both indexes.
         {
-            let mut index = list(x, &mut fork);
+            let mut index = list(x, &fork);
             index.push("foo".to_owned());
             index.push("bar".to_owned());
         }
         {
-            let mut index = list(y, &mut fork);
+            let mut index = list(y, &fork);
             index.push("baz".to_owned());
             index.push("qux".to_owned());
         }
@@ -557,7 +560,7 @@ mod tests {
 
         // Clear the index with the lower family key.
         {
-            let mut index = list(x, &mut fork);
+            let mut index = list(x, &fork);
             index.clear();
         }
 
@@ -593,32 +596,32 @@ mod tests {
     #[test]
     fn test_list_index_methods() {
         let db = TemporaryDB::default();
-        let mut fork = db.fork();
-        let mut list_index = ListIndex::new(IDX_NAME, &mut fork);
+        let fork = db.fork();
+        let mut list_index = ListIndex::new(IDX_NAME, &fork);
         list_index_methods(&mut list_index);
     }
 
     #[test]
     fn test_list_index_in_family_methods() {
         let db = TemporaryDB::default();
-        let mut fork = db.fork();
-        let mut list_index = ListIndex::new_in_family(IDX_NAME, &vec![01], &mut fork);
+        let fork = db.fork();
+        let mut list_index = ListIndex::new_in_family(IDX_NAME, &vec![01], &fork);
         list_index_methods(&mut list_index);
     }
 
     #[test]
     fn test_list_index_iter() {
         let db = TemporaryDB::default();
-        let mut fork = db.fork();
-        let mut list_index = ListIndex::new(IDX_NAME, &mut fork);
+        let fork = db.fork();
+        let mut list_index = ListIndex::new(IDX_NAME, &fork);
         list_index_iter(&mut list_index);
     }
 
     #[test]
     fn test_list_index_in_family_iter() {
         let db = TemporaryDB::default();
-        let mut fork = db.fork();
-        let mut list_index = ListIndex::new_in_family(IDX_NAME, &vec![01], &mut fork);
+        let fork = db.fork();
+        let mut list_index = ListIndex::new_in_family(IDX_NAME, &vec![01], &fork);
         list_index_iter(&mut list_index);
     }
 

@@ -27,10 +27,9 @@ use self::{
     key::{BitsRange, ChildKind, VALUE_KEY_PREFIX},
     proof::{create_multiproof, create_proof},
 };
-use super::{
-    base_index::{BaseIndex, BaseIndexIter},
-    indexes_metadata::IndexType,
-    BinaryKey, BinaryValue, Fork, Snapshot, UniqueHash,
+use crate::{
+    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    BinaryKey, BinaryValue, Fork, UniqueHash,
 };
 use exonum_crypto::{Hash, HashStream};
 
@@ -51,8 +50,8 @@ mod tests;
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 /// [`Hash`]: ../../../exonum_crypto/struct.Hash.html
 /// [`PublicKey`]: ../../../exonum_crypto/struct.PublicKey.html
-pub struct ProofMapIndex<T, K, V> {
-    base: BaseIndex<T>,
+pub struct ProofMapIndex<T: IndexAccess, K, V> {
+    base: View<T>,
     _k: PhantomData<K>,
     _v: PhantomData<V>,
 }
@@ -67,7 +66,7 @@ pub struct ProofMapIndex<T, K, V> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexIter<'a, K, V> {
-    base_iter: BaseIndexIter<'a, Vec<u8>, V>,
+    base_iter: ViewIter<'a, Vec<u8>, V>,
     _k: PhantomData<K>,
 }
 
@@ -81,7 +80,7 @@ pub struct ProofMapIndexIter<'a, K, V> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexKeys<'a, K> {
-    base_iter: BaseIndexIter<'a, Vec<u8>, ()>,
+    base_iter: ViewIter<'a, Vec<u8>, ()>,
     _k: PhantomData<K>,
 }
 
@@ -95,7 +94,7 @@ pub struct ProofMapIndexKeys<'a, K> {
 /// [`ProofMapIndex`]: struct.ProofMapIndex.html
 #[derive(Debug)]
 pub struct ProofMapIndexValues<'a, V> {
-    base_iter: BaseIndexIter<'a, Vec<u8>, V>,
+    base_iter: ViewIter<'a, Vec<u8>, V>,
 }
 
 enum RemoveAction {
@@ -131,7 +130,7 @@ impl<T: BinaryKey> ValuePath for T {
 
 impl<T, K, V> ProofMapIndex<T, K, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash,
 {
@@ -155,12 +154,12 @@ where
     /// let snapshot = db.snapshot();
     /// let index: ProofMapIndex<_, Hash, u8> = ProofMapIndex::new(name, &snapshot);
     ///
-    /// let mut fork = db.fork();
-    /// let mut mut_index: ProofMapIndex<_, Hash, u8> = ProofMapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut mut_index: ProofMapIndex<_, Hash, u8> = ProofMapIndex::new(name, &fork);
     /// ```
-    pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: BaseIndex::new(index_name, IndexType::ProofMap, view),
+            base: IndexBuilder::from_view(view).index_name(index_name).build(),
             _k: PhantomData,
             _v: PhantomData,
         }
@@ -193,21 +192,24 @@ where
     ///     &snapshot,
     ///  );
     ///
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut mut_index: ProofMapIndex<_, Hash, u8> = ProofMapIndex::new_in_family(
     ///     name,
     ///     &index_id,
-    ///     &mut fork,
+    ///     &fork,
     ///  );
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
         I: BinaryKey,
         I: ?Sized,
-        S: AsRef<str>,
+        S: Into<String>,
     {
         Self {
-            base: BaseIndex::new_in_family(family_name, index_id, IndexType::ProofMap, view),
+            base: IndexBuilder::from_view(view)
+                .index_name(family_name)
+                .family_id(index_id)
+                .build(),
             _k: PhantomData,
             _v: PhantomData,
         }
@@ -251,8 +253,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofMapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofMapIndex::new(name, &fork);
     ///
     /// let default_hash = index.merkle_root();
     /// assert_eq!(Hash::default(), default_hash);
@@ -282,8 +284,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofMapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofMapIndex::new(name, &fork);
     ///
     /// let hash = Hash::default();
     /// assert_eq!(None, index.get(&hash));
@@ -305,8 +307,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofMapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofMapIndex::new(name, &fork);
     ///
     /// let hash = Hash::default();
     /// assert!(!index.contains(&hash));
@@ -524,7 +526,7 @@ where
     }
 }
 
-impl<'a, K, V> ProofMapIndex<&'a mut Fork, K, V>
+impl<'a, K, V> ProofMapIndex<&'a Fork, K, V>
 where
     K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash,
@@ -616,8 +618,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofMapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofMapIndex::new(name, &fork);
     ///
     /// let hash = Hash::default();
     /// index.put(&hash, 2);
@@ -738,8 +740,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofMapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofMapIndex::new(name, &fork);
     ///
     /// let hash = Hash::default();
     /// index.put(&hash, 2);
@@ -797,8 +799,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofMapIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofMapIndex::new(name, &fork);
     ///
     /// let hash = Hash::default();
     /// index.put(&hash, 2);
@@ -814,7 +816,7 @@ where
 
 impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<T, K, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash,
 {
@@ -864,12 +866,12 @@ where
 
 impl<T, K, V> fmt::Debug for ProofMapIndex<T, K, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     K: BinaryKey + UniqueHash,
     V: BinaryValue + UniqueHash + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct Entry<'a, T: 'a, K: 'a, V: 'a + BinaryValue> {
+        struct Entry<'a, T: 'a + IndexAccess, K: 'a, V: 'a + BinaryValue> {
             index: &'a ProofMapIndex<T, K, V>,
             path: ProofPath,
             hash: Hash,
@@ -878,7 +880,7 @@ where
 
         impl<'a, T, K, V> Entry<'a, T, K, V>
         where
-            T: AsRef<dyn Snapshot>,
+            T: IndexAccess,
             K: BinaryKey + UniqueHash,
             V: BinaryValue + UniqueHash,
         {
@@ -902,7 +904,7 @@ where
 
         impl<'a, T, K, V> fmt::Debug for Entry<'a, T, K, V>
         where
-            T: AsRef<dyn Snapshot>,
+            T: IndexAccess,
             K: BinaryKey + UniqueHash,
             V: BinaryValue + UniqueHash + fmt::Debug,
         {

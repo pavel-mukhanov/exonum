@@ -23,12 +23,11 @@ use std::{
 };
 
 use self::{key::ProofListKey, proof::ProofOfAbsence};
-use super::{
-    base_index::{BaseIndex, BaseIndexIter},
-    indexes_metadata::IndexType,
-    BinaryKey, BinaryValue, Fork, Snapshot, UniqueHash,
+use crate::{
+    hash::HashTag,
+    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    BinaryKey, BinaryValue, Fork, UniqueHash,
 };
-use crate::hash::HashTag;
 use exonum_crypto::Hash;
 
 mod key;
@@ -45,8 +44,8 @@ mod tests;
 ///
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
-pub struct ProofListIndex<T, V> {
-    base: BaseIndex<T>,
+pub struct ProofListIndex<T: IndexAccess, V> {
+    base: View<T>,
     length: Cell<Option<u64>>,
     _v: PhantomData<V>,
 }
@@ -61,12 +60,12 @@ pub struct ProofListIndex<T, V> {
 /// [`ProofListIndex`]: struct.ProofListIndex.html
 #[derive(Debug)]
 pub struct ProofListIndexIter<'a, V> {
-    base_iter: BaseIndexIter<'a, ProofListKey, V>,
+    base_iter: ViewIter<'a, ProofListKey, V>,
 }
 
 impl<T, V> ProofListIndex<T, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     V: BinaryValue + UniqueHash,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -89,12 +88,12 @@ where
     /// let snapshot = db.snapshot();
     /// let index: ProofListIndex<_, u8> = ProofListIndex::new(name, &snapshot);
     ///
-    /// let mut fork = db.fork();
-    /// let mut mut_index: ProofListIndex<_, u8> = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut mut_index: ProofListIndex<_, u8> = ProofListIndex::new(name, &fork);
     /// ```
-    pub fn new<S: AsRef<str>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: BaseIndex::new(index_name, IndexType::ProofList, view),
+            base: IndexBuilder::from_view(view).index_name(index_name).build(),
             length: Cell::new(None),
             _v: PhantomData,
         }
@@ -123,18 +122,21 @@ where
     /// let index: ProofListIndex<_, u8> =
     ///                             ProofListIndex::new_in_family(name, &index_id, &snapshot);
     ///
-    /// let mut fork = db.fork();
+    /// let fork = db.fork();
     /// let mut mut_index : ProofListIndex<_, u8> =
-    ///                                 ProofListIndex::new_in_family(name, &index_id, &mut fork);
+    ///                                 ProofListIndex::new_in_family(name, &index_id, &fork);
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
         I: BinaryKey,
         I: ?Sized,
-        S: AsRef<str>,
+        S: Into<String>,
     {
         Self {
-            base: BaseIndex::new_in_family(family_name, index_id, IndexType::ProofList, view),
+            base: IndexBuilder::from_view(view)
+                .index_name(family_name)
+                .family_id(index_id)
+                .build(),
             length: Cell::new(None),
             _v: PhantomData,
         }
@@ -201,8 +203,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     /// assert_eq!(None, index.get(0));
     ///
     /// index.push(10);
@@ -221,8 +223,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     /// assert_eq!(None, index.last());
     ///
     /// index.push(1);
@@ -244,8 +246,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     /// assert!(index.is_empty());
     ///
     /// index.push(10);
@@ -264,8 +266,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     /// assert_eq!(0, index.len());
     ///
     /// index.push(1);
@@ -289,8 +291,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     /// assert_eq!(1, index.height());
     ///
     /// index.push(1);
@@ -323,8 +325,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     ///
     /// let default_hash = index.list_hash();
     /// assert_eq!(HashTag::empty_list_hash(), default_hash);
@@ -348,8 +350,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     ///
     /// index.push(1);
     ///
@@ -381,8 +383,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     ///
     /// index.extend([1, 2, 3, 4, 5].iter().cloned());
     ///
@@ -463,7 +465,7 @@ where
     }
 }
 
-impl<'a, V> ProofListIndex<&'a mut Fork, V>
+impl<'a, V> ProofListIndex<&'a Fork, V>
 where
     V: BinaryValue + UniqueHash,
 {
@@ -487,8 +489,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     ///
     /// index.push(1);
     /// assert!(!index.is_empty());
@@ -523,8 +525,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     ///
     /// index.extend([1, 2, 3].iter().cloned());
     /// assert_eq!(3, index.len());
@@ -551,8 +553,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     ///
     /// index.push(1);
     /// assert_eq!(Some(1), index.get(0));
@@ -601,8 +603,8 @@ where
     ///
     /// let db = TemporaryDB::new();
     /// let name = "name";
-    /// let mut fork = db.fork();
-    /// let mut index = ProofListIndex::new(name, &mut fork);
+    /// let fork = db.fork();
+    /// let mut index = ProofListIndex::new(name, &fork);
     ///
     /// index.push(1);
     /// assert!(!index.is_empty());
@@ -618,7 +620,7 @@ where
 
 impl<'a, T, V> ::std::iter::IntoIterator for &'a ProofListIndex<T, V>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
     V: BinaryValue + UniqueHash,
 {
     type Item = V;
