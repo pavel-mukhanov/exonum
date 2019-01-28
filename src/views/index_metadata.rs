@@ -19,7 +19,10 @@ use failure::{self, ensure, format_err};
 use num_traits::{FromPrimitive, ToPrimitive};
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{BinaryValue, views::{IndexAccess, View}, Fork};
+use crate::{
+    views::{IndexAccess, View},
+    BinaryValue, Fork,
+};
 
 const INDEX_METADATA_NAME: &str = "__INDEX_METADATA__";
 
@@ -81,7 +84,7 @@ impl IndexMetadata<&Fork> {
 
     fn set_has_parent(&mut self, has_parent: bool) {
         self.set_attribute("index_type", has_parent)
-    }    
+    }
 
     fn set_attribute<V: BinaryValue>(&mut self, name: &str, value: V) {
         self.view.put(name, value)
@@ -90,9 +93,9 @@ impl IndexMetadata<&Fork> {
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
+    use super::IndexType;
     use crate::BinaryValue;
-    use super::{IndexType};
+    use std::borrow::Cow;
 
     #[test]
     fn test_index_type_binary_value_correct() {

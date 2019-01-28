@@ -21,7 +21,7 @@
 use std::marker::PhantomData;
 
 use super::{
-    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    views::{IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
     BinaryKey, BinaryValue, Fork, UniqueHash,
 };
 use exonum_crypto::Hash;
@@ -90,7 +90,10 @@ where
     /// ```
     pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: IndexBuilder::from_view(view).index_name(index_name).build(),
+            base: IndexBuilder::from_view(view)
+                .index_type(IndexType::ValueSet)
+                .index_name(index_name)
+                .build(),
             _v: PhantomData,
         }
     }
@@ -124,6 +127,7 @@ where
     {
         Self {
             base: IndexBuilder::from_view(view)
+                .index_type(IndexType::ValueSet)
                 .index_name(family_name)
                 .family_id(index_id)
                 .build(),

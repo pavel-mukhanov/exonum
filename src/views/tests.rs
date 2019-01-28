@@ -14,7 +14,7 @@
 
 use crate::TemporaryDB;
 use crate::{
-    views::{IndexAccess, IndexAddress, IndexBuilder, View},
+    views::{IndexAccess, IndexAddress, IndexBuilder, IndexType, View},
     Database, Fork,
 };
 
@@ -26,7 +26,9 @@ where
     T: IndexAccess,
     I: Into<IndexAddress>,
 {
-    IndexBuilder::from_address(db_view, address.into()).build()
+    IndexBuilder::from_address(db_view, address.into())
+        .index_type(IndexType::Map)
+        .build()
 }
 
 fn assert_iter<T: IndexAccess>(view: &View<T>, from: u8, assumed: &[(u8, u8)]) {

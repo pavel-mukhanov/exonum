@@ -70,7 +70,7 @@ pub trait IndexAccess: Clone {
     type Changes: ChangeSet;
 
     fn snapshot(&self) -> &dyn Snapshot;
-    fn fork(&self) -> Option<& Fork>;
+    fn fork(&self) -> Option<&Fork>;
     fn changes(&self, address: &IndexAddress) -> Self::Changes;
 }
 
@@ -94,10 +94,13 @@ impl<T: IndexAccess> IndexBuilder<T> {
         }
     }
 
-    #[allow(dead_code)]
     /// Create index from `view' and `IndexAddress`.
     pub fn from_address(view: T, address: IndexAddress) -> Self {
-        Self { view, address, index_type: None, }
+        Self {
+            view,
+            address,
+            index_type: None,
+        }
     }
 
     /// Provides first part of the index address.
@@ -133,12 +136,13 @@ impl<T: IndexAccess> IndexBuilder<T> {
     }
 
     /// Returns index that builds upon specified `view` and `address`.
-    pub fn build(&mut self) -> View<T> {
-        View {
-            snapshot: self.view.clone(),
-            changes: self.view.changes(&self.address),
-            address: self.address.clone(),
-        }
+    ///
+    /// # Panics
+    ///
+    /// Panics if the index type did not set.
+    pub fn build(self) -> View<T> {
+        assert!(self.index_type.is_some(), "Index type must be set.");
+        View::new(self.view, self.address)
     }
 }
 
@@ -151,7 +155,7 @@ pub struct IndexAddress {
 impl IndexAddress {
     pub fn root() -> Self {
         Self {
-            name: "".to_owned(),
+            name: String::new(),
             bytes: None,
         }
     }
@@ -260,6 +264,15 @@ fn key_bytes<K: BinaryKey + ?Sized>(key: &K) -> Vec<u8> {
 }
 
 impl<T: IndexAccess> View<T> {
+    pub(super) fn new(snapshot: T, address: IndexAddress) -> Self {
+        let changes = snapshot.changes(&address);
+        Self {
+            snapshot,
+            changes,
+            address,
+        }
+    }
+
     fn get_bytes(&self, key: &[u8]) -> Option<Vec<u8>> {
         if let Some(ref changes) = self.changes.as_ref() {
             if let Some(change) = changes.data.get(key) {
@@ -307,12 +320,12 @@ impl<T: IndexAccess> View<T> {
             .as_ref()
             .map(|changes| changes.data.range::<[u8], _>((Included(from), Unbounded)));
 
-        let is_cleared = self
+        let is_empty = self
             .changes
             .as_ref()
             .map_or(false, |changes| changes.is_empty());
 
-        if is_cleared {
+        if is_empty {
             // Ignore all changes from the snapshot
             Box::new(ChangesIter::new(changes_iter.unwrap()))
         } else {

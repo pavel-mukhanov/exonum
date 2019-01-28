@@ -22,7 +22,7 @@ use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::{borrow::Cow, cell::Cell, marker::PhantomData};
 
 use crate::{
-    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    views::{IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
     BinaryKey, BinaryValue, Fork,
 };
 
@@ -137,7 +137,10 @@ where
     /// ```
     pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: IndexBuilder::from_view(view).index_name(index_name).build(),
+            base: IndexBuilder::from_view(view)
+                .index_type(IndexType::SparseList)
+                .index_name(index_name)
+                .build(),
             size: Cell::new(None),
             _v: PhantomData,
         }
@@ -176,6 +179,7 @@ where
     {
         Self {
             base: IndexBuilder::from_view(view)
+                .index_type(IndexType::SparseList)
                 .index_name(family_name)
                 .family_id(index_id)
                 .build(),
