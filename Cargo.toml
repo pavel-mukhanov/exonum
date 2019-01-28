@@ -41,3 +41,6 @@ pretty_assertions = "0.5.1"
 name = "criterion"
 path = "benches/lib.rs"
 harness = false
+
+[features]
+long_benchmarks = []
