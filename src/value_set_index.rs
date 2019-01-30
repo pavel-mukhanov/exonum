@@ -227,7 +227,7 @@ where
     }
 
     /// Returns an iterator visiting hashes of all elements in ascending order. The iterator element type
-    /// is [Hash](../../../exonum_crypto/struct.Hash.html).
+    /// is [Hash](../../exonum_crypto/struct.Hash.html).
     ///
     /// # Examples
     ///
@@ -250,7 +250,7 @@ where
     }
 
     /// Returns an iterator visiting hashes of all elements in ascending order starting from the specified
-    /// hash. The iterator element type is [Hash](../../../exonum_crypto/struct.Hash.html).
+    /// hash. The iterator element type is [Hash](../../exonum_crypto/struct.Hash.html).
     ///
     /// # Examples
     ///
