@@ -29,7 +29,7 @@ use self::{
 };
 use crate::{
     views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
-    BinaryKey, BinaryValue, Fork, UniqueHash,
+    BinaryKey, BinaryValue, Fork, UniqueHash, HashTag
 };
 use exonum_crypto::{Hash, HashStream};
 
@@ -272,6 +272,10 @@ where
             Some((_, Node::Branch(branch))) => branch.hash(),
             None => Hash::zero(),
         }
+    }
+
+    pub fn map_hash(&self) -> Hash {
+        HashTag::hash_map_node(self.merkle_root())
     }
 
     /// Returns a value corresponding to the key.
@@ -533,7 +537,7 @@ where
 {
     fn insert_leaf(&mut self, proof_path: &ProofPath, key: &K, value: V) -> Hash {
         debug_assert!(proof_path.is_leaf());
-        let hash = value.hash();
+        let hash = HashTag::hash_map_leaf(&value.to_bytes());
         self.base.put(proof_path, hash);
         self.base.put(&key.to_value_path(), value);
         hash
