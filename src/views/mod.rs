@@ -40,8 +40,11 @@ impl<T: IndexAccess> fmt::Debug for View<T> {
     }
 }
 
+/// TODO: add documentation [ECR-2820]
 pub trait ChangeSet {
+    /// TODO: add documentation [ECR-2820]
     fn as_ref(&self) -> Option<&ViewChanges>;
+    /// TODO: add documentation [ECR-2820]
     fn as_mut(&mut self) -> Option<&mut ViewChanges>;
 }
 
@@ -63,10 +66,13 @@ impl ChangeSet for ChangesRef<'_> {
     }
 }
 
+/// TODO: add documentation [ECR-2820]
 pub trait IndexAccess: Clone {
+    /// TODO: add documentation [ECR-2820]
     type Changes: ChangeSet;
-
+    /// TODO: add documentation [ECR-2820]
     fn snapshot(&self) -> &dyn Snapshot;
+    /// TODO: add documentation [ECR-2820]
     fn changes(&self, address: &IndexAddress) -> Self::Changes;
 }
 
