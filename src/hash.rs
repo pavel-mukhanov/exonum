@@ -14,9 +14,9 @@
 use byteorder::{ByteOrder, LittleEndian};
 use hex::FromHex;
 
+use crate::proof_map_index::ProofPath;
 use crate::BinaryValue;
 use exonum_crypto::{Hash, HashStream, HASH_SIZE};
-use crate::proof_map_index::ProofPath;
 
 const EMPTY_LIST_HASH: &str = "c6c0aa07f27493d2f2e5cff56c890a353a20086d6c25ec825128e12ae752b2d9";
 
@@ -61,7 +61,10 @@ impl HashTag {
 
     /// Convenience method to obtain a hashed value of the merkle tree node with one child.
     pub fn hash_single_node(hash: &Hash) -> Hash {
-        HashTag::ListBranchNode.hash_stream().update(hash.as_ref()).hash()
+        HashTag::ListBranchNode
+            .hash_stream()
+            .update(hash.as_ref())
+            .hash()
     }
 
     /// Convenience method to obtain a hashed value of the merkle tree leaf.
@@ -120,7 +123,7 @@ impl HashTag {
     pub fn hash_map_branch(branch_node: &[u8]) -> Hash {
         HashStream::new()
             .update(&[HashTag::MapBranchNode as u8])
-            .update(branch_node.as_ref())
+            .update(branch_node)
             .hash()
     }
 

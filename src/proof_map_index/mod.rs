@@ -29,7 +29,7 @@ use self::{
 };
 use crate::{
     views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
-    BinaryKey, BinaryValue, Fork, UniqueHash, HashTag
+    BinaryKey, BinaryValue, Fork, HashTag, UniqueHash,
 };
 use exonum_crypto::{Hash, HashStream};
 
