@@ -70,7 +70,7 @@ impl ChangeSet for ChangesRef<'_> {
 }
 
 /// TODO: add documentation [ECR-2820]
-pub trait IndexAccess: Clone {
+pub trait IndexAccess: Copy {
     /// TODO: add documentation [ECR-2820]
     type Changes: ChangeSet;
     /// TODO: add documentation [ECR-2820]
@@ -152,7 +152,7 @@ where
         let index_access = self.index_access;
 
         index_metadata::check_or_create_metadata(
-            index_access.clone(),
+            index_access,
             &self.address,
             &index_metadata::IndexMetadata { index_type },
         );
