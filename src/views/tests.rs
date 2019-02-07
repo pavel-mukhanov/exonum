@@ -658,3 +658,40 @@ fn mutable_and_immutable_borrows() {
 fn mutable_and_immutable_prefixed_borrows() {
     _mutable_and_immutable_borrows(database(), PREFIXED_IDX);
 }
+
+#[test]
+#[ignore]
+//TODO: fix test [ECR-2869]
+fn multiple_patch() {
+    use crate::ListIndex;
+    let db = TemporaryDB::new();
+    fn list_index<View: IndexAccess>(view: View) -> ListIndex<View, u64> {
+        ListIndex::new("list_index", view)
+    }
+    // create first patch
+    let patch1 = {
+        let fork = db.fork();
+        {
+            let mut index = list_index(&fork);
+            index.push(1);
+            index.push(3);
+            index.push(4);
+        }
+        fork.into_patch()
+    };
+    // create second patch
+    let patch2 = {
+        let fork = db.fork();
+        {
+            let mut index = list_index(&fork);
+            index.push(10);
+        }
+        fork.into_patch()
+    };
+    db.merge(patch1).unwrap();
+    db.merge(patch2).unwrap();
+    let snapshot = db.snapshot();
+    let index = list_index(&snapshot);
+    let iter = index.iter();
+    assert_eq!(index.len() as usize, iter.count());
+}
