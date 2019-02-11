@@ -74,10 +74,6 @@ pub trait IndexAccess: Copy {
     /// TODO: add documentation [ECR-2820]
     type Changes: ChangeSet;
     /// TODO: add documentation [ECR-2820]
-    fn root(&self) -> &str {
-        ""
-    }
-    /// TODO: add documentation [ECR-2820]
     fn snapshot(&self) -> &dyn Snapshot;
     #[allow(unsafe_code)]
     #[doc(hidden)]
@@ -102,7 +98,7 @@ where
 {
     /// Create index from `view'.
     pub fn new(index_access: T) -> Self {
-        let address = IndexAddress::with_root(index_access.root());
+        let address = IndexAddress::default();
         Self {
             index_access,
             address,
