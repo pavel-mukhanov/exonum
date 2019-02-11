@@ -273,7 +273,8 @@ where
         }
     }
 
-    pub fn map_hash(&self) -> Hash {
+    //TODO: add doc
+    pub fn root_hash(&self) -> Hash {
         HashTag::hash_map_node(self.merkle_root())
     }
 
@@ -932,7 +933,7 @@ where
         }
 
         if let Some(prefix) = self.get_root_path() {
-            let root_entry = Entry::new(self, self.map_hash(), prefix);
+            let root_entry = Entry::new(self, self.root_hash(), prefix);
             f.debug_struct("ProofMapIndex")
                 .field("entries", &root_entry)
                 .finish()
