@@ -23,15 +23,16 @@ pub use self::{
 
 use std::{fmt, marker::PhantomData};
 
+use exonum_crypto::{Hash, HashStream};
+
 use self::{
     key::{BitsRange, ChildKind, VALUE_KEY_PREFIX},
     proof::{create_multiproof, create_proof},
 };
 use crate::{
-    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    views::{IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
     BinaryKey, BinaryValue, Fork, UniqueHash,
 };
-use exonum_crypto::{Hash, HashStream};
 
 mod key;
 mod node;
@@ -157,7 +158,10 @@ where
     /// ```
     pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
         Self {
-            base: IndexBuilder::from_view(view).index_name(index_name).build(),
+            base: IndexBuilder::new(view)
+                .index_type(IndexType::ProofMap)
+                .index_name(index_name)
+                .build(),
             _k: PhantomData,
             _v: PhantomData,
         }
@@ -204,7 +208,8 @@ where
         S: Into<String>,
     {
         Self {
-            base: IndexBuilder::from_view(view)
+            base: IndexBuilder::new(view)
+                .index_type(IndexType::ProofMap)
                 .index_name(family_name)
                 .family_id(index_id)
                 .build(),

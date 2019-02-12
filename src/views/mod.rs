@@ -14,6 +14,8 @@
 
 #![warn(missing_docs)]
 
+pub use self::index_metadata::{IndexState, IndexType};
+
 use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData};
 
 use super::{
@@ -21,6 +23,7 @@ use super::{
     BinaryKey, BinaryValue, Fork, Iter as BytesIter, Iterator as BytesIterator, Snapshot,
 };
 
+mod index_metadata;
 #[cfg(test)]
 mod tests;
 
@@ -28,7 +31,7 @@ mod tests;
 // TODO: add documentation [ECR-2820]
 pub struct View<T: IndexAccess> {
     pub address: IndexAddress,
-    pub snapshot: T,
+    pub index_access: T,
     pub changes: T::Changes,
 }
 
@@ -67,11 +70,14 @@ impl ChangeSet for ChangesRef<'_> {
 }
 
 /// TODO: add documentation [ECR-2820]
-pub trait IndexAccess: Clone {
+pub trait IndexAccess: Copy {
     /// TODO: add documentation [ECR-2820]
     type Changes: ChangeSet;
     /// TODO: add documentation [ECR-2820]
     fn snapshot(&self) -> &dyn Snapshot;
+    #[allow(unsafe_code)]
+    #[doc(hidden)]
+    unsafe fn fork(self) -> Option<&'static Fork>;
     /// TODO: add documentation [ECR-2820]
     fn changes(&self, address: &IndexAddress) -> Self::Changes;
 }
@@ -81,77 +87,111 @@ pub trait IndexAccess: Clone {
 // TODO: add documentation [ECR-2820]
 #[derive(Debug)]
 pub struct IndexBuilder<T> {
-    view: T,
+    index_access: T,
     address: IndexAddress,
+    index_type: IndexType,
 }
 
-impl<T: IndexAccess> IndexBuilder<T> {
+impl<T> IndexBuilder<T>
+where
+    T: IndexAccess,
+{
     /// Create index from `view'.
-    pub fn from_view(view: T) -> Self {
+    pub fn new(index_access: T) -> Self {
+        let address = IndexAddress::default();
         Self {
-            view,
-            address: IndexAddress::root(),
+            index_access,
+            address,
+            index_type: IndexType::default(),
         }
     }
 
-    /// Create index from `view' and `IndexAddress`.
-    pub fn from_address(view: T, address: IndexAddress) -> Self {
-        Self { view, address }
-    }
-
     /// Provides first part of the index address.
-    pub fn index_name<S: Into<String>>(&mut self, index_name: S) -> Self {
+    pub fn index_name<S: Into<String>>(self, index_name: S) -> Self {
         let address = self.address.append_name(index_name.into());
         Self {
-            view: self.view.clone(),
+            index_access: self.index_access,
             address,
+            index_type: self.index_type,
         }
     }
 
     /// Provides `family_id` for the index address.
-    pub fn family_id<I>(&mut self, family_id: &I) -> Self
+    pub fn family_id<I>(self, family_id: &I) -> Self
     where
         I: BinaryKey + ?Sized,
     {
         let address = self.address.append_bytes(family_id);
         Self {
-            view: self.view.clone(),
+            index_access: self.index_access,
             address,
+            index_type: self.index_type,
+        }
+    }
+
+    /// Sets the type of the given index.
+    pub fn index_type(self, index_type: IndexType) -> Self {
+        Self {
+            index_access: self.index_access,
+            address: self.address,
+            index_type,
         }
     }
 
     /// Returns index that builds upon specified `view` and `address`.
-    pub fn build(&mut self) -> View<T> {
-        View {
-            snapshot: self.view.clone(),
-            changes: self.view.changes(&self.address),
-            address: self.address.clone(),
-        }
+    ///
+    /// # Panics
+    ///
+    /// Panics if index metadata doesn't match expected.
+    pub fn build(self) -> View<T> {
+        let has_parent = self.address.bytes().is_some();
+        let index_type = self.index_type;
+        let index_access = self.index_access;
+
+        index_metadata::check_or_create_metadata(
+            index_access,
+            &self.address,
+            index_metadata::IndexMetadata {
+                index_type,
+                has_parent,
+            },
+        );
+
+        View::new(index_access, self.address)
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Default)]
 pub struct IndexAddress {
-    name: String,
-    bytes: Option<Vec<u8>>,
+    pub(super) name: String,
+    pub(super) bytes: Option<Vec<u8>>,
 }
 
 impl IndexAddress {
-    pub fn root() -> Self {
+    /// TODO: add documentation [ECR-2820]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// TODO: add documentation [ECR-2820]
+    pub fn with_root<S: Into<String>>(root: S) -> Self {
         Self {
-            name: String::new(),
+            name: root.into(),
             bytes: None,
         }
     }
 
+    /// TODO: add documentation [ECR-2820]
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// TODO: add documentation [ECR-2820]
     pub fn bytes(&self) -> Option<&[u8]> {
         self.bytes.as_ref().map(Vec::as_slice)
     }
 
+    /// TODO: add documentation [ECR-2820]
     pub fn keyed<'a>(&self, key: &'a [u8]) -> (&str, Cow<'a, [u8]>) {
         (
             &self.name,
@@ -165,19 +205,22 @@ impl IndexAddress {
         )
     }
 
+    /// TODO: add documentation [ECR-2820]
     pub fn append_name<'a, S: Into<Cow<'a, str>>>(&self, suffix: S) -> Self {
         let suffix = suffix.into();
         Self {
             name: if self.name.is_empty() {
                 suffix.into_owned()
             } else {
-                format!("{}.{}", self.name, suffix.as_ref())
+                // Because `concat` is faster than `format!("...")` in all cases.
+                [self.name(), ".", suffix.as_ref()].concat()
             },
 
             bytes: self.bytes.clone(),
         }
     }
 
+    /// TODO: add documentation [ECR-2820]
     pub fn append_bytes<K: BinaryKey + ?Sized>(&self, suffix: &K) -> Self {
         let suffix = key_bytes(suffix);
         let (name, bytes) = self.keyed(&suffix);
@@ -191,19 +234,17 @@ impl IndexAddress {
 
 impl<'a> From<&'a str> for IndexAddress {
     fn from(name: &'a str) -> Self {
-        Self {
-            name: name.to_owned(),
-            bytes: None,
-        }
+        Self::with_root(name)
     }
 }
 
 impl From<String> for IndexAddress {
     fn from(name: String) -> Self {
-        Self { name, bytes: None }
+        Self::with_root(name)
     }
 }
 
+/// TODO should we have this impl in public interface? ECR-2834
 impl<'a, K: BinaryKey + ?Sized> From<(&'a str, &'a K)> for IndexAddress {
     fn from((name, key): (&'a str, &'a K)) -> Self {
         Self {
@@ -220,6 +261,11 @@ impl<'a> IndexAccess for &'a dyn Snapshot {
         *self
     }
 
+    #[allow(unsafe_code)]
+    unsafe fn fork(self) -> Option<&'static Fork> {
+        None
+    }
+
     fn changes(&self, _: &IndexAddress) -> Self::Changes {}
 }
 
@@ -228,6 +274,11 @@ impl<'a> IndexAccess for &'a Box<dyn Snapshot> {
 
     fn snapshot(&self) -> &dyn Snapshot {
         self.as_ref()
+    }
+
+    #[allow(unsafe_code)]
+    unsafe fn fork(self) -> Option<&'static Fork> {
+        None
     }
 
     fn changes(&self, _: &IndexAddress) -> Self::Changes {}
@@ -240,6 +291,20 @@ fn key_bytes<K: BinaryKey + ?Sized>(key: &K) -> Vec<u8> {
 }
 
 impl<T: IndexAccess> View<T> {
+    pub(super) fn new<I: Into<IndexAddress>>(index_access: T, address: I) -> Self {
+        let address = address.into();
+        let changes = index_access.changes(&address);
+        Self {
+            index_access,
+            changes,
+            address,
+        }
+    }
+
+    fn snapshot(&self) -> &dyn Snapshot {
+        self.index_access.snapshot()
+    }
+
     fn get_bytes(&self, key: &[u8]) -> Option<Vec<u8>> {
         if let Some(ref changes) = self.changes.as_ref() {
             if let Some(change) = changes.data.get(key) {
@@ -255,7 +320,7 @@ impl<T: IndexAccess> View<T> {
         }
 
         let (name, key) = self.address.keyed(key);
-        self.snapshot.snapshot().get(name, &key)
+        self.snapshot().get(name, &key)
     }
 
     fn contains_raw_key(&self, key: &[u8]) -> bool {
@@ -273,7 +338,7 @@ impl<T: IndexAccess> View<T> {
         }
 
         let (name, key) = self.address.keyed(key);
-        self.snapshot.snapshot().contains(name, &key)
+        self.snapshot().contains(name, &key)
     }
 
     fn iter_bytes(&self, from: &[u8]) -> BytesIter {
@@ -297,12 +362,7 @@ impl<T: IndexAccess> View<T> {
             Box::new(ChangesIter::new(changes_iter.unwrap()))
         } else {
             Box::new(ForkIter::new(
-                Box::new(SnapshotIter::new(
-                    self.snapshot.snapshot(),
-                    name,
-                    prefix,
-                    &key,
-                )),
+                Box::new(SnapshotIter::new(self.snapshot(), name, prefix, &key)),
                 changes_iter,
             ))
         }

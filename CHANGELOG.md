@@ -5,6 +5,13 @@ The project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+- Changed storage layout (#21)
+
+  - Changed indexes metadata layout in the database.
+
+  - Introduced a generic `IndexState` structure that can be used to store global
+    index properties like total number of items.
+
 - Several mutable indexes now can be create from immutable reference to `Fork` (#10)
 
 - Relaxed trait bounds for the `ProofMapIndex` keys (#7)
