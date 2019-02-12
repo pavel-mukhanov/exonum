@@ -424,7 +424,9 @@ enum NextIterValue {
 /// let db: Box<Database> = Box::new(TemporaryDB::new());
 /// let fork = db.fork();
 /// {
-///     let mut view  = IndexBuilder::from_address(&fork, "index_name".into()).build();
+///     let mut view = IndexBuilder::new(&fork)
+///         .index_name("index_name")
+///         .build();
 ///     view.put(&vec![1, 2, 3], vec![123]);
 /// }
 ///
@@ -613,6 +615,11 @@ impl<'a> IndexAccess for &'a Fork {
 
     fn snapshot(&self) -> &dyn Snapshot {
         &self.flushed
+    }
+
+    #[allow(unsafe_code)]
+    unsafe fn fork(self) -> Option<&'static Fork> {
+        Some(std::mem::transmute(self))
     }
 
     fn changes(&self, address: &IndexAddress) -> Self::Changes {

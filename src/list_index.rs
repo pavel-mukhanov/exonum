@@ -17,10 +17,10 @@
 //! The given section contains methods related to `ListIndex` and the iterator
 //! over the items of this list.
 
-use std::{cell::Cell, marker::PhantomData};
+use std::marker::PhantomData;
 
 use crate::{
-    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    views::{IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View},
     BinaryKey, BinaryValue, Fork,
 };
 
@@ -36,7 +36,7 @@ use crate::{
 #[derive(Debug)]
 pub struct ListIndex<T: IndexAccess, V> {
     base: View<T>,
-    length: Cell<Option<u64>>,
+    state: IndexState<T, u64>,
     _v: PhantomData<V>,
 }
 
@@ -77,10 +77,16 @@ where
     /// let snapshot = db.snapshot();
     /// let index: ListIndex<_, u8> = ListIndex::new(name, &snapshot);
     /// ```
-    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, index_access: T) -> Self {
+        let base = IndexBuilder::new(index_access)
+            .index_type(IndexType::List)
+            .index_name(index_name)
+            .build();
+        let state = IndexState::from_view(&base);
+
         Self {
-            base: IndexBuilder::from_view(view).index_name(index_name).build(),
-            length: Cell::new(None),
+            base,
+            state,
             _v: PhantomData,
         }
     }
@@ -106,18 +112,22 @@ where
     /// let snapshot = db.snapshot();
     /// let index: ListIndex<_, u8> = ListIndex::new_in_family(name, &index_id, &snapshot);
     /// ```
-    pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
+    pub fn new_in_family<S, I>(family_name: S, index_id: &I, index_access: T) -> Self
     where
         I: BinaryKey,
         I: ?Sized,
         S: Into<String>,
     {
+        let base = IndexBuilder::new(index_access)
+            .index_type(IndexType::List)
+            .index_name(family_name)
+            .family_id(index_id)
+            .build();
+        let state = IndexState::from_view(&base);
+
         Self {
-            base: IndexBuilder::from_view(view)
-                .index_name(family_name)
-                .family_id(index_id)
-                .build(),
-            length: Cell::new(None),
+            base,
+            state,
             _v: PhantomData,
         }
     }
@@ -206,12 +216,7 @@ where
     /// assert_eq!(2, index.len());
     /// ```
     pub fn len(&self) -> u64 {
-        if let Some(len) = self.length.get() {
-            return len;
-        }
-        let len = self.base.get(&()).unwrap_or(0);
-        self.length.set(Some(len));
-        len
+        self.state.get()
     }
 
     /// Returns an iterator over the list. The iterator element type is V.
@@ -269,8 +274,7 @@ where
     V: BinaryValue,
 {
     fn set_len(&mut self, len: u64) {
-        self.base.put(&(), len);
-        self.length.set(Some(len));
+        self.state.set(len)
     }
 
     /// Appends an element to the back of the list.
@@ -354,7 +358,7 @@ where
     /// Shortens the list, keeping the indicated number of first `len` elements
     /// and dropping the rest.
     ///
-    /// If `len` is greater than the current length of the list, this has no effect.
+    /// If `len` is greater than the current state of the list, this has no effect.
     ///
     /// # Examples
     ///
@@ -384,7 +388,7 @@ where
     /// # Panics
     ///
     /// Panics if the indicated position (`index`) is equal to or greater than
-    /// the current length of the list.
+    /// the current state of the list.
     ///
     /// # Examples
     ///
@@ -439,8 +443,8 @@ where
     /// assert!(index.is_empty());
     /// ```
     pub fn clear(&mut self) {
-        self.length.set(Some(0));
-        self.base.clear()
+        self.base.clear();
+        self.set_len(0);
     }
 }
 

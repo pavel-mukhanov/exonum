@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use exonum_crypto::Hash;
+
 use super::{
     Entry, Fork, KeySetIndex, ListIndex, MapIndex, ProofListIndex, ProofMapIndex, SparseListIndex,
     ValueSetIndex,
 };
-use exonum_crypto::Hash;
 
 // This should compile to ensure ?Sized bound on `new_in_family` (see #1024).
 #[allow(dead_code, unreachable_code, unused_variables)]

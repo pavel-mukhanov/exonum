@@ -5,6 +5,13 @@ The project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+- Changed storage layout (#21)
+
+  - Changed indexes metadata layout in the database.
+
+  - Introduced a generic `IndexState` structure that can be used to store global
+    index properties like total number of items.
+
 - Changed `ProofMapIndex` hashing rules for leaf nodes and branch nodes.
   They are hashing now with 0x04 prefix. (#20)
 

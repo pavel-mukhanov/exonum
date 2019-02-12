@@ -21,7 +21,7 @@
 use std::{borrow::Borrow, marker::PhantomData};
 
 use super::{
-    views::{IndexAccess, IndexBuilder, Iter as ViewIter, View},
+    views::{IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
     BinaryKey, BinaryValue, Fork,
 };
 
@@ -103,11 +103,16 @@ where
     /// let snapshot = db.snapshot();
     /// let index: MapIndex<_, u8, u8> = MapIndex::new(name, &snapshot);
     /// ```
-    pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
+    pub fn new<S: Into<String>>(index_name: S, index_access: T) -> Self {
+        let base = IndexBuilder::new(index_access)
+            .index_type(IndexType::Map)
+            .index_name(index_name)
+            .build();
+
         Self {
-            base: IndexBuilder::from_view(view).index_name(index_name).build(),
-            _k: PhantomData,
+            base,
             _v: PhantomData,
+            _k: PhantomData,
         }
     }
 
@@ -133,19 +138,22 @@ where
     /// let snapshot = db.snapshot();
     /// let index: MapIndex<_, u8, u8> = MapIndex::new_in_family(name, &index_id, &snapshot);
     /// ```
-    pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
+    pub fn new_in_family<S, I>(family_name: S, index_id: &I, index_access: T) -> Self
     where
         I: BinaryKey,
         I: ?Sized,
         S: Into<String>,
     {
+        let base = IndexBuilder::new(index_access)
+            .index_type(IndexType::Map)
+            .index_name(family_name)
+            .family_id(index_id)
+            .build();
+
         Self {
-            base: IndexBuilder::from_view(view)
-                .index_name(family_name)
-                .family_id(index_id)
-                .build(),
-            _k: PhantomData,
+            base,
             _v: PhantomData,
+            _k: PhantomData,
         }
     }
 
@@ -366,7 +374,7 @@ where
     /// index.put(&1, 2);
     /// assert!(index.contains(&1));
     pub fn put(&mut self, key: &K, value: V) {
-        self.base.put(key, value)
+        self.base.put(key, value);
     }
 
     /// Removes a key from a map.
@@ -391,7 +399,7 @@ where
         K: Borrow<Q>,
         Q: BinaryKey + ?Sized,
     {
-        self.base.remove(key)
+        self.base.remove(key);
     }
 
     /// Clears a map, removing all entries.
@@ -417,7 +425,7 @@ where
     /// index.clear();
     /// assert!(!index.contains(&1));
     pub fn clear(&mut self) {
-        self.base.clear()
+        self.base.clear();
     }
 }
 
@@ -523,6 +531,8 @@ mod tests {
 
         assert_eq!(map_index.get(&1u8), Some(1u8));
         assert!(map_index.contains(&1u8));
+
+        map_index.remove(&100u8);
 
         map_index.remove(&1u8);
 
