@@ -24,7 +24,7 @@ use exonum_crypto::Hash;
 
 use super::{
     views::{IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
-    BinaryKey, BinaryValue, Fork, UniqueHash,
+    BinaryKey, BinaryValue, UniqueHash,
 };
 
 /// A set of value items.
@@ -275,12 +275,7 @@ where
             base_iter: self.base.iter_from(&(), from),
         }
     }
-}
 
-impl<'a, V> ValueSetIndex<&'a Fork, V>
-where
-    V: BinaryValue + UniqueHash,
-{
     /// Adds a value to the set.
     ///
     /// # Examples

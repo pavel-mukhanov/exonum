@@ -20,7 +20,7 @@ use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData};
 
 use super::{
     db::{Change, ChangesRef, ForkIter, ViewChanges},
-    BinaryKey, BinaryValue, Fork, Iter as BytesIter, Iterator as BytesIterator, Snapshot,
+    BinaryKey, BinaryValue, Iter as BytesIter, Iterator as BytesIterator, Snapshot,
 };
 
 mod index_metadata;
@@ -75,9 +75,6 @@ pub trait IndexAccess: Copy {
     type Changes: ChangeSet;
     /// TODO: add documentation [ECR-2820]
     fn snapshot(&self) -> &dyn Snapshot;
-    #[allow(unsafe_code)]
-    #[doc(hidden)]
-    unsafe fn fork(self) -> Option<&'static Fork>;
     /// TODO: add documentation [ECR-2820]
     fn changes(&self, address: &IndexAddress) -> Self::Changes;
 }
@@ -265,11 +262,6 @@ impl<'a> IndexAccess for &'a dyn Snapshot {
         *self
     }
 
-    #[allow(unsafe_code)]
-    unsafe fn fork(self) -> Option<&'static Fork> {
-        None
-    }
-
     fn changes(&self, _: &IndexAddress) -> Self::Changes {}
 }
 
@@ -278,11 +270,6 @@ impl<'a> IndexAccess for &'a Box<dyn Snapshot> {
 
     fn snapshot(&self) -> &dyn Snapshot {
         self.as_ref()
-    }
-
-    #[allow(unsafe_code)]
-    unsafe fn fork(self) -> Option<&'static Fork> {
-        None
     }
 
     fn changes(&self, _: &IndexAddress) -> Self::Changes {}
@@ -429,6 +416,34 @@ impl<T: IndexAccess> View<T> {
             _v: PhantomData,
         }
     }
+
+    /// Inserts a key-value pair into the fork.
+    pub fn put<K, V>(&mut self, key: &K, value: V)
+    where
+        K: BinaryKey + ?Sized,
+        V: BinaryValue,
+    {
+        self.changes.as_mut().map(|changes| {
+            changes
+                .data
+                .insert(concat_keys!(key), Change::Put(value.into_bytes()))
+        });
+    }
+
+    /// Removes a key from the view.
+    pub fn remove<K>(&mut self, key: &K)
+    where
+        K: BinaryKey + ?Sized,
+    {
+        self.changes
+            .as_mut()
+            .map(|changes| changes.data.insert(concat_keys!(key), Change::Delete));
+    }
+
+    /// Clears the view removing all its elements.
+    pub fn clear(&mut self) {
+        self.changes.as_mut().map(|changes| changes.clear());
+    }
 }
 
 /// Iterator over entries in a snapshot limited to a specific view.
@@ -539,37 +554,6 @@ where
                 }
             }
         }
-    }
-}
-
-impl<'a> View<&'a Fork> {
-    fn changes(&mut self) -> &mut ViewChanges {
-        self.changes.as_mut().unwrap()
-    }
-
-    /// Inserts a key-value pair into the fork.
-    pub fn put<K, V>(&mut self, key: &K, value: V)
-    where
-        K: BinaryKey + ?Sized,
-        V: BinaryValue,
-    {
-        let key = key_bytes(key);
-        self.changes()
-            .data
-            .insert(key, Change::Put(value.into_bytes()));
-    }
-
-    /// Removes a key from the view.
-    pub fn remove<K>(&mut self, key: &K)
-    where
-        K: BinaryKey + ?Sized,
-    {
-        self.changes().data.insert(key_bytes(key), Change::Delete);
-    }
-
-    /// Clears the view removing all its elements.
-    pub fn clear(&mut self) {
-        self.changes().clear();
     }
 }
 
