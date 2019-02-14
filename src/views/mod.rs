@@ -20,7 +20,7 @@ use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData};
 
 use super::{
     db::{Change, ChangesRef, ForkIter, ViewChanges},
-    BinaryKey, BinaryValue, Fork, Iter as BytesIter, Iterator as BytesIterator, Snapshot,
+    BinaryKey, BinaryValue, Iter as BytesIter, Iterator as BytesIterator, Snapshot,
 };
 
 mod index_metadata;
@@ -75,9 +75,6 @@ pub trait IndexAccess: Copy {
     type Changes: ChangeSet;
     /// TODO: add documentation [ECR-2820]
     fn snapshot(&self) -> &dyn Snapshot;
-    #[allow(unsafe_code)]
-    #[doc(hidden)]
-    unsafe fn fork(self) -> Option<&'static Fork>;
     /// TODO: add documentation [ECR-2820]
     fn changes(&self, address: &IndexAddress) -> Self::Changes;
 }
@@ -206,7 +203,7 @@ impl IndexAddress {
     }
 
     /// TODO: add documentation [ECR-2820]
-    pub fn append_name<'a, S: Into<Cow<'a, str>>>(&self, suffix: S) -> Self {
+    pub fn append_name<'a, S: Into<Cow<'a, str>>>(self, suffix: S) -> Self {
         let suffix = suffix.into();
         Self {
             name: if self.name.is_empty() {
@@ -216,18 +213,22 @@ impl IndexAddress {
                 [self.name(), ".", suffix.as_ref()].concat()
             },
 
-            bytes: self.bytes.clone(),
+            bytes: self.bytes,
         }
     }
 
     /// TODO: add documentation [ECR-2820]
-    pub fn append_bytes<K: BinaryKey + ?Sized>(&self, suffix: &K) -> Self {
-        let suffix = key_bytes(suffix);
-        let (name, bytes) = self.keyed(&suffix);
+    pub fn append_bytes<K: BinaryKey + ?Sized>(self, suffix: &K) -> Self {
+        let name = self.name;
+        let bytes = if let Some(bytes) = self.bytes {
+            concat_keys!(bytes, suffix)
+        } else {
+            concat_keys!(suffix)
+        };
 
         Self {
-            name: name.to_owned(),
-            bytes: Some(bytes.into_owned()),
+            name,
+            bytes: Some(bytes),
         }
     }
 }
@@ -261,11 +262,6 @@ impl<'a> IndexAccess for &'a dyn Snapshot {
         *self
     }
 
-    #[allow(unsafe_code)]
-    unsafe fn fork(self) -> Option<&'static Fork> {
-        None
-    }
-
     fn changes(&self, _: &IndexAddress) -> Self::Changes {}
 }
 
@@ -276,18 +272,11 @@ impl<'a> IndexAccess for &'a Box<dyn Snapshot> {
         self.as_ref()
     }
 
-    #[allow(unsafe_code)]
-    unsafe fn fork(self) -> Option<&'static Fork> {
-        None
-    }
-
     fn changes(&self, _: &IndexAddress) -> Self::Changes {}
 }
 
 fn key_bytes<K: BinaryKey + ?Sized>(key: &K) -> Vec<u8> {
-    let mut buffer = vec![0_u8; key.size()];
-    key.write(&mut buffer);
-    buffer
+    concat_keys!(key)
 }
 
 impl<T: IndexAccess> View<T> {
@@ -427,6 +416,36 @@ impl<T: IndexAccess> View<T> {
             _v: PhantomData,
         }
     }
+
+    /// Inserts a key-value pair into the fork.
+    pub fn put<K, V>(&mut self, key: &K, value: V)
+    where
+        K: BinaryKey + ?Sized,
+        V: BinaryValue,
+    {
+        if let Some(changes) = self.changes.as_mut() {
+            changes
+                .data
+                .insert(concat_keys!(key), Change::Put(value.into_bytes()));
+        };
+    }
+
+    /// Removes a key from the view.
+    pub fn remove<K>(&mut self, key: &K)
+    where
+        K: BinaryKey + ?Sized,
+    {
+        if let Some(changes) = self.changes.as_mut() {
+            changes.data.insert(concat_keys!(key), Change::Delete);
+        };
+    }
+
+    /// Clears the view removing all its elements.
+    pub fn clear(&mut self) {
+        if let Some(changes) = self.changes.as_mut() {
+            changes.clear()
+        }
+    }
 }
 
 /// Iterator over entries in a snapshot limited to a specific view.
@@ -537,37 +556,6 @@ where
                 }
             }
         }
-    }
-}
-
-impl<'a> View<&'a Fork> {
-    fn changes(&mut self) -> &mut ViewChanges {
-        self.changes.as_mut().unwrap()
-    }
-
-    /// Inserts a key-value pair into the fork.
-    pub fn put<K, V>(&mut self, key: &K, value: V)
-    where
-        K: BinaryKey + ?Sized,
-        V: BinaryValue,
-    {
-        let key = key_bytes(key);
-        self.changes()
-            .data
-            .insert(key, Change::Put(value.into_bytes()));
-    }
-
-    /// Removes a key from the view.
-    pub fn remove<K>(&mut self, key: &K)
-    where
-        K: BinaryKey + ?Sized,
-    {
-        self.changes().data.insert(key_bytes(key), Change::Delete);
-    }
-
-    /// Clears the view removing all its elements.
-    pub fn clear(&mut self) {
-        self.changes().clear();
     }
 }
 

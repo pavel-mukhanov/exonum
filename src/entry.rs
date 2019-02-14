@@ -20,7 +20,7 @@ use exonum_crypto::Hash;
 
 use crate::{
     views::{IndexAccess, IndexBuilder, IndexType, View},
-    BinaryKey, BinaryValue, Fork, UniqueHash,
+    BinaryKey, BinaryValue, UniqueHash,
 };
 
 /// An index that may only contain one element.
@@ -170,12 +170,7 @@ where
             .map(|v| v.hash())
             .unwrap_or_default()
     }
-}
 
-impl<'a, V> Entry<&'a Fork, V>
-where
-    V: BinaryValue + UniqueHash,
-{
     /// Changes a value of the entry.
     ///
     /// # Examples
