@@ -33,6 +33,7 @@ use super::{
     MapProof, MapProofError, ProofMapIndex, ProofPath,
 };
 use crate::{BinaryKey, BinaryValue, Database, Fork, HashTag, TemporaryDB, UniqueHash};
+use crate::hash::ObjectHash;
 
 const IDX_NAME: &'static str = "idx_name";
 
@@ -363,7 +364,7 @@ fn test_fuzz_insert() {
 
 fn check_map_proof<K, V>(proof: MapProof<K, V>, key: Option<K>, table: &ProofMapIndex<&Fork, K, V>)
 where
-    K: BinaryKey + UniqueHash + PartialEq + Debug + Serialize + DeserializeOwned,
+    K: BinaryKey + ObjectHash + PartialEq + Debug + Serialize + DeserializeOwned,
     V: BinaryValue + UniqueHash + PartialEq + Debug + Serialize + DeserializeOwned,
 {
     let serialized_proof = serde_json::to_value(&proof).unwrap();
@@ -400,7 +401,7 @@ fn check_map_multiproof<K, V>(
     keys: Vec<K>,
     table: &ProofMapIndex<&Fork, K, V>,
 ) where
-    K: BinaryKey + UniqueHash + PartialEq + Debug,
+    K: BinaryKey + ObjectHash + PartialEq + Debug,
     V: BinaryValue + UniqueHash + PartialEq + Debug,
 {
     let (entries, missing_keys) = {
@@ -454,7 +455,7 @@ const MAX_CHECKED_ELEMENTS: usize = 1_024;
 
 fn check_proofs_for_data<K, V>(db: &dyn Database, data: Vec<(K, V)>, nonexisting_keys: Vec<K>)
 where
-    K: BinaryKey + UniqueHash + Clone + PartialEq + Debug + Serialize + DeserializeOwned,
+    K: BinaryKey + ObjectHash + Clone + PartialEq + Debug + Serialize + DeserializeOwned,
     V: BinaryValue + UniqueHash + Clone + PartialEq + Debug + Serialize + DeserializeOwned,
 {
     let storage = db.fork();
@@ -488,7 +489,7 @@ where
 
 fn check_multiproofs_for_data<K, V>(db: &dyn Database, data: Vec<(K, V)>, nonexisting_keys: Vec<K>)
 where
-    K: BinaryKey + UniqueHash + Clone + Ord + PartialEq + StdHash + Debug + Serialize,
+    K: BinaryKey + ObjectHash + Clone + Ord + PartialEq + StdHash + Debug + Serialize,
     V: BinaryValue + UniqueHash + Clone + PartialEq + Debug + Serialize,
 {
     let storage = db.fork();
@@ -1328,7 +1329,6 @@ fn test_iter() {
 
 #[test]
 fn test_tree_with_hashed_key() {
-    use crate::UniqueHash;
     use byteorder::{ByteOrder, LittleEndian};
     use exonum_crypto::Hash;
     use failure::{self, ensure};
@@ -1381,8 +1381,8 @@ fn test_tree_with_hashed_key() {
         }
     }
 
-    impl UniqueHash for Point {
-        fn hash(&self) -> Hash {
+    impl ObjectHash for Point {
+        fn object_hash(&self) -> Hash {
             let mut buffer = [0; 4];
             self.write(&mut buffer);
             exonum_crypto::hash(&buffer)

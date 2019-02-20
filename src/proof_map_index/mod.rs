@@ -33,6 +33,7 @@ use crate::{
     views::{IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
     BinaryKey, BinaryValue, HashTag, UniqueHash,
 };
+use crate::hash::ObjectHash;
 
 mod key;
 mod node;
@@ -130,7 +131,7 @@ impl<T: BinaryKey> ValuePath for T {
 impl<T, K, V> ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: BinaryKey + UniqueHash,
+    K: BinaryKey + ObjectHash,
     V: BinaryValue + UniqueHash,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -818,7 +819,7 @@ where
 impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: BinaryKey + UniqueHash,
+    K: BinaryKey + ObjectHash,
     V: BinaryValue + UniqueHash,
 {
     type Item = (K::Owned, V);
@@ -869,7 +870,7 @@ where
 impl<T, K, V> fmt::Debug for ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: BinaryKey + UniqueHash,
+    K: BinaryKey + ObjectHash,
     V: BinaryValue + UniqueHash + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -883,7 +884,7 @@ where
         impl<'a, T, K, V> Entry<'a, T, K, V>
         where
             T: IndexAccess,
-            K: BinaryKey + UniqueHash,
+            K: BinaryKey + ObjectHash,
             V: BinaryValue + UniqueHash,
         {
             fn new(index: &'a ProofMapIndex<T, K, V>, hash: Hash, path: ProofPath) -> Self {
@@ -907,7 +908,7 @@ where
         impl<'a, T, K, V> fmt::Debug for Entry<'a, T, K, V>
         where
             T: IndexAccess,
-            K: BinaryKey + UniqueHash,
+            K: BinaryKey + ObjectHash,
             V: BinaryValue + UniqueHash + fmt::Debug,
         {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

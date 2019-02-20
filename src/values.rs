@@ -25,6 +25,7 @@ use uuid::Uuid;
 use exonum_crypto::{Hash, PublicKey, HASH_SIZE};
 
 use super::UniqueHash;
+use crate::hash::ObjectHash;
 
 /// A type that can be (de)serialized as a value in the blockchain storage.
 ///
@@ -153,6 +154,25 @@ impl BinaryValue for bool {
 
 impl UniqueHash for bool {}
 
+macro_rules! impl_object_hash_for_binary_value {
+     ($type:ty) => {
+        impl ObjectHash for $type {
+           fn object_hash(&self) -> Hash {
+                exonum_crypto::hash(&self.to_bytes())
+           }
+        }
+    };
+}
+
+impl_object_hash_for_binary_value! { () }
+impl_object_hash_for_binary_value! { bool }
+impl_object_hash_for_binary_value! { Vec<u8> }
+impl_object_hash_for_binary_value! { String }
+impl_object_hash_for_binary_value! { PublicKey }
+impl_object_hash_for_binary_value! { DateTime<Utc> }
+impl_object_hash_for_binary_value! { Uuid }
+impl_object_hash_for_binary_value! { Decimal }
+
 impl BinaryValue for Vec<u8> {
     fn to_bytes(&self) -> Vec<u8> {
         self.clone()
@@ -168,6 +188,7 @@ impl BinaryValue for Vec<u8> {
 }
 
 impl UniqueHash for Vec<u8> {}
+
 
 impl BinaryValue for String {
     fn to_bytes(&self) -> Vec<u8> {
