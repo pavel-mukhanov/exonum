@@ -26,8 +26,10 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use failure::ensure;
+
 use crate::{
-    views::{IndexAccess, IndexAddress},
+    views::{IndexAccess, IndexAddress, View},
     Result,
 };
 
@@ -204,20 +206,25 @@ impl WorkingPatch {
 
     /// Returns a mutable reference to the changes corresponding to a certain index.
     fn changes_mut(&self, address: &IndexAddress) -> ChangesRef {
-        let changes = self
-            .changes
-            .borrow_mut()
-            .entry(address.clone())
-            .or_insert_with(|| Some(ViewChanges::new()))
-            .take();
+        let view_changes = {
+            let mut changes = self.changes.borrow_mut();
+            let view_changes = changes.get_mut(address).map(Option::take);
+            view_changes.unwrap_or_else(|| {
+                changes
+                    .entry(address.clone())
+                    .or_insert_with(|| Some(ViewChanges::new()))
+                    .take()
+            })
+        };
+
         assert!(
-            changes.is_some(),
+            view_changes.is_some(),
             "multiple mutable borrows of an index at {:?}",
             address
         );
 
         ChangesRef {
-            changes,
+            changes: view_changes,
             key: address.clone(),
             parent: self,
         }
@@ -756,4 +763,32 @@ impl<T: Database> From<T> for Box<dyn Database> {
     fn from(db: T) -> Self {
         Box::new(db) as Self
     }
+}
+
+/// The current `MerkleDB` data layout version.
+pub const DB_VERSION: u8 = 0;
+/// Database metadata address.
+pub const DB_METADATA: &str = "__DB_METADATA__";
+/// Version attribute name.
+pub const VERSION_NAME: &str = "version";
+
+/// This function checks that the given database is compatible with the current `MerkleDB` version.
+pub fn check_database(db: &mut dyn Database) -> Result<()> {
+    let address = IndexAddress::with_root(DB_METADATA);
+    let fork = db.fork();
+    {
+        let mut view = View::new(&fork, address);
+        if let Some(saved_version) = view.get::<_, u8>(VERSION_NAME) {
+            ensure!(
+                saved_version == DB_VERSION,
+                "Database version doesn't match: actual {}, expected {}",
+                saved_version,
+                DB_VERSION
+            );
+            return Ok(());
+        } else {
+            view.put(VERSION_NAME, DB_VERSION);
+        }
+    }
+    db.merge(fork.into_patch())
 }

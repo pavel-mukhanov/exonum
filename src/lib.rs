@@ -130,7 +130,6 @@ pub use self::{
         Snapshot,
     },
     entry::Entry,
-    error::Error,
     hash::{HashTag, ObjectHash},
     key_set_index::KeySetIndex,
     keys::BinaryKey,
@@ -145,14 +144,13 @@ pub use self::{
 };
 
 /// A specialized `Result` type for I/O operations with storage.
-pub type Result<T> = ::std::result::Result<T, Error>;
+pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
 #[macro_use]
 mod macros;
 mod backends;
 mod db;
 mod entry;
-mod error;
 mod hash;
 mod keys;
 mod options;
