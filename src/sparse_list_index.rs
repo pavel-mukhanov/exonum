@@ -17,12 +17,17 @@
 //! The given section contains methods related to `SparseListIndex` and iterators
 //! over the items of this index.
 
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use std::{
+    io::{Read, Write},
+    marker::PhantomData,
+};
 
-use std::{borrow::Cow, marker::PhantomData};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
-    views::{IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View},
+    views::{
+        BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View,
+    },
     BinaryKey, BinaryValue,
 };
 
@@ -34,19 +39,21 @@ struct SparseListSize {
     length: u64,
 }
 
-impl BinaryValue for SparseListSize {
-    fn to_bytes(&self) -> Vec<u8> {
-        let mut buf = vec![0; 16];
-        LittleEndian::write_u64(&mut buf[0..8], self.capacity);
-        LittleEndian::write_u64(&mut buf[8..16], self.length);
-        buf
+impl BinaryAttribute for SparseListSize {
+    fn size(&self) -> usize {
+        16
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
-        let mut buf = bytes.as_ref();
-        let capacity = buf.read_u64::<LittleEndian>()?;
-        let length = buf.read_u64::<LittleEndian>()?;
-        Ok(Self { capacity, length })
+    fn write<W: Write>(&self, buffer: &mut W) {
+        buffer.write_u64::<LittleEndian>(self.capacity).unwrap();
+        buffer.write_u64::<LittleEndian>(self.length).unwrap();
+    }
+
+    fn read<R: Read>(buffer: &mut R) -> Self {
+        Self {
+            capacity: buffer.read_u64::<LittleEndian>().unwrap(),
+            length: buffer.read_u64::<LittleEndian>().unwrap(),
+        }
     }
 }
 
@@ -136,11 +143,10 @@ where
     /// let index: SparseListIndex<_, u8> = SparseListIndex::new(name, &snapshot);
     /// ```
     pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
-        let base = IndexBuilder::new(view)
+        let (base, state) = IndexBuilder::new(view)
             .index_type(IndexType::SparseList)
             .index_name(index_name)
             .build();
-        let state = IndexState::from_view(&base);
 
         Self {
             base,
@@ -180,12 +186,11 @@ where
         I: ?Sized,
         S: Into<String>,
     {
-        let base = IndexBuilder::new(view)
+        let (base, state) = IndexBuilder::new(view)
             .index_type(IndexType::SparseList)
             .index_name(family_name)
             .family_id(index_id)
             .build();
-        let state = IndexState::from_view(&base);
 
         Self {
             base,

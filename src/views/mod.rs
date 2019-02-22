@@ -14,7 +14,7 @@
 
 #![warn(missing_docs)]
 
-pub use self::index_metadata::{IndexState, IndexType};
+pub use self::metadata::{BinaryAttribute, IndexState, IndexType};
 
 use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData};
 
@@ -23,7 +23,7 @@ use super::{
     BinaryKey, BinaryValue, Iter as BytesIter, Iterator as BytesIterator, Snapshot,
 };
 
-mod index_metadata;
+mod metadata;
 #[cfg(test)]
 mod tests;
 
@@ -139,22 +139,22 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if index metadata doesn't match expected.
-    pub fn build(self) -> View<T> {
-        let has_parent = self.address.bytes().is_some();
-        let index_type = self.index_type;
-        let index_access = self.index_access;
-
-        index_metadata::check_or_create_metadata(
-            index_access,
-            &self.address,
-            index_metadata::IndexMetadata {
-                index_type,
-                has_parent,
-            },
+    /// - Panics if index metadata doesn't match expected.
+    /// - Panics if index name is empty.
+    pub fn build<V>(self) -> (View<T>, IndexState<T, V>)
+    where
+        V: BinaryAttribute + Default + Copy,
+    {
+        // TODO Think about stricter restrictions for index names. [ECR-2834]
+        assert!(
+            !self.address.name().is_empty(),
+            "Index name must not be empty"
         );
 
-        View::new(index_access, self.address)
+        let (index_address, index_state) =
+            metadata::index_metadata(self.index_access, &self.address, self.index_type);
+        let index_view = View::new(self.index_access, index_address);
+        (index_view, index_state)
     }
 }
 
