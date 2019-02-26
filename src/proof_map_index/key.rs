@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::cmp::{min, Ordering};
-use std::io::{Cursor, Write};
-use std::ops;
+use std::{
+    cmp::{min, Ordering},
+    io::{Cursor, Write},
+    ops,
+};
 
 use leb128;
 

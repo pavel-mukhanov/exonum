@@ -609,7 +609,7 @@ where
     /// ```
     pub fn clear(&mut self) {
         self.base.clear();
-        self.set_len(0);
+        self.state.clear();
     }
 }
 
