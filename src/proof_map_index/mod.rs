@@ -17,11 +17,15 @@
 #[doc(hidden)]
 pub use self::node::{BranchNode, Node};
 pub use self::{
-    key::{ProofPath, KEY_SIZE as PROOF_MAP_KEY_SIZE},
+    key::{ProofPath, KEY_SIZE as PROOF_MAP_KEY_SIZE, PROOF_PATH_SIZE},
     proof::{CheckedMapProof, MapProof, MapProofError},
 };
 
-use std::{fmt, marker::PhantomData};
+use std::{
+    fmt,
+    io::{Read, Write},
+    marker::PhantomData,
+};
 
 use exonum_crypto::Hash;
 
@@ -30,7 +34,9 @@ use self::{
     proof::{create_multiproof, create_proof},
 };
 use crate::{
-    views::{IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
+    views::{
+        BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View,
+    },
     BinaryKey, BinaryValue, HashTag, ObjectHash,
 };
 
@@ -51,6 +57,7 @@ mod tests;
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 pub struct ProofMapIndex<T: IndexAccess, K, V> {
     base: View<T>,
+    state: IndexState<T, Option<ProofPath>>,
     _k: PhantomData<K>,
     _v: PhantomData<V>,
 }
@@ -96,6 +103,7 @@ pub struct ProofMapIndexValues<'a, V> {
     base_iter: ViewIter<'a, Vec<u8>, V>,
 }
 
+/// TODO Clarify documentation. [ECR-2820]
 enum RemoveAction {
     KeyNotFound,
     Leaf,
@@ -124,6 +132,32 @@ impl<T: BinaryKey> ValuePath for T {
 
     fn from_value_path(buffer: &[u8]) -> Self::Owned {
         Self::read(&buffer[1..])
+    }
+}
+
+impl BinaryAttribute for Option<ProofPath> {
+    fn size(&self) -> usize {
+        match self {
+            Some(path) => path.size(),
+            None => 0,
+        }
+    }
+
+    fn write<W: Write>(&self, buffer: &mut W) {
+        if let Some(path) = self {
+            let mut tmp = [0_u8; PROOF_PATH_SIZE];
+            path.write(&mut tmp);
+            buffer.write_all(&tmp).unwrap();
+        }
+    }
+
+    fn read<R: Read>(buffer: &mut R) -> Self {
+        let mut tmp = [0_u8; PROOF_PATH_SIZE];
+        match buffer.read(&mut tmp).unwrap() {
+            0 => None,
+            PROOF_PATH_SIZE => Some(ProofPath::read(&tmp)),
+            other => panic!("Unexpected attribute length: {}", other),
+        }
     }
 }
 
@@ -157,11 +191,13 @@ where
     /// let mut mut_index: ProofMapIndex<_, Hash, u8> = ProofMapIndex::new(name, &fork);
     /// ```
     pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
+        let (base, state) = IndexBuilder::new(view)
+            .index_type(IndexType::ProofMap)
+            .index_name(index_name)
+            .build();
         Self {
-            base: IndexBuilder::new(view)
-                .index_type(IndexType::ProofMap)
-                .index_name(index_name)
-                .build(),
+            base,
+            state,
             _k: PhantomData,
             _v: PhantomData,
         }
@@ -207,22 +243,21 @@ where
         I: ?Sized,
         S: Into<String>,
     {
+        let (base, state) = IndexBuilder::new(view)
+            .index_type(IndexType::ProofMap)
+            .index_name(family_name)
+            .family_id(index_id)
+            .build();
         Self {
-            base: IndexBuilder::new(view)
-                .index_type(IndexType::ProofMap)
-                .index_name(family_name)
-                .family_id(index_id)
-                .build(),
+            base,
+            state,
             _k: PhantomData,
             _v: PhantomData,
         }
     }
 
     fn get_root_path(&self) -> Option<ProofPath> {
-        self.base
-            .iter::<_, ProofPath, _>(&())
-            .next()
-            .map(|(k, _): (ProofPath, ())| k)
+        self.state.get()
     }
 
     fn get_root_node(&self) -> Option<(ProofPath, Node)> {
@@ -517,6 +552,10 @@ where
         self.base.remove(&key.to_value_path());
     }
 
+    fn update_root_path(&mut self, path: Option<ProofPath>) {
+        self.state.set(path)
+    }
+
     // Inserts a new node of the current branch and returns the updated hash
     // or, if a new node has a shorter key, returns a new key length.
     fn insert_branch(
@@ -651,7 +690,7 @@ where
     /// ```
     pub fn put(&mut self, key: &K, value: V) {
         let proof_path = ProofPath::new(key);
-        match self.get_root_node() {
+        let root_path = match self.get_root_node() {
             Some((prefix, Node::Leaf(prefix_data))) => {
                 let prefix_path = prefix;
                 let i = prefix_path.common_prefix_len(&proof_path);
@@ -667,6 +706,9 @@ where
                     );
                     let new_prefix = proof_path.prefix(i);
                     self.base.put(&new_prefix, branch);
+                    new_prefix
+                } else {
+                    proof_path
                 }
             }
             Some((prefix, Node::Branch(mut branch))) => {
@@ -682,6 +724,7 @@ where
                         None => branch.set_child_hash(suffix_path.bit(0), &h),
                     };
                     self.base.put(&prefix_path, branch);
+                    prefix_path
                 } else {
                     // Inserts a new branch and adds current branch as its child
                     let hash = self.insert_leaf(&proof_path, key, value);
@@ -695,12 +738,15 @@ where
                     // Saves a new branch
                     let new_prefix = prefix_path.prefix(i);
                     self.base.put(&new_prefix, new_branch);
+                    new_prefix
                 }
             }
             None => {
                 self.insert_leaf(&proof_path, key, value);
+                proof_path
             }
-        }
+        };
+        self.update_root_path(Some(root_path));
     }
 
     /// Removes a key from the proof map.
@@ -730,6 +776,7 @@ where
             Some((prefix, Node::Leaf(_))) => {
                 if proof_path == prefix {
                     self.remove_leaf(&proof_path, key);
+                    self.update_root_path(None);
                 }
             }
             Some((prefix, Node::Branch(mut branch))) => {
@@ -738,7 +785,11 @@ where
                 if i == prefix.len() {
                     let suffix_path = proof_path.suffix(i);
                     match self.remove_node(&branch, &suffix_path, key) {
-                        RemoveAction::Leaf => self.base.remove(&prefix),
+                        RemoveAction::Leaf => {
+                            // After removing one of leaves second child becomes a new root.
+                            self.base.remove(&prefix);
+                            self.update_root_path(Some(branch.child_path(!suffix_path.bit(0))));
+                        }
                         RemoveAction::Branch((key, hash)) => {
                             let new_child_path = key.start_from(suffix_path.start());
                             branch.set_child(suffix_path.bit(0), &new_child_path, &hash);
@@ -750,9 +801,11 @@ where
                         }
                         RemoveAction::KeyNotFound => return,
                     }
+                } else {
+                    return;
                 }
             }
-            None => (),
+            None => return,
         }
     }
 
@@ -783,7 +836,8 @@ where
     /// assert!(!index.contains(&hash));
     /// ```
     pub fn clear(&mut self) {
-        self.base.clear()
+        self.base.clear();
+        self.state.clear();
     }
 }
 

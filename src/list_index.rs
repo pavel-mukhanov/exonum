@@ -78,11 +78,10 @@ where
     /// let index: ListIndex<_, u8> = ListIndex::new(name, &snapshot);
     /// ```
     pub fn new<S: Into<String>>(index_name: S, index_access: T) -> Self {
-        let base = IndexBuilder::new(index_access)
+        let (base, state) = IndexBuilder::new(index_access)
             .index_type(IndexType::List)
             .index_name(index_name)
             .build();
-        let state = IndexState::from_view(&base);
 
         Self {
             base,
@@ -118,12 +117,11 @@ where
         I: ?Sized,
         S: Into<String>,
     {
-        let base = IndexBuilder::new(index_access)
+        let (base, state) = IndexBuilder::new(index_access)
             .index_type(IndexType::List)
             .index_name(family_name)
             .family_id(index_id)
             .build();
-        let state = IndexState::from_view(&base);
 
         Self {
             base,
@@ -435,7 +433,7 @@ where
     /// ```
     pub fn clear(&mut self) {
         self.base.clear();
-        self.set_len(0);
+        self.state.clear();
     }
 
     fn set_len(&mut self, len: u64) {
