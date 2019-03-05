@@ -130,7 +130,7 @@ pub use self::{
         Snapshot,
     },
     entry::Entry,
-    hash::{HashTag, UniqueHash},
+    hash::{HashTag, ObjectHash},
     key_set_index::KeySetIndex,
     keys::BinaryKey,
     list_index::ListIndex,
@@ -148,7 +148,6 @@ pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
 #[macro_use]
 mod macros;
-
 mod backends;
 mod db;
 mod entry;
@@ -165,3 +164,6 @@ pub mod proof_list_index;
 pub mod proof_map_index;
 pub mod sparse_list_index;
 pub mod value_set_index;
+
+#[cfg(test)]
+mod tests;

@@ -27,7 +27,7 @@ use std::{
     marker::PhantomData,
 };
 
-use exonum_crypto::{Hash, HashStream};
+use exonum_crypto::Hash;
 
 use self::{
     key::{BitsRange, ChildKind, VALUE_KEY_PREFIX},
@@ -37,7 +37,7 @@ use crate::{
     views::{
         BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View,
     },
-    BinaryKey, BinaryValue, UniqueHash,
+    BinaryKey, BinaryValue, HashTag, ObjectHash,
 };
 
 mod key;
@@ -164,8 +164,8 @@ impl BinaryAttribute for Option<ProofPath> {
 impl<T, K, V> ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: BinaryKey + UniqueHash,
-    V: BinaryValue + UniqueHash,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -280,34 +280,10 @@ where
         self.get(key).expect("Value for the given key is absent")
     }
 
-    /// Returns the root hash of the proof map or default hash value if it is empty.
-    /// The default hash consists solely of zeroes.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use exonum_merkledb::{TemporaryDB, Database, ProofMapIndex};
-    /// use exonum_crypto::Hash;
-    ///
-    /// let db = TemporaryDB::new();
-    /// let name = "name";
-    /// let fork = db.fork();
-    /// let mut index = ProofMapIndex::new(name, &fork);
-    ///
-    /// let default_hash = index.merkle_root();
-    /// assert_eq!(Hash::default(), default_hash);
-    ///
-    /// index.put(&default_hash, 100);
-    /// let hash = index.merkle_root();
-    /// assert_ne!(hash, default_hash);
-    /// ```
-    pub fn merkle_root(&self) -> Hash {
+    pub(crate) fn merkle_root(&self) -> Hash {
         match self.get_root_node() {
-            Some((path, Node::Leaf(hash))) => HashStream::new()
-                .update(path.as_bytes())
-                .update(hash.as_ref())
-                .hash(),
-            Some((_, Node::Branch(branch))) => branch.hash(),
+            Some((path, Node::Leaf(hash))) => HashTag::hash_single_entry_map(&path, &hash),
+            Some((_, Node::Branch(branch))) => branch.object_hash(),
             None => Hash::zero(),
         }
     }
@@ -565,7 +541,7 @@ where
 
     fn insert_leaf(&mut self, proof_path: &ProofPath, key: &K, value: V) -> Hash {
         debug_assert!(proof_path.is_leaf());
-        let hash = value.hash();
+        let hash = HashTag::hash_leaf(&value.to_bytes());
         self.base.put(proof_path, hash);
         self.base.put(&key.to_value_path(), value);
         hash
@@ -618,7 +594,7 @@ where
                             }
                             None => branch.set_child_hash(proof_path.bit(i), &h),
                         };
-                        let hash = branch.hash();
+                        let hash = branch.object_hash();
                         self.base.put(&child_path, branch);
                         (None, hash)
                     }
@@ -638,7 +614,7 @@ where
                 &parent.child_hash(proof_path.bit(0)),
             );
 
-            let hash = new_branch.hash();
+            let hash = new_branch.object_hash();
             self.base.put(&proof_path.prefix(i), new_branch);
             (Some(i), hash)
         }
@@ -675,14 +651,14 @@ where
                         RemoveAction::Branch((key, hash)) => {
                             let new_child_path = key.start_from(suffix_path.start());
                             branch.set_child(suffix_path.bit(0), &new_child_path, &hash);
-                            let h = branch.hash();
+                            let h = branch.object_hash();
 
                             self.base.put(&child_path, branch);
                             return RemoveAction::UpdateHash(h);
                         }
                         RemoveAction::UpdateHash(hash) => {
                             branch.set_child_hash(suffix_path.bit(0), &hash);
-                            let h = branch.hash();
+                            let h = branch.object_hash();
 
                             self.base.put(&child_path, branch);
                             return RemoveAction::UpdateHash(h);
@@ -726,7 +702,7 @@ where
                     branch.set_child(
                         prefix_path.bit(i),
                         &prefix_path.suffix(i),
-                        &prefix_data.hash(),
+                        &prefix_data.object_hash(),
                     );
                     let new_prefix = proof_path.prefix(i);
                     self.base.put(&new_prefix, branch);
@@ -756,7 +732,7 @@ where
                     new_branch.set_child(
                         prefix_path.bit(i),
                         &prefix_path.suffix(i),
-                        &branch.hash(),
+                        &branch.object_hash(),
                     );
                     new_branch.set_child(proof_path.bit(i), &proof_path.suffix(i), &hash);
                     // Saves a new branch
@@ -865,11 +841,46 @@ where
     }
 }
 
+impl<T, K, V> ObjectHash for ProofMapIndex<T, K, V>
+where
+    T: IndexAccess,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash,
+{
+    /// Returns the hash of the proof map object. See [`HashTag::hash_map_node`].
+    /// For hash of the empty map see [`HashTag::empty_map_hash`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use exonum_merkledb::{TemporaryDB, Database, ProofMapIndex, HashTag, ObjectHash};
+    /// use exonum_crypto::Hash;
+    ///
+    /// let db = TemporaryDB::new();
+    /// let name = "name";
+    /// let fork = db.fork();
+    /// let mut index = ProofMapIndex::new(name, &fork);
+    ///
+    /// let default_hash = index.object_hash();
+    /// assert_eq!(HashTag::empty_map_hash(), default_hash);
+    ///
+    /// index.put(&default_hash, 100);
+    /// let hash = index.object_hash();
+    /// assert_ne!(hash, default_hash);
+    /// ```
+    ///
+    /// [`HashTag::hash_map_node`]: ../enum.HashTag.html#method.hash_map_node
+    /// [`HashTag::empty_map_hash`]: ../enum.HashTag.html#method.empty_map_hash
+    fn object_hash(&self) -> Hash {
+        HashTag::hash_map_node(self.merkle_root())
+    }
+}
+
 impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: BinaryKey + UniqueHash,
-    V: BinaryValue + UniqueHash,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash,
 {
     type Item = (K::Owned, V);
     type IntoIter = ProofMapIndexIter<'a, K, V>;
@@ -919,8 +930,8 @@ where
 impl<T, K, V> fmt::Debug for ProofMapIndex<T, K, V>
 where
     T: IndexAccess,
-    K: BinaryKey + UniqueHash,
-    V: BinaryValue + UniqueHash + fmt::Debug,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         struct Entry<'a, T: 'a + IndexAccess, K: 'a, V: 'a + BinaryValue> {
@@ -933,8 +944,8 @@ where
         impl<'a, T, K, V> Entry<'a, T, K, V>
         where
             T: IndexAccess,
-            K: BinaryKey + UniqueHash,
-            V: BinaryValue + UniqueHash,
+            K: BinaryKey + ObjectHash,
+            V: BinaryValue + ObjectHash,
         {
             fn new(index: &'a ProofMapIndex<T, K, V>, hash: Hash, path: ProofPath) -> Self {
                 Entry {
@@ -957,8 +968,8 @@ where
         impl<'a, T, K, V> fmt::Debug for Entry<'a, T, K, V>
         where
             T: IndexAccess,
-            K: BinaryKey + UniqueHash,
-            V: BinaryValue + UniqueHash + fmt::Debug,
+            K: BinaryKey + ObjectHash,
+            V: BinaryValue + ObjectHash + fmt::Debug,
         {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 match self.node {
@@ -980,7 +991,7 @@ where
         }
 
         if let Some(prefix) = self.get_root_path() {
-            let root_entry = Entry::new(self, self.merkle_root(), prefix);
+            let root_entry = Entry::new(self, self.object_hash(), prefix);
             f.debug_struct("ProofMapIndex")
                 .field("entries", &root_entry)
                 .finish()

@@ -21,7 +21,7 @@ use rand::{Rng, RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 use exonum_crypto::{Hash, HASH_SIZE as KEY_SIZE};
-use exonum_merkledb::{Database, MapIndex, ProofListIndex, ProofMapIndex, TemporaryDB};
+use exonum_merkledb::{Database, MapIndex, ObjectHash, ProofListIndex, ProofMapIndex, TemporaryDB};
 
 const NAME: &str = "name";
 const FAMILY: &str = "index_family";
@@ -263,7 +263,7 @@ fn proof_map_index_build_proofs(b: &mut Bencher, len: usize) {
     for item in &data {
         table.put(&item.0, item.1.clone());
     }
-    let table_merkle_root = table.merkle_root();
+    let table_root_hash = table.object_hash();
     let mut proofs = Vec::with_capacity(data.len());
 
     b.iter(|| {
@@ -274,7 +274,7 @@ fn proof_map_index_build_proofs(b: &mut Bencher, len: usize) {
     for (i, proof) in proofs.into_iter().enumerate() {
         let checked_proof = proof.check().unwrap();
         assert_eq!(*checked_proof.entries().next().unwrap().1, data[i].1);
-        assert_eq!(checked_proof.merkle_root(), table_merkle_root);
+        assert_eq!(checked_proof.root_hash(), table_root_hash);
     }
 }
 
@@ -287,14 +287,14 @@ fn proof_map_index_verify_proofs(b: &mut Bencher, len: usize) {
     for item in &data {
         table.put(&item.0, item.1.clone());
     }
-    let table_merkle_root = table.merkle_root();
+    let table_root_hash = table.object_hash();
     let proofs: Vec<_> = data.iter().map(|item| table.get_proof(item.0)).collect();
 
     b.iter(|| {
         for (i, proof) in proofs.iter().enumerate() {
             let checked_proof = proof.clone().check().unwrap();
             assert_eq!(*checked_proof.entries().next().unwrap().1, data[i].1);
-            assert_eq!(checked_proof.merkle_root(), table_merkle_root);
+            assert_eq!(checked_proof.root_hash(), table_root_hash);
         }
     });
 }

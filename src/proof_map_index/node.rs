@@ -21,10 +21,8 @@ use smallvec::{smallvec, SmallVec};
 
 use exonum_crypto::{self, Hash, HASH_SIZE};
 
-use super::{
-    super::{BinaryKey, BinaryValue, UniqueHash},
-    key::{ChildKind, ProofPath, PROOF_PATH_SIZE},
-};
+use super::key::{ChildKind, ProofPath, PROOF_PATH_SIZE};
+use crate::{BinaryKey, BinaryValue, HashTag, ObjectHash};
 
 const BRANCH_NODE_SIZE: usize = 2 * (HASH_SIZE + PROOF_PATH_SIZE);
 
@@ -100,8 +98,8 @@ impl BinaryValue for BranchNode {
     }
 }
 
-impl UniqueHash for BranchNode {
-    fn hash(&self) -> Hash {
+impl ObjectHash for BranchNode {
+    fn object_hash(&self) -> Hash {
         let mut bytes: SmallVec<[u8; 256]> = smallvec![0_u8; 132];
         let mut pos = HASH_SIZE * 2;
         // Writes hashes to the buffer.
@@ -112,7 +110,7 @@ impl UniqueHash for BranchNode {
         pos += self
             .child_path(ChildKind::Right)
             .write_compressed(&mut bytes[pos..]);
-        exonum_crypto::hash(&bytes[0..pos])
+        HashTag::hash_map_branch(&bytes[..pos])
     }
 }
 
@@ -123,7 +121,7 @@ impl ::std::fmt::Debug for BranchNode {
             .field("left_hash", &self.child_hash(ChildKind::Left))
             .field("right_path", &self.child_path(ChildKind::Right))
             .field("right_hash", &self.child_hash(ChildKind::Right))
-            .field("hash", &self.hash())
+            .field("hash", &self.object_hash())
             .finish()
     }
 }
@@ -133,7 +131,7 @@ mod tests {
     use exonum_crypto;
 
     use super::*;
-    use crate::{proof_map_index::key::BitsRange, BinaryValue, UniqueHash};
+    use crate::{proof_map_index::key::BitsRange, BinaryValue, ObjectHash};
 
     #[test]
     fn test_branch_node_layout() {
@@ -168,10 +166,10 @@ mod tests {
         let buf = branch.to_bytes();
         let branch2 = BranchNode::from_bytes(buf.into()).unwrap();
         assert_eq!(branch, branch2);
-        assert_eq!(branch.hash(), branch2.hash());
+        assert_eq!(branch.object_hash(), branch2.object_hash());
         assert_eq!(
-            branch.hash().to_hex(),
-            "828b8bfd6c1a67981f0bb8202a4d9b3cde30d092bbc2fcba03d64171f54a0676"
+            branch.object_hash().to_hex(),
+            "2a179b2c4d93c88128a37ad9aae0e749bf9848f9c2a2463ebb6b53b31792a8bb"
         );
     }
 }

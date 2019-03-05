@@ -16,26 +16,38 @@ use hex::FromHex;
 
 use exonum_crypto::{Hash, HashStream, HASH_SIZE};
 
-use crate::BinaryValue;
+use crate::{proof_map_index::ProofPath, BinaryValue};
 
 const EMPTY_LIST_HASH: &str = "c6c0aa07f27493d2f2e5cff56c890a353a20086d6c25ec825128e12ae752b2d9";
+const EMPTY_MAP_HASH: &str = "7324b5c72b51bb5d4c180f1109cfd347b60473882145841c39f3e584576296f9";
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]
 /// `MerkleDB` hash prefixes.
 pub enum HashTag {
-    /// Hash prefix of a leaf node of the merkle tree.
-    Leaf = 0,
+    /// Hash prefix of a blob.
+    Blob = 0,
     /// Hash prefix of a branch node of the merkle tree.
-    Node = 1,
+    ListBranchNode = 1,
     /// Hash prefix of the list object.
     ListNode = 2,
+    /// Hash prefix of the map object.
+    MapNode = 3,
+    /// Hash prefix of the map branch node object.
+    MapBranchNode = 4,
 }
 
 /// Calculate hash value with the specified prefix.
 ///
-/// Different hashes for leaf and branch nodes are used to secure merkle tree from
-/// the pre-image attack.
+/// In `MerkleDB`, all data is presented as objects. Objects are divided into blobs
+/// and collections (lists / maps), which in their turn are divided into hashable and
+/// non-hashable. `ProofListIndex` and `ProofMapIndex` relate to hashable collections.
+/// For these collections, one can define a hash, which is used to build proof for
+/// their contents. In the future, these hashes will be used to build proofs for object
+/// hierarchies.
+///
+/// Different hashes for leaf and branch nodes of the list are used to secure merkle tree
+/// from the pre-image attack.
 ///
 /// See more information [here][1].
 ///
@@ -46,9 +58,14 @@ impl HashTag {
         HashStream::new().update(&[self as u8])
     }
 
+    /// Convenience method to obtain a hashed value of the merkle tree leaf.
+    pub fn hash_leaf(value: &[u8]) -> Hash {
+        HashTag::Blob.hash_stream().update(value).hash()
+    }
+
     /// Convenience method to obtain hashed value of the merkle tree node.
     pub fn hash_node(left_hash: &Hash, right_hash: &Hash) -> Hash {
-        HashTag::Node
+        HashTag::ListBranchNode
             .hash_stream()
             .update(left_hash.as_ref())
             .update(right_hash.as_ref())
@@ -57,18 +74,16 @@ impl HashTag {
 
     /// Convenience method to obtain a hashed value of the merkle tree node with one child.
     pub fn hash_single_node(hash: &Hash) -> Hash {
-        HashTag::Node.hash_stream().update(hash.as_ref()).hash()
-    }
-
-    /// Convenience method to obtain a hashed value of the merkle tree leaf.
-    pub fn hash_leaf(value: &[u8]) -> Hash {
-        HashTag::Leaf.hash_stream().update(value).hash()
+        HashTag::ListBranchNode
+            .hash_stream()
+            .update(hash.as_ref())
+            .hash()
     }
 
     /// Hash of the list object.
     ///
     /// ```text
-    /// h = sha-256( HashTag::List || len as u64 || merkle_root )
+    /// h = sha-256( HashTag::ListNode || len as u64 || merkle_root )
     /// ```
     pub fn hash_list_node(len: u64, root: Hash) -> Hash {
         let mut len_bytes = [0; 8];
@@ -85,7 +100,7 @@ impl HashTag {
     ///
     /// Empty list hash:
     /// ```text
-    /// h = sha-256( HashTag::List || 0 || Hash::default() )
+    /// h = sha-256( HashTag::ListNode || 0 || Hash::default() )
     /// ```
     pub fn empty_list_hash() -> Hash {
         Hash::from_hex(EMPTY_LIST_HASH).unwrap()
@@ -94,6 +109,53 @@ impl HashTag {
     /// Computes a list hash for the given list of hashes.
     pub fn hash_list(hashes: &[Hash]) -> Hash {
         Self::hash_list_node(hashes.len() as u64, root_hash(hashes))
+    }
+
+    /// Hash of the map object.
+    ///
+    /// ```text
+    /// h = sha-256( HashTag::MapNode || merkle_root )
+    /// ```
+    pub fn hash_map_node(root: Hash) -> Hash {
+        HashStream::new()
+            .update(&[HashTag::MapNode as u8])
+            .update(root.as_ref())
+            .hash()
+    }
+
+    /// Hash of the map branch node.
+    ///
+    /// ```text
+    /// h = sha-256( HashTag::MapBranchNode || <left_key> || <right_key> || <left_hash> || <right_hash> )
+    /// ```
+    pub fn hash_map_branch(branch_node: &[u8]) -> Hash {
+        HashStream::new()
+            .update(&[HashTag::MapBranchNode as u8])
+            .update(branch_node)
+            .hash()
+    }
+
+    /// Hash of the map with single entry.
+    ///
+    /// ``` text
+    /// h = sha-256( HashTag::MapBranchNode || <key> || <child_hash> )
+    /// ```
+    pub fn hash_single_entry_map(path: &ProofPath, h: &Hash) -> Hash {
+        HashStream::new()
+            .update(&[HashTag::MapBranchNode as u8])
+            .update(path.as_bytes())
+            .update(h.as_ref())
+            .hash()
+    }
+
+    /// Hash of the empty map object.
+    ///
+    /// Empty map hash:
+    /// ```text
+    /// sha-256( HashTag::MapNode || Hash::default() )
+    /// ```
+    pub fn empty_map_hash() -> Hash {
+        Hash::from_hex(EMPTY_MAP_HASH).unwrap()
     }
 }
 
@@ -137,28 +199,60 @@ fn root_hash(hashes: &[Hash]) -> Hash {
 
 /// A common trait for the ability to compute a unique hash.
 ///
-/// Unlike `CryptoHash`, the hash value returned by the `UniqueHash::hash()`
+/// Unlike `CryptoHash`, the hash value returned by the `ObjectHash::hash()`
 /// method isn't always irreversible. This hash is used, for example, in the
 /// storage as a key, as uniqueness is important in this case.
-pub trait UniqueHash: BinaryValue {
+pub trait ObjectHash {
     /// Returns a hash of the value.
     ///
     /// Hash must be unique, but not necessary cryptographic.
-    fn hash(&self) -> Hash {
-        exonum_crypto::hash(&self.to_bytes())
-    }
+    fn object_hash(&self) -> Hash;
 }
 
 /// Just returns the origin hash.
-impl UniqueHash for Hash {
-    fn hash(&self) -> Hash {
+impl ObjectHash for Hash {
+    fn object_hash(&self) -> Hash {
         *self
     }
 }
 
 /// Just returns the origin array.
-impl UniqueHash for [u8; HASH_SIZE] {
-    fn hash(&self) -> Hash {
+impl ObjectHash for [u8; HASH_SIZE] {
+    fn object_hash(&self) -> Hash {
         Hash::new(*self)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use exonum_crypto::{Hash, HashStream};
+
+    use super::HashTag;
+
+    #[test]
+    fn empty_list_hash() {
+        let len_bytes = [0; 8];
+        let tag = 2;
+
+        let empty_list_hash = HashStream::new()
+            .update(&[tag])
+            .update(&len_bytes)
+            .update(Hash::default().as_ref())
+            .hash();
+
+        assert_eq!(empty_list_hash, HashTag::empty_list_hash());
+    }
+
+    #[test]
+    fn empty_map_hash() {
+        let tag = 3;
+
+        let empty_map_hash = HashStream::new()
+            .update(&[tag])
+            .update(Hash::default().as_ref())
+            .hash();
+
+        assert_eq!(empty_map_hash, HashTag::empty_map_hash());
+    }
+
 }

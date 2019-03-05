@@ -16,13 +16,13 @@ use failure::Fail;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_derive::{Deserialize, Serialize};
 
-use exonum_crypto::{Hash, HashStream};
+use exonum_crypto::Hash;
 
 use super::{
     key::{BitsRange, ChildKind, ProofPath, KEY_SIZE},
     node::{BranchNode, Node},
 };
-use crate::{BinaryKey, BinaryValue, UniqueHash};
+use crate::{BinaryKey, BinaryValue, HashTag, ObjectHash};
 
 // Expected size of the proof, in number of hashed entries.
 const DEFAULT_PROOF_CAPACITY: usize = 8;
@@ -201,7 +201,7 @@ impl<K, V> Into<(K, Option<V>)> for OptionalEntry<K, V> {
 /// to obtain information about the proof.
 ///
 /// ```
-/// # use exonum_merkledb::{Database, TemporaryDB, BinaryValue, MapProof, ProofMapIndex};
+/// # use exonum_merkledb::{Database, TemporaryDB, BinaryValue, MapProof, ProofMapIndex, ObjectHash};
 /// # use exonum_crypto::hash;
 /// let fork = { let db = TemporaryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &fork);
@@ -216,7 +216,7 @@ impl<K, V> Into<(K, Option<V>)> for OptionalEntry<K, V> {
 /// let checked_proof = proof.check().unwrap();
 /// assert_eq!(checked_proof.entries().collect::<Vec<_>>(), vec![(&h1, &100u32)]);
 /// assert_eq!(checked_proof.missing_keys().collect::<Vec<_>>(), vec![&h3]);
-/// assert_eq!(checked_proof.merkle_root(), map.merkle_root());
+/// assert_eq!(checked_proof.root_hash(), map.object_hash());
 /// ```
 ///
 /// # JSON serialization
@@ -232,13 +232,13 @@ impl<K, V> Into<(K, Option<V>)> for OptionalEntry<K, V> {
 ///
 /// ```
 /// # use serde_json::{self, json};
-/// # use exonum_merkledb::{Database, TemporaryDB, BinaryValue, MapProof, ProofMapIndex};
+/// # use exonum_merkledb::{Database, TemporaryDB, BinaryValue, MapProof, ProofMapIndex, HashTag};
 /// # use exonum_merkledb::proof_map_index::ProofPath;
 /// # use exonum_crypto::{hash, CryptoHash};
 /// # fn main() {
 /// let fork = { let db = TemporaryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &fork);
-/// let (h1, h2) = (hash(&[1]), hash(&[2]));
+/// let (h1, h2) = (HashTag::hash_leaf(&[1]), HashTag::hash_leaf(&[2]));
 /// map.put(&h1, 100u32);
 /// map.put(&h2, 200u32);
 ///
@@ -246,7 +246,7 @@ impl<K, V> Into<(K, Option<V>)> for OptionalEntry<K, V> {
 /// assert_eq!(
 ///     serde_json::to_value(&proof).unwrap(),
 ///     json!({
-///         "proof": [ { "path": ProofPath::new(&h1), "hash": 100u32.hash() } ],
+///         "proof": [ { "path": ProofPath::new(&h1), "hash": HashTag::hash_leaf(&100u32.to_bytes()) } ],
 ///         "entries": [ { "key": h2, "value": 200 } ]
 ///     })
 /// );
@@ -291,19 +291,11 @@ fn collect(entries: &[MapProofEntry]) -> Result<Hash, MapProofError> {
         x.prefix(x.common_prefix_len(y))
     }
 
-    /// Calculates hash for an isolated node in the Merkle Patricia tree.
-    fn hash_isolated_node(path: &ProofPath, h: &Hash) -> Hash {
-        HashStream::new()
-            .update(path.as_bytes())
-            .update(h.as_ref())
-            .hash()
-    }
-
     fn hash_branch(left_child: &MapProofEntry, right_child: &MapProofEntry) -> Hash {
         let mut branch = BranchNode::empty();
         branch.set_child(ChildKind::Left, &left_child.path, &left_child.hash);
         branch.set_child(ChildKind::Right, &right_child.path, &right_child.hash);
-        branch.hash()
+        branch.object_hash()
     }
 
     /// Folds two last entries in a contour and replaces them with the folded entry.
@@ -331,7 +323,10 @@ fn collect(entries: &[MapProofEntry]) -> Result<Hash, MapProofError> {
 
         1 => {
             if entries[0].path.is_leaf() {
-                Ok(hash_isolated_node(&entries[0].path, &entries[0].hash))
+                Ok(HashTag::hash_single_entry_map(
+                    &entries[0].path,
+                    &entries[0].hash,
+                ))
             } else {
                 Err(MapProofError::NonTerminalNode(entries[0].path))
             }
@@ -475,8 +470,8 @@ impl<K, V> MapProof<K, V> {
 
 impl<K, V> MapProof<K, V>
 where
-    K: BinaryKey + UniqueHash,
-    V: BinaryValue + UniqueHash,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash,
 {
     fn precheck(&self) -> Result<(), MapProofError> {
         use self::MapProofError::*;
@@ -543,7 +538,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use exonum_merkledb::{Database, TemporaryDB, ProofMapIndex};
+    /// # use exonum_merkledb::{Database, TemporaryDB, ProofMapIndex, ObjectHash};
     /// # use exonum_crypto::hash;
     /// let fork = { let db = TemporaryDB::new(); db.fork() };
     /// let mut map = ProofMapIndex::new("index", &fork);
@@ -554,7 +549,7 @@ where
     /// let proof = map.get_proof(h2);
     /// let checked_proof = proof.check().unwrap();
     /// assert_eq!(checked_proof.entries().collect::<Vec<_>>(), vec![(&h2, &200u32)]);
-    /// assert_eq!(checked_proof.merkle_root(), map.merkle_root());
+    /// assert_eq!(checked_proof.root_hash(), map.object_hash());
     /// ```
     ///
     /// [`ProofMapIndex`]: struct.ProofMapIndex.html
@@ -565,7 +560,7 @@ where
         proof.extend(entries.iter().filter_map(|e| {
             e.as_kv().map(|(k, v)| MapProofEntry {
                 path: ProofPath::new(k),
-                hash: v.hash(),
+                hash: HashTag::hash_leaf(&v.to_bytes()),
             })
         }));
         // Rust docs state that in the case `self.proof` and `self.entries` are sorted
@@ -589,7 +584,7 @@ where
 
         collect(&proof).map(|h| CheckedMapProof {
             entries: entries.into_iter().map(OptionalEntry::into).collect(),
-            hash: h,
+            hash: HashTag::hash_map_node(h),
         })
     }
 }
@@ -618,7 +613,7 @@ impl<K, V> CheckedMapProof<K, V> {
     }
 
     /// Returns a hash of the map that this proof is constructed for.
-    pub fn merkle_root(&self) -> Hash {
+    pub fn root_hash(&self) -> Hash {
         self.hash
     }
 }
@@ -631,8 +626,8 @@ pub fn create_proof<K, V, F, M>(
     get_value: M,
 ) -> MapProof<K, V>
 where
-    K: BinaryKey + UniqueHash,
-    V: BinaryValue + UniqueHash,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash,
     F: Fn(&ProofPath) -> Node,
     M: Fn(&K) -> V,
 {
@@ -772,7 +767,7 @@ fn process_key<K, V, F, M>(
     get_value: &M,
 ) -> MapProofBuilder<K, V>
 where
-    V: BinaryValue + UniqueHash,
+    V: BinaryValue + ObjectHash,
     F: Fn(&ProofPath) -> Node,
     M: Fn(&K) -> V,
 {
@@ -844,8 +839,8 @@ pub fn create_multiproof<K, V, KI, F, M>(
     get_value: M,
 ) -> MapProof<K, V>
 where
-    K: BinaryKey + UniqueHash,
-    V: BinaryValue + UniqueHash,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash,
     KI: IntoIterator<Item = K>,
     F: Fn(&ProofPath) -> Node,
     M: Fn(&K) -> V,
