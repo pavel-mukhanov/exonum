@@ -19,6 +19,12 @@ The project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
   - Introduced a generic `IndexState` structure that can be used to store global
     index properties like total number of items.
 
+- Changed `ProofMapIndex` hashing rules for branch nodes and root node.
+  Branch nodes is hashing now with 0x04 prefix, root node with 0x03. (#20)
+
+- Renamed method `merkle_root` of `ProofMapIndex` and `ProofListIndex` to
+  `object_hash`. (#20)
+
 - Several mutable indexes now can be create from immutable reference to `Fork` (#10)
 
 - Relaxed trait bounds for the `ProofMapIndex` keys (#7)
@@ -38,7 +44,7 @@ The project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
   - Added `to_bytes` method to the `BinaryValue` trait which doesn't consume
     original value instead of the `into_bytes`.
   - `BinaryKey::write` now returns total number of written bytes.
-  - `CryptoHash` has been replaced by the `UniqueHash`.
+  - `CryptoHash` has been replaced by the `ObjectHash`.
 
 - Changed the hash algorithm of the intermediate nodes in `ProofMapIndex`. (#1)
 

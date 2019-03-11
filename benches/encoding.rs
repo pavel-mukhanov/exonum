@@ -22,8 +22,9 @@ use rand_xorshift::XorShiftRng;
 
 use exonum_crypto::{self, Hash};
 use exonum_merkledb::{
+    impl_object_hash_for_binary_value,
     proof_map_index::{BranchNode, ProofPath},
-    BinaryKey, BinaryValue, UniqueHash,
+    BinaryKey, BinaryValue, ObjectHash,
 };
 
 const CHUNK_SIZE: usize = 64;
@@ -62,7 +63,7 @@ impl BinaryValue for SimpleData {
     }
 }
 
-impl UniqueHash for SimpleData {}
+impl_object_hash_for_binary_value! { SimpleData, CursorData }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct CursorData {
@@ -98,8 +99,6 @@ impl BinaryValue for CursorData {
         })
     }
 }
-
-impl UniqueHash for CursorData {}
 
 fn gen_bytes_data() -> Vec<u8> {
     let mut rng = XorShiftRng::from_seed(SEED);
@@ -142,7 +141,7 @@ fn gen_branch_node_data() -> BranchNode {
 fn bench_binary_value<F, V>(c: &mut Criterion, name: &str, f: F)
 where
     F: Fn() -> V + 'static + Clone + Copy,
-    V: BinaryValue + UniqueHash + PartialEq + Debug,
+    V: BinaryValue + ObjectHash + PartialEq + Debug,
 {
     // Checks that binary value is correct.
     let val = f();
@@ -177,7 +176,7 @@ where
     c.bench_function(
         &format!("encoding/{}/hash", name),
         move |b: &mut Bencher| {
-            b.iter_with_setup(f, |data| black_box(data.hash()));
+            b.iter_with_setup(f, |data| black_box(data.object_hash()));
         },
     );
 }
