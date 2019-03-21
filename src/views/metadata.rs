@@ -20,12 +20,12 @@ use failure::{self, ensure, format_err};
 use num_traits::FromPrimitive;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{BinaryKey, BinaryValue};
+use crate::BinaryValue;
 
 use super::{IndexAccess, IndexAddress, View};
 
 /// TODO Add documentation. [ECR-2820]
-const INDEXES_POOL_NAME: &str = "__INDEXES_POOL__";
+pub const INDEXES_POOL_NAME: &str = "__INDEXES_POOL__";
 
 /// TODO Add documentation. [ECR-2820]
 #[derive(Debug, Copy, Clone, PartialEq, Primitive, Serialize, Deserialize)]
@@ -44,8 +44,6 @@ pub enum IndexType {
 
 /// Index state attribute tag.
 const INDEX_STATE_TAG: u32 = 0;
-/// Separator between the name and the additional bytes in family indexes.
-const INDEX_NAME_SEPARATOR: &[u8] = &[0];
 
 /// TODO Add documentation. [ECR-2820]
 pub trait BinaryAttribute {
@@ -151,16 +149,6 @@ where
 impl<V> IndexMetadata<V> {
     fn index_address(&self) -> IndexAddress {
         IndexAddress::new().append_bytes(&self.identifier)
-    }
-}
-
-impl IndexAddress {
-    fn fully_qualified_name(&self) -> Vec<u8> {
-        if let Some(bytes) = self.bytes() {
-            concat_keys!(self.name(), INDEX_NAME_SEPARATOR, bytes)
-        } else {
-            concat_keys!(self.name())
-        }
     }
 }
 
@@ -270,6 +258,10 @@ where
         self.cache.get().state
     }
 
+    pub fn metadata(&self) -> IndexMetadata<V> {
+        self.cache.get()
+    }
+
     /// TODO Add documentation. [ECR-2820]
     pub fn set(&mut self, state: V) {
         let mut cache = self.cache.get_mut();
@@ -294,7 +286,10 @@ where
     V: BinaryAttribute + Default + Copy,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("IndexState").finish()
+        f.debug_struct("IndexState")
+            .field("index_name", &self.index_name)
+            .field("is_new", &self.is_new)
+            .finish()
     }
 }
 
