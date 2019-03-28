@@ -24,9 +24,11 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
+use crate::views::IndexAddress;
 use crate::{
     views::{
-        BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View,
+        AnyObject, BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType,
+        Iter as ViewIter, View,
     },
     BinaryKey, BinaryValue,
 };
@@ -118,6 +120,24 @@ pub struct SparseListIndexValues<'a, V> {
     base_iter: ViewIter<'a, (), V>,
 }
 
+impl<T, V> AnyObject<T> for SparseListIndex<T, V>
+where
+    T: IndexAccess,
+    V: BinaryValue,
+{
+    fn view(self) -> View<T> {
+        self.base
+    }
+
+    fn object_type(&self) -> IndexType {
+        IndexType::SparseList
+    }
+
+    fn metadata(&self) -> Vec<u8> {
+        self.state.metadata().to_bytes()
+    }
+}
+
 impl<T, V> SparseListIndex<T, V>
 where
     T: IndexAccess,
@@ -190,6 +210,29 @@ where
             .index_type(IndexType::SparseList)
             .index_name(family_name)
             .family_id(index_id)
+            .build();
+
+        Self {
+            base,
+            state,
+            _v: PhantomData,
+        }
+    }
+
+    pub fn get_from<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        IndexBuilder::from_address(address, access)
+            .index_type(IndexType::SparseList)
+            .build_existed()
+            .map(|(base, state)| Self {
+                base,
+                state,
+                _v: PhantomData,
+            })
+    }
+
+    pub fn create_from<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        let (base, state) = IndexBuilder::from_address(address, access)
+            .index_type(IndexType::SparseList)
             .build();
 
         Self {

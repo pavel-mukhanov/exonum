@@ -5,6 +5,16 @@ The project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+- New API for getting and creating indexes. (#35)
+
+  - Now indexes can be accessed via immutable references from `Snapshot` and
+    mutable/immutable references from `Fork`.
+
+  - Introduced method `fork::get_object` to get or create object by address.
+
+  - `get_object_existed` and `get_object_existed_mut` methods of `Fork` and `Snapshot`
+    returns optional references to index.
+
 - Updated `ProofMapIndex` data layout. (#31)
 
   Path to the root node in merkle patricia tree now has been stored in the index

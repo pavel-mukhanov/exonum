@@ -23,8 +23,8 @@ use serde_derive::{Deserialize, Serialize};
 
 use exonum_crypto::{Hash, PublicKey, PUBLIC_KEY_LENGTH};
 use exonum_merkledb::{
-    impl_object_hash_for_binary_value, BinaryValue, Database, Fork, IndexAccess, ListIndex,
-    MapIndex, ObjectHash, ProofListIndex, ProofMapIndex, TemporaryDB,
+    impl_object_hash_for_binary_value, BinaryValue, Database, Fork, ListIndex, MapIndex,
+    ObjectAccess, ObjectHash, ProofListIndex, ProofMapIndex, RefMut, TemporaryDB,
 };
 
 const SEED: [u8; 16] = [100; 16];
@@ -176,43 +176,11 @@ impl BinaryValue for Block {
     }
 }
 
-struct Schema<T: IndexAccess>(T);
-
-impl<T: IndexAccess> Schema<T> {
-    fn new(index_access: T) -> Self {
-        Self(index_access)
-    }
-
-    fn transactions(&self) -> MapIndex<T, Hash, Transaction> {
-        MapIndex::new("transactions", self.0.clone())
-    }
-
-    fn blocks(&self) -> ListIndex<T, Hash> {
-        ListIndex::new("blocks", self.0.clone())
-    }
-
-    fn wallets(&self) -> ProofMapIndex<T, PublicKey, Wallet> {
-        ProofMapIndex::new("wallets", self.0.clone())
-    }
-
-    fn wallets_history(&self, owner: &PublicKey) -> ProofListIndex<T, Hash> {
-        ProofListIndex::new_in_family("wallets.history", owner, self.0.clone())
-    }
-}
-
-impl Schema<&Fork> {
-    fn add_transaction_to_history(&self, owner: &PublicKey, tx_hash: Hash) -> Hash {
-        let mut history = self.wallets_history(owner);
-        history.push(tx_hash);
-        history.object_hash()
-    }
-}
-
 impl Transaction {
     fn execute(&self, fork: &Fork) {
         let tx_hash = self.object_hash();
 
-        let schema = Schema::new(fork);
+        let schema = RefSchema::new(fork);
         schema.transactions().put(&self.object_hash(), *self);
 
         let mut owner_wallet = schema.wallets().get(&self.sender).unwrap_or_default();
@@ -227,13 +195,45 @@ impl Transaction {
     }
 }
 
+struct RefSchema<T: ObjectAccess>(T);
+
+impl<T: ObjectAccess> RefSchema<T> {
+    fn new(object_access: T) -> Self {
+        Self(object_access)
+    }
+
+    fn transactions(&self) -> RefMut<MapIndex<T, Hash, Transaction>> {
+        self.0.get_object("transactions")
+    }
+
+    fn blocks(&self) -> RefMut<ListIndex<T, Hash>> {
+        self.0.get_object("blocks")
+    }
+
+    fn wallets(&self) -> RefMut<ProofMapIndex<T, PublicKey, Wallet>> {
+        self.0.get_object("wallets")
+    }
+
+    fn wallets_history(&self, owner: &PublicKey) -> RefMut<ProofListIndex<T, Hash>> {
+        self.0.get_object(("wallets.history", owner))
+    }
+}
+
+impl<T: ObjectAccess> RefSchema<T> {
+    fn add_transaction_to_history(&self, owner: &PublicKey, tx_hash: Hash) -> Hash {
+        let mut history = self.wallets_history(owner);
+        history.push(tx_hash);
+        history.object_hash()
+    }
+}
+
 impl Block {
     fn execute(&self, db: &TemporaryDB) {
         let fork = db.fork();
         for transaction in &self.transactions {
             transaction.execute(&fork);
         }
-        Schema::new(&fork).blocks().push(self.object_hash());
+        RefSchema::new(&fork).blocks().push(self.object_hash());
         db.merge(fork.into_patch()).unwrap();
     }
 }
@@ -285,7 +285,7 @@ pub fn bench_transactions(c: &mut Criterion) {
                     }
                     // Some fast assertions.
                     let snapshot = db.snapshot();
-                    let schema = Schema::new(&snapshot);
+                    let schema = RefSchema::new(&snapshot);
                     assert_eq!(schema.blocks().len(), params.blocks as u64);
                 })
             },

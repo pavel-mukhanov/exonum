@@ -24,9 +24,10 @@ use std::{
 use exonum_crypto::Hash;
 
 use self::{key::ProofListKey, proof::ProofOfAbsence};
+use crate::views::IndexAddress;
 use crate::{
     hash::HashTag,
-    views::{IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View},
+    views::{AnyObject, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View},
     BinaryKey, BinaryValue, ObjectHash,
 };
 
@@ -61,6 +62,24 @@ pub struct ProofListIndex<T: IndexAccess, V> {
 #[derive(Debug)]
 pub struct ProofListIndexIter<'a, V> {
     base_iter: ViewIter<'a, ProofListKey, V>,
+}
+
+impl<T, V> AnyObject<T> for ProofListIndex<T, V>
+where
+    T: IndexAccess,
+    V: BinaryValue,
+{
+    fn view(self) -> View<T> {
+        self.base
+    }
+
+    fn object_type(&self) -> IndexType {
+        IndexType::ProofList
+    }
+
+    fn metadata(&self) -> Vec<u8> {
+        self.state.metadata().to_bytes()
+    }
 }
 
 impl<T, V> ProofListIndex<T, V>
@@ -146,6 +165,52 @@ where
             state,
             _v: PhantomData,
         }
+    }
+
+    pub fn get_from_view(view: View<T>) -> Option<Self> {
+        IndexBuilder::for_view(view)
+            .index_type(IndexType::ProofList)
+            .build_existed()
+            .map(|(base, state)| Self {
+                base,
+                state,
+                _v: PhantomData,
+            })
+    }
+
+    pub fn create_from_view(view: View<T>) -> Self {
+        let (base, state) = IndexBuilder::for_view(view)
+            .index_type(IndexType::ProofList)
+            .build();
+
+        Self {
+            base,
+            state,
+            _v: PhantomData,
+        }
+    }
+
+    pub fn create_from<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        let (base, state) = IndexBuilder::from_address(address, access)
+            .index_type(IndexType::ProofList)
+            .build();
+
+        Self {
+            base,
+            state,
+            _v: PhantomData,
+        }
+    }
+
+    pub fn get_from<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        IndexBuilder::from_address(address, access)
+            .index_type(IndexType::ProofList)
+            .build_existed()
+            .map(|(base, state)| Self {
+                base,
+                state,
+                _v: PhantomData,
+            })
     }
 
     fn has_branch(&self, key: ProofListKey) -> bool {

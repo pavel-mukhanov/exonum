@@ -18,8 +18,9 @@ use std::marker::PhantomData;
 
 use exonum_crypto::Hash;
 
+use crate::views::IndexAddress;
 use crate::{
-    views::{IndexAccess, IndexBuilder, IndexType, View},
+    views::{AnyObject, IndexAccess, IndexBuilder, IndexState, IndexType, View},
     BinaryKey, BinaryValue, ObjectHash,
 };
 
@@ -32,7 +33,26 @@ use crate::{
 #[derive(Debug)]
 pub struct Entry<T: IndexAccess, V> {
     base: View<T>,
+    state: IndexState<T, ()>,
     _v: PhantomData<V>,
+}
+
+impl<T, V> AnyObject<T> for Entry<T, V>
+where
+    T: IndexAccess,
+    V: BinaryValue,
+{
+    fn view(self) -> View<T> {
+        self.base
+    }
+
+    fn object_type(&self) -> IndexType {
+        IndexType::Entry
+    }
+
+    fn metadata(&self) -> Vec<u8> {
+        self.state.metadata().to_bytes()
+    }
 }
 
 impl<T, V> Entry<T, V>
@@ -60,13 +80,14 @@ where
     /// let index: Entry<_, u8> = Entry::new(name, &snapshot);
     /// ```
     pub fn new<S: Into<String>>(index_name: S, view: T) -> Self {
-        let (base, _state) = IndexBuilder::new(view)
+        let (base, state) = IndexBuilder::new(view)
             .index_type(IndexType::Entry)
             .index_name(index_name)
             .build::<()>();
 
         Self {
             base,
+            state,
             _v: PhantomData,
         }
     }
@@ -98,7 +119,7 @@ where
         I: ?Sized,
         S: Into<String>,
     {
-        let (base, _state) = IndexBuilder::new(view)
+        let (base, state) = IndexBuilder::new(view)
             .index_type(IndexType::Entry)
             .index_name(family_name)
             .family_id(index_id)
@@ -106,6 +127,30 @@ where
 
         Self {
             base,
+            state,
+            _v: PhantomData,
+        }
+    }
+
+    pub fn get_from<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        IndexBuilder::from_address(address, access)
+            .index_type(IndexType::Entry)
+            .build_existed::<()>()
+            .map(|(base, state)| Self {
+                base,
+                state,
+                _v: PhantomData,
+            })
+    }
+
+    pub fn create_from<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        let (base, state) = IndexBuilder::from_address(address, access)
+            .index_type(IndexType::Entry)
+            .build::<()>();
+
+        Self {
+            base,
+            state,
             _v: PhantomData,
         }
     }
