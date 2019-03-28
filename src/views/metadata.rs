@@ -24,7 +24,7 @@ use crate::BinaryValue;
 
 use super::{IndexAccess, IndexAddress, View};
 
-/// Name of the column family used to store IndexesPool.
+/// Name of the column family used to store `IndexesPool`.
 const INDEXES_POOL_NAME: &str = "__INDEXES_POOL__";
 
 /// Type of the index stored in `IndexMetadata`.
@@ -155,16 +155,6 @@ impl<V> IndexMetadata<V> {
     }
 }
 
-impl IndexAddress {
-    fn fully_qualified_name(&self) -> Vec<u8> {
-        if let Some(bytes) = self.bytes() {
-            concat_keys!(self.name(), INDEX_NAME_SEPARATOR, bytes)
-        } else {
-            concat_keys!(self.name())
-        }
-    }
-}
-
 /// Returns index metadata based on provided `index_address` and `index_type`.
 ///
 /// Creates new metadata if it doesn't exists.
@@ -285,8 +275,7 @@ where
     pub fn set(&mut self, state: V) {
         let mut cache = self.cache.get_mut();
         cache.state = state;
-        View::new(self.index_access, INDEXES_POOL_NAME)
-            .put(&self.index_name, cache.to_bytes());
+        View::new(self.index_access, INDEXES_POOL_NAME).put(&self.index_name, cache.to_bytes());
     }
 
     pub fn is_new(&self) -> bool {
