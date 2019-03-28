@@ -1,4 +1,4 @@
-// Copyright 2018 The Exonum Team
+// Copyright 2019 The Exonum Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ use failure::{self, ensure, format_err};
 use num_traits::FromPrimitive;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{BinaryKey, BinaryValue};
+use crate::BinaryValue;
 
 use super::{IndexAccess, IndexAddress, View};
 
@@ -44,8 +44,6 @@ pub enum IndexType {
 
 /// Index state attribute tag.
 const INDEX_STATE_TAG: u32 = 0;
-/// Separator between the name and the additional bytes in family indexes.
-const INDEX_NAME_SEPARATOR: &[u8] = &[0];
 
 /// TODO Add documentation. [ECR-2820]
 pub trait BinaryAttribute {
@@ -154,17 +152,8 @@ impl<V> IndexMetadata<V> {
     }
 }
 
-impl IndexAddress {
-    fn fully_qualified_name(&self) -> Vec<u8> {
-        if let Some(bytes) = self.bytes() {
-            concat_keys!(self.name(), INDEX_NAME_SEPARATOR, bytes)
-        } else {
-            concat_keys!(self.name())
-        }
-    }
-}
-
 /// TODO Add documentation. [ECR-2820]
+//TODO: revert to private
 pub fn index_metadata<T, V>(
     index_access: T,
     index_address: &IndexAddress,
@@ -177,18 +166,18 @@ where
     let index_name = index_address.fully_qualified_name();
 
     let mut pool = IndexesPool::new(index_access);
-    let metadata = if let Some(metadata) = pool.index_metadata(&index_name) {
+    let (metadata, is_new) = if let Some(metadata) = pool.index_metadata(&index_name) {
         assert_eq!(
             metadata.index_type, index_type,
             "Index type doesn't match specified"
         );
-        metadata
+        (metadata, false)
     } else {
-        pool.create_index_metadata(&index_name, index_type)
+        (pool.create_index_metadata(&index_name, index_type), true)
     };
 
     let index_address = metadata.index_address();
-    let index_state = IndexState::new(index_access, index_name, metadata);
+    let index_state = IndexState::new(index_access, index_name, metadata, is_new);
     (index_address, index_state)
 }
 
@@ -247,6 +236,7 @@ where
     index_access: T,
     index_name: Vec<u8>,
     cache: Cell<IndexMetadata<V>>,
+    is_new: bool,
 }
 
 impl<T, V> IndexState<T, V>
@@ -254,11 +244,12 @@ where
     V: BinaryAttribute + Default + Copy,
     T: IndexAccess,
 {
-    fn new(index_access: T, index_name: Vec<u8>, metadata: IndexMetadata<V>) -> Self {
+    fn new(index_access: T, index_name: Vec<u8>, metadata: IndexMetadata<V>, is_new: bool) -> Self {
         Self {
             index_access,
             index_name,
             cache: Cell::new(metadata),
+            is_new,
         }
     }
 
@@ -267,12 +258,20 @@ where
         self.cache.get().state
     }
 
+    pub fn metadata(&self) -> IndexMetadata<V> {
+        self.cache.get()
+    }
+
     /// TODO Add documentation. [ECR-2820]
     pub fn set(&mut self, state: V) {
         let mut cache = self.cache.get_mut();
         cache.state = state;
         View::new(self.index_access, IndexAddress::from(INDEXES_POOL_NAME))
             .put(&self.index_name, cache.to_bytes());
+    }
+
+    pub fn is_new(&self) -> bool {
+        self.is_new
     }
 
     /// TODO Add documentation. [ECR-2820]
@@ -287,7 +286,10 @@ where
     V: BinaryAttribute + Default + Copy,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("IndexState").finish()
+        f.debug_struct("IndexState")
+            .field("index_name", &self.index_name)
+            .field("is_new", &self.is_new)
+            .finish()
     }
 }
 

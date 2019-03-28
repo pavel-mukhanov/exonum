@@ -149,7 +149,7 @@ pub struct Patch {
     changes: HashMap<String, Changes>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WorkingPatch {
     changes: RefCell<HashMap<IndexAddress, Option<ViewChanges>>>,
 }
@@ -205,7 +205,7 @@ impl WorkingPatch {
     }
 
     /// Returns a mutable reference to the changes corresponding to a certain index.
-    fn changes_mut(&self, address: &IndexAddress) -> ChangesRef {
+    pub fn changes_mut(&self, address: &IndexAddress) -> ChangesRef {
         let view_changes = {
             let mut changes = self.changes.borrow_mut();
             let view_changes = changes.get_mut(address).map(Option::take);
@@ -228,6 +228,13 @@ impl WorkingPatch {
             key: address.clone(),
             parent: self,
         }
+    }
+
+    pub fn clear(&self, address: &IndexAddress) {
+        let mut changes = self.changes.borrow_mut();
+        let change = changes.entry(address.clone());
+
+        change.and_modify(|v| *v = None);
     }
 
     // TODO: verify that this method updates `Change`s already in the `Patch` [ECR-2834]
@@ -614,6 +621,11 @@ impl Fork {
     /// Checks if a fork has any unflushed changes.
     pub fn is_dirty(&self) -> bool {
         !self.working_patch.is_empty()
+    }
+
+    ///TODO: add documentation [ECR-2820
+    pub fn working_patch(&self) -> &WorkingPatch {
+        &self.working_patch
     }
 }
 

@@ -33,6 +33,7 @@ use self::{
     key::{BitsRange, ChildKind, VALUE_KEY_PREFIX},
     proof::{create_multiproof, create_proof},
 };
+use crate::views::{AnyObject, IndexAddress};
 use crate::{
     views::{
         BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View,
@@ -101,6 +102,25 @@ pub struct ProofMapIndexKeys<'a, K> {
 #[derive(Debug)]
 pub struct ProofMapIndexValues<'a, V> {
     base_iter: ViewIter<'a, Vec<u8>, V>,
+}
+
+impl<T, K, V> AnyObject<T> for ProofMapIndex<T, K, V>
+where
+    T: IndexAccess,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash,
+{
+    fn view(self) -> View<T> {
+        self.base
+    }
+
+    fn object_type(&self) -> IndexType {
+        IndexType::ProofMap
+    }
+
+    fn metadata(&self) -> Vec<u8> {
+        self.state.metadata().to_bytes()
+    }
 }
 
 /// TODO Clarify documentation. [ECR-2820]
@@ -248,6 +268,56 @@ where
             .index_name(family_name)
             .family_id(index_id)
             .build();
+        Self {
+            base,
+            state,
+            _k: PhantomData,
+            _v: PhantomData,
+        }
+    }
+
+    pub fn get_from_view(view: View<T>) -> Option<Self> {
+        IndexBuilder::for_view(view)
+            .index_type(IndexType::ProofMap)
+            .build_existed()
+            .map(|(base, state)| Self {
+                base,
+                state,
+                _k: PhantomData,
+                _v: PhantomData,
+            })
+    }
+
+    pub fn create_from_view(view: View<T>) -> Self {
+        let (base, state) = IndexBuilder::for_view(view)
+            .index_type(IndexType::ProofMap)
+            .build();
+
+        Self {
+            base,
+            state,
+            _k: PhantomData,
+            _v: PhantomData,
+        }
+    }
+
+    pub fn get_from<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        IndexBuilder::from_address(address, access)
+            .index_type(IndexType::ProofMap)
+            .build_existed()
+            .map(|(base, state)| Self {
+                base,
+                state,
+                _k: PhantomData,
+                _v: PhantomData,
+            })
+    }
+
+    pub fn create_from<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        let (base, state) = IndexBuilder::from_address(address, access)
+            .index_type(IndexType::ProofMap)
+            .build();
+
         Self {
             base,
             state,

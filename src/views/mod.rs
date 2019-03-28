@@ -1,4 +1,4 @@
-// Copyright 2018 The Exonum Team
+// Copyright 2019 The Exonum Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,10 @@
 
 #![warn(missing_docs)]
 
-pub use self::metadata::{BinaryAttribute, IndexState, IndexType};
+pub use self::{
+    metadata::{BinaryAttribute, IndexState, IndexType},
+    refs::{AnyObject, ObjectAccess, Ref, RefMut},
+};
 
 use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData};
 
@@ -24,8 +27,12 @@ use super::{
 };
 
 mod metadata;
+mod refs;
 #[cfg(test)]
 mod tests;
+
+/// Separator between the name and the additional bytes in family indexes.
+const INDEX_NAME_SEPARATOR: &[u8] = &[0];
 
 /// Base view struct responsible for accessing indexes.
 // TODO: add documentation [ECR-2820]
@@ -103,6 +110,24 @@ where
         }
     }
 
+    ///TODO: add docs
+    pub fn for_view(view: View<T>) -> Self {
+        Self {
+            address: view.address,
+            index_access: view.index_access,
+            index_type: IndexType::default(),
+        }
+    }
+
+    ///TODO: add documentation [ECR-2820]
+    pub fn from_address<I: Into<IndexAddress>>(address: I, index_access: T) -> Self {
+        Self {
+            index_access,
+            address: address.into(),
+            index_type: IndexType::default(),
+        }
+    }
+
     /// Provides first part of the index address.
     pub fn index_name<S: Into<String>>(self, index_name: S) -> Self {
         let address = self.address.append_name(index_name.into());
@@ -135,13 +160,7 @@ where
         }
     }
 
-    /// Returns index that builds upon specified `view` and `address`.
-    ///
-    /// # Panics
-    ///
-    /// - Panics if index metadata doesn't match expected.
-    /// - Panics if index name is empty.
-    pub fn build<V>(self) -> (View<T>, IndexState<T, V>)
+    fn create_state<V>(self) -> (View<T>, IndexState<T, V>)
     where
         V: BinaryAttribute + Default + Copy,
     {
@@ -153,8 +172,36 @@ where
 
         let (index_address, index_state) =
             metadata::index_metadata(self.index_access, &self.address, self.index_type);
+
         let index_view = View::new(self.index_access, index_address);
+
         (index_view, index_state)
+    }
+
+    /// Returns index that builds upon specified `view` and `address`.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if index metadata doesn't match expected.
+    /// - Panics if index name is empty.
+    pub fn build<V>(self) -> (View<T>, IndexState<T, V>)
+    where
+        V: BinaryAttribute + Default + Copy,
+    {
+        self.create_state()
+    }
+
+    ///TODO: add documentation [ECR-2820]
+    pub fn build_existed<V>(self) -> Option<(View<T>, IndexState<T, V>)>
+    where
+        V: BinaryAttribute + Default + Copy,
+    {
+        let (index_view, index_state) = self.create_state();
+        if index_state.is_new() {
+            return None;
+        }
+
+        Some((index_view, index_state))
     }
 }
 
@@ -229,6 +276,14 @@ impl IndexAddress {
         Self {
             name,
             bytes: Some(bytes),
+        }
+    }
+
+    pub fn fully_qualified_name(&self) -> Vec<u8> {
+        if let Some(bytes) = self.bytes() {
+            concat_keys!(self.name(), INDEX_NAME_SEPARATOR, bytes)
+        } else {
+            concat_keys!(self.name())
         }
     }
 }
