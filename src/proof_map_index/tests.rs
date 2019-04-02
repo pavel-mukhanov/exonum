@@ -34,7 +34,7 @@ use super::{
 };
 use crate::{BinaryKey, BinaryValue, Database, Fork, HashTag, ObjectHash, TemporaryDB};
 
-const IDX_NAME: &'static str = "idx_name";
+const IDX_NAME: &str = "idx_name";
 
 // Makes large data set with unique keys
 fn generate_random_data(len: usize) -> Vec<([u8; KEY_SIZE], Vec<u8>)> {
@@ -659,7 +659,7 @@ fn test_build_proof_in_single_node_tree() {
     let proof = table.get_proof([128; 32]);
     assert_eq!(
         proof.proof_unchecked(),
-        vec![(ProofPath::new(&[230; 32]), HashTag::hash_leaf(&vec![1]))]
+        vec![(ProofPath::new(&[230; 32]), HashTag::hash_leaf(&[1]))]
     );
     check_map_proof(proof, None, &table);
 }
@@ -681,7 +681,7 @@ fn test_build_multiproof_in_single_node_tree() {
     let proof = table.get_multiproof(keys.clone());
     assert_eq!(
         proof.proof_unchecked(),
-        vec![(ProofPath::new(&[230; 32]), HashTag::hash_leaf(&vec![1]))]
+        vec![(ProofPath::new(&[230; 32]), HashTag::hash_leaf(&[1]))]
     );
     check_map_multiproof(proof, keys, &table);
 }
@@ -741,12 +741,12 @@ fn test_build_proof_in_complex_tree() {
         node.set_child(
             ChildKind::Left,
             &ProofPath::new(&left_key),
-            &HashTag::hash_leaf(&vec![3]),
+            &HashTag::hash_leaf(&[3]),
         );
         node.set_child(
             ChildKind::Right,
             &ProofPath::new(&[128; 32]),
-            &HashTag::hash_leaf(&vec![1]),
+            &HashTag::hash_leaf(&[1]),
         );
         node.object_hash()
     };
@@ -755,8 +755,8 @@ fn test_build_proof_in_complex_tree() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&left_key), HashTag::hash_leaf(&vec![3])),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&left_key), HashTag::hash_leaf(&[3])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_proof(proof, Some([128; 32]), &table);
@@ -766,7 +766,7 @@ fn test_build_proof_in_complex_tree() {
         proof.proof_unchecked(),
         vec![
             (ProofPath::new(&left_key).prefix(15), left_hash),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_proof(proof, None, &table);
@@ -783,7 +783,7 @@ fn test_build_proof_in_complex_tree() {
         proof.proof_unchecked(),
         vec![
             (ProofPath::new(&left_key).prefix(15), left_hash),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_proof(proof, None, &table);
@@ -803,12 +803,12 @@ fn test_build_proof_in_complex_tree() {
         node.set_child(
             ChildKind::Left,
             &ProofPath::new(&[32; 32]),
-            &HashTag::hash_leaf(&vec![2]),
+            &HashTag::hash_leaf(&[2]),
         );
         node.set_child(
             ChildKind::Right,
             &ProofPath::new(&right_key),
-            &HashTag::hash_leaf(&vec![4]),
+            &HashTag::hash_leaf(&[4]),
         );
         node.object_hash()
     };
@@ -817,7 +817,7 @@ fn test_build_proof_in_complex_tree() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&left_key), HashTag::hash_leaf(&vec![3])),
+            (ProofPath::new(&left_key), HashTag::hash_leaf(&[3])),
             (ProofPath::new(&right_key).prefix(12), right_hash),
         ]
     );
@@ -847,8 +847,8 @@ fn test_build_proof_in_complex_tree() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&left_key), HashTag::hash_leaf(&vec![3])),
-            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&vec![1])),
+            (ProofPath::new(&left_key), HashTag::hash_leaf(&[3])),
+            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&[1])),
             (ProofPath::new(&right_key).prefix(12), right_hash),
         ]
     );
@@ -878,7 +878,7 @@ fn test_build_proof_in_complex_tree() {
         proof.proof_unchecked(),
         vec![
             (ProofPath::new(&[0; 32]).prefix(5), subtree_hash),
-            (ProofPath::new(&[129; 32]), HashTag::hash_leaf(&vec![5])),
+            (ProofPath::new(&[129; 32]), HashTag::hash_leaf(&[5])),
         ]
     );
     check_map_proof(proof, None, &table);
@@ -888,8 +888,8 @@ fn test_build_proof_in_complex_tree() {
         proof.proof_unchecked(),
         vec![
             (ProofPath::new(&left_key).prefix(15), left_hash),
-            (ProofPath::new(&right_key), HashTag::hash_leaf(&vec![4])),
-            (ProofPath::new(&[129; 32]), HashTag::hash_leaf(&vec![5])),
+            (ProofPath::new(&right_key), HashTag::hash_leaf(&[4])),
+            (ProofPath::new(&[129; 32]), HashTag::hash_leaf(&[5])),
         ]
     );
     check_map_proof(proof, Some([32; 32]), &table);
@@ -908,7 +908,7 @@ fn test_build_multiproof_simple() {
     let proof = table.get_multiproof(keys.clone());
     assert_eq!(
         proof.proof_unchecked(),
-        vec![(ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2]))]
+        vec![(ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2]))]
     );
     check_map_multiproof(proof, keys, &table);
 
@@ -916,7 +916,7 @@ fn test_build_multiproof_simple() {
     let proof = table.get_multiproof(keys.clone());
     assert_eq!(
         proof.proof_unchecked(),
-        vec![(ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2]))]
+        vec![(ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2]))]
     );
     check_map_multiproof(proof, keys, &table);
 
@@ -930,8 +930,8 @@ fn test_build_multiproof_simple() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&vec![1])),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&[1])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_multiproof(proof, keys, &table);
@@ -941,8 +941,8 @@ fn test_build_multiproof_simple() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&vec![1])),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&[1])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_multiproof(proof, keys, &table);
@@ -952,8 +952,8 @@ fn test_build_multiproof_simple() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&vec![1])),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&[1])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_multiproof(proof, vec![[64; 32]], &table);
@@ -962,7 +962,7 @@ fn test_build_multiproof_simple() {
     let proof = table.get_multiproof(keys.clone());
     assert_eq!(
         proof.proof_unchecked(),
-        vec![(ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2]))]
+        vec![(ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2]))]
     );
     check_map_multiproof(proof, vec![[128; 32], [64; 32]], &table);
 
@@ -971,8 +971,8 @@ fn test_build_multiproof_simple() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&vec![1])),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&[1])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_multiproof(proof, keys, &table);
@@ -991,12 +991,12 @@ fn test_build_multiproof_simple() {
         node.set_child(
             ChildKind::Left,
             &ProofPath::new(&left_key),
-            &HashTag::hash_leaf(&vec![3]),
+            &HashTag::hash_leaf(&[3]),
         );
         node.set_child(
             ChildKind::Right,
             &ProofPath::new(&[128; 32]),
-            &HashTag::hash_leaf(&vec![1]),
+            &HashTag::hash_leaf(&[1]),
         );
         node.object_hash()
     };
@@ -1006,7 +1006,7 @@ fn test_build_multiproof_simple() {
         proof.proof_unchecked(),
         vec![
             (ProofPath::new(&[128; 32]).prefix(15), left_hash),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_multiproof(proof, vec![[0; 32]], &table);
@@ -1022,7 +1022,7 @@ fn test_build_multiproof_simple() {
         proof.proof_unchecked(),
         vec![
             (ProofPath::new(&[128; 32]).prefix(15), left_hash),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_multiproof(proof, keys, &table);
@@ -1032,8 +1032,8 @@ fn test_build_multiproof_simple() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&left_key), HashTag::hash_leaf(&vec![3])),
-            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&vec![2])),
+            (ProofPath::new(&left_key), HashTag::hash_leaf(&[3])),
+            (ProofPath::new(&[32; 32]), HashTag::hash_leaf(&[2])),
         ]
     );
     check_map_multiproof(proof, keys, &table);
@@ -1042,7 +1042,7 @@ fn test_build_multiproof_simple() {
     let proof = table.get_multiproof(keys.clone());
     assert_eq!(
         proof.proof_unchecked(),
-        vec![(ProofPath::new(&left_key), HashTag::hash_leaf(&vec![3]))]
+        vec![(ProofPath::new(&left_key), HashTag::hash_leaf(&[3]))]
     );
     check_map_multiproof(proof, keys, &table);
 
@@ -1066,8 +1066,8 @@ fn test_build_multiproof_simple() {
     assert_eq!(
         proof.proof_unchecked(),
         vec![
-            (ProofPath::new(&left_key), HashTag::hash_leaf(&vec![3])),
-            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&vec![1])),
+            (ProofPath::new(&left_key), HashTag::hash_leaf(&[3])),
+            (ProofPath::new(&[128; 32]), HashTag::hash_leaf(&[1])),
         ]
     );
     check_map_multiproof(proof, keys, &table);
