@@ -24,10 +24,11 @@ use crate::BinaryValue;
 
 use super::{IndexAccess, IndexAddress, View};
 
-/// TODO Add documentation. [ECR-2820]
+/// Name of the column family used to store `IndexesPool`.
 const INDEXES_POOL_NAME: &str = "__INDEXES_POOL__";
 
-/// TODO Add documentation. [ECR-2820]
+/// Type of the index stored in `IndexMetadata`.
+/// `IndexType` is used for type checking indexes when they are created/accessed.
 #[derive(Debug, Copy, Clone, PartialEq, Primitive, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum IndexType {
@@ -45,13 +46,13 @@ pub enum IndexType {
 /// Index state attribute tag.
 const INDEX_STATE_TAG: u32 = 0;
 
-/// TODO Add documentation. [ECR-2820]
+/// A type that can be (de)serialized as a metadata value.
 pub trait BinaryAttribute {
-    /// TODO Add documentation. [ECR-2820]
+    /// Size of the value.
     fn size(&self) -> usize;
-    /// TODO Add documentation. [ECR-2820]
+    /// Writes value to specified `buffer`.
     fn write<W: std::io::Write>(&self, buffer: &mut W);
-    /// TODO Add documentation. [ECR-2820]
+    /// Reads value from specified `buffer`.
     fn read<R: std::io::Read>(buffer: &mut R) -> Self;
 }
 
@@ -86,7 +87,9 @@ impl Default for IndexType {
     }
 }
 
-/// TODO Add documentation. [ECR-2820]
+/// Metadata associated with each index. Contains `identifier`, `index_type` and `state`.
+/// In metadata one can store any arbitrary data serialized as byte array.
+/// See also `BinaryAttribute`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IndexMetadata<V> {
     identifier: u64,
@@ -152,8 +155,12 @@ impl<V> IndexMetadata<V> {
     }
 }
 
-/// TODO Add documentation. [ECR-2820]
-//TODO: revert to private
+/// Returns index metadata based on provided `index_address` and `index_type`.
+///
+/// Creates new metadata if it does not exist.
+///
+/// Input `index_address` is replaced by output `index_address` based on the value
+/// taken from the indexes pool.
 pub fn index_metadata<T, V>(
     index_access: T,
     index_address: &IndexAddress,
@@ -181,13 +188,13 @@ where
     (index_address, index_state)
 }
 
-/// TODO Add documentation. [ECR-2820]
+/// Persistent pool used to store indexes metadata in the database.
+/// Pool size is used as an identifier of newly created indexes.
 struct IndexesPool<T: IndexAccess>(View<T>);
 
 impl<T: IndexAccess> IndexesPool<T> {
     fn new(index_access: T) -> Self {
-        let pool_address = IndexAddress::from(INDEXES_POOL_NAME);
-        Self(View::new(index_access, pool_address))
+        Self(View::new(index_access, INDEXES_POOL_NAME))
     }
 
     fn len(&self) -> u64 {
@@ -227,7 +234,8 @@ impl<T: IndexAccess> IndexesPool<T> {
     }
 }
 
-/// TODO Add documentation. [ECR-2820]
+/// Wrapper struct to manipulate `IndexMetadata` for an index with provided `index_name`.
+/// Metadata value is cached for faster access.
 pub struct IndexState<T, V>
 where
     V: BinaryAttribute + Default + Copy,
@@ -253,28 +261,28 @@ where
         }
     }
 
-    /// TODO Add documentation. [ECR-2820]
+    /// Returns stored index metadata from cache.
     pub fn get(&self) -> V {
         self.cache.get().state
     }
 
+    /// Get stored index metadata.
     pub fn metadata(&self) -> IndexMetadata<V> {
         self.cache.get()
     }
 
-    /// TODO Add documentation. [ECR-2820]
+    /// Updates stored index metadata.
     pub fn set(&mut self, state: V) {
         let mut cache = self.cache.get_mut();
         cache.state = state;
-        View::new(self.index_access, IndexAddress::from(INDEXES_POOL_NAME))
-            .put(&self.index_name, cache.to_bytes());
+        View::new(self.index_access, INDEXES_POOL_NAME).put(&self.index_name, cache.to_bytes());
     }
 
     pub fn is_new(&self) -> bool {
         self.is_new
     }
 
-    /// TODO Add documentation. [ECR-2820]
+    /// Clears stored index metadata.
     pub fn clear(&mut self) {
         self.set(V::default());
     }
