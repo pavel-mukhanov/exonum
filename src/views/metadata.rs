@@ -28,7 +28,7 @@ use super::{IndexAccess, IndexAddress, View};
 const INDEXES_POOL_NAME: &str = "__INDEXES_POOL__";
 
 /// Type of the index stored in `IndexMetadata`.
-/// `IndexType` is used for type checking indexes when they are created/accessed.
+/// `IndexType` is used for checking types of indexes when they are created/accessed.
 #[derive(Debug, Copy, Clone, PartialEq, Primitive, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum IndexType {
