@@ -119,7 +119,6 @@ pub use self::{
     error::Error,
     hash::UniqueHash,
     key_set_index::KeySetIndex,
-    keys::StorageKey,
     list_index::ListIndex,
     map_index::MapIndex,
     memorydb::MemoryDB,
@@ -140,7 +139,8 @@ mod entry;
 mod error;
 mod hash;
 mod indexes_metadata;
-mod keys;
+//mod keys;
+//mod keys_new;
 mod memorydb;
 mod options;
 mod rocksdb;

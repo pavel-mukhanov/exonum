@@ -22,9 +22,10 @@ use self::key::ProofListKey;
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageKey, StorageValue,
+    Fork, Snapshot, StorageValue,
 };
 use crate::crypto::{hash, Hash, HashStream};
+use exonum_merkledb::BinaryKey;
 
 mod key;
 mod proof;
@@ -135,7 +136,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {

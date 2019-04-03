@@ -22,8 +22,9 @@ use std::{cell::Cell, marker::PhantomData};
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageKey, StorageValue,
+    Fork, Snapshot, StorageValue,
 };
+use exonum_merkledb::BinaryKey;
 
 /// A list of items where elements are added to the end of the list and are
 /// removed starting from the end of the list.
@@ -109,7 +110,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {

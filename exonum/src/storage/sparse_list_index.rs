@@ -24,9 +24,10 @@ use std::{borrow::Cow, cell::Cell, marker::PhantomData};
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageKey, StorageValue,
+    Fork, Snapshot, StorageValue,
 };
 use crate::crypto::{hash, CryptoHash, Hash};
+use exonum_merkledb::BinaryKey;
 
 #[derive(Debug, Default, Clone, Copy)]
 struct SparseListSize {
@@ -184,7 +185,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {

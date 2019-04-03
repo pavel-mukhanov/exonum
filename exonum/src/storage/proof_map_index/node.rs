@@ -17,10 +17,11 @@
 use std::borrow::Cow;
 
 use super::{
-    super::{StorageKey, StorageValue},
+    super::{StorageValue},
     key::{ChildKind, ProofPath, PROOF_PATH_SIZE},
 };
 use crate::crypto::{hash, CryptoHash, Hash, HASH_SIZE};
+use exonum_merkledb::BinaryKey;
 
 const BRANCH_NODE_SIZE: usize = 2 * (HASH_SIZE + PROOF_PATH_SIZE);
 

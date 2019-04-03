@@ -17,9 +17,10 @@
 use std::marker::PhantomData;
 
 use super::{
-    base_index::BaseIndex, indexes_metadata::IndexType, Fork, Snapshot, StorageKey, StorageValue,
+    base_index::BaseIndex, indexes_metadata::IndexType, Fork, Snapshot, StorageValue,
 };
 use crate::crypto::Hash;
+use exonum_merkledb::BinaryKey;
 
 /// An index that may only contain one element.
 ///
@@ -87,7 +88,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {

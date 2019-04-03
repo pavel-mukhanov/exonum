@@ -52,6 +52,7 @@ extern crate clap;
 extern crate exonum_derive;
 #[cfg(feature = "sodiumoxide-crypto")]
 extern crate exonum_sodiumoxide as sodiumoxide;
+extern crate exonum_merkledb;
 #[macro_use]
 extern crate failure;
 #[macro_use]

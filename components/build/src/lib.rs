@@ -118,7 +118,14 @@ where
     let proto_files = get_proto_files(&input_dir);
     generate_mod_rs(&out_dir, &proto_files, &mod_file_name.as_ref());
 
-    let includes = includes.into_iter().collect::<Vec<_>>();
+    //TODO: revert
+    let mut includes = includes.into_iter().map(|s| {
+        let path = s.as_ref().to_str().unwrap();
+        String::from(path)
+    }).collect::<Vec<_>>();
+
+    //TODO: revert
+    includes.push("/usr/local/Cellar/protobuf/3.6.1.3_1/include/".to_string());
 
     protoc_rust::run(protoc_rust::Args {
         out_dir: out_dir
@@ -130,10 +137,9 @@ where
             .collect::<Vec<_>>(),
         includes: &includes
             .iter()
+            //TODO: revert
             .map(|s| {
-                s.as_ref()
-                    .to_str()
-                    .expect("Include dir name is not convertible to &str")
+                s.as_str()
             })
             .collect::<Vec<_>>(),
         customize: Customize {

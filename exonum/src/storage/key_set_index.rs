@@ -23,8 +23,9 @@ use std::{borrow::Borrow, marker::PhantomData};
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageKey,
+    Fork, Snapshot,
 };
+use exonum_merkledb::BinaryKey;
 
 /// A set of key items.
 ///
@@ -54,7 +55,7 @@ pub struct KeySetIndexIter<'a, K> {
 impl<T, K> KeySetIndex<T, K>
 where
     T: AsRef<dyn Snapshot>,
-    K: StorageKey,
+    K: BinaryKey,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -105,7 +106,7 @@ where
     /// ```
     pub fn new_in_family<S, I>(family_name: S, index_id: &I, view: T) -> Self
     where
-        I: StorageKey,
+        I: BinaryKey,
         I: ?Sized,
         S: AsRef<str>,
     {
@@ -134,7 +135,7 @@ where
     pub fn contains<Q>(&self, item: &Q) -> bool
     where
         K: Borrow<Q>,
-        Q: StorageKey + ?Sized,
+        Q: BinaryKey + ?Sized,
     {
         self.base.contains(item)
     }
@@ -187,7 +188,7 @@ where
 
 impl<'a, K> KeySetIndex<&'a mut Fork, K>
 where
-    K: StorageKey,
+    K: BinaryKey,
 {
     /// Adds a key to the set.
     ///
@@ -230,7 +231,7 @@ where
     pub fn remove<Q>(&mut self, item: &Q)
     where
         K: Borrow<Q>,
-        Q: StorageKey + ?Sized,
+        Q: BinaryKey + ?Sized,
     {
         self.base.remove(item)
     }
@@ -266,7 +267,7 @@ where
 impl<'a, T, K> ::std::iter::IntoIterator for &'a KeySetIndex<T, K>
 where
     T: AsRef<dyn Snapshot>,
-    K: StorageKey,
+    K: BinaryKey,
 {
     type Item = K::Owned;
     type IntoIter = KeySetIndexIter<'a, K>;
@@ -278,7 +279,7 @@ where
 
 impl<'a, K> Iterator for KeySetIndexIter<'a, K>
 where
-    K: StorageKey,
+    K: BinaryKey,
 {
     type Item = K::Owned;
 

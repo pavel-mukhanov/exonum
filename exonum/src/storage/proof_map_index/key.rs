@@ -16,7 +16,7 @@ use std::cmp::{min, Ordering};
 use std::ops;
 
 use crate::crypto::{CryptoHash, Hash, PublicKey, HASH_SIZE};
-use crate::storage::StorageKey;
+use exonum_merkledb::BinaryKey;
 
 pub const BRANCH_KEY_PREFIX: u8 = 0;
 pub const LEAF_KEY_PREFIX: u8 = 1;
@@ -112,7 +112,7 @@ impl<T: HashedKey> ProofMapKey for T {
     }
 
     fn read_key(buffer: &[u8]) -> Hash {
-        <Hash as StorageKey>::read(buffer)
+        <Hash as BinaryKey>::read(buffer)
     }
 }
 
@@ -120,11 +120,11 @@ impl ProofMapKey for PublicKey {
     type Output = Self;
 
     fn write_key(&self, buffer: &mut [u8]) {
-        StorageKey::write(self, buffer);
+        BinaryKey::write(self, buffer);
     }
 
     fn read_key(raw: &[u8]) -> Self {
-        <Self as StorageKey>::read(raw)
+        <Self as BinaryKey>::read(raw)
     }
 }
 
@@ -132,11 +132,11 @@ impl ProofMapKey for Hash {
     type Output = Self;
 
     fn write_key(&self, buffer: &mut [u8]) {
-        StorageKey::write(self, buffer);
+        BinaryKey::write(self, buffer);
     }
 
     fn read_key(raw: &[u8]) -> Self {
-        <Self as StorageKey>::read(raw)
+        <Self as BinaryKey>::read(raw)
     }
 }
 
@@ -405,12 +405,12 @@ impl ::std::fmt::Debug for ProofPath {
     }
 }
 
-impl StorageKey for ProofPath {
+impl BinaryKey for ProofPath {
     fn size(&self) -> usize {
         PROOF_PATH_SIZE
     }
 
-    fn write(&self, buffer: &mut [u8]) {
+    fn write(&self, buffer: &mut [u8]) -> usize {
         buffer.copy_from_slice(&self.bytes);
         // Cut of the bits that lie to the right of the end.
         if !self.is_leaf() {
@@ -422,6 +422,7 @@ impl StorageKey for ProofPath {
                 *i = 0
             }
         }
+        self.size()
     }
 
     fn read(buffer: &[u8]) -> Self::Owned {
