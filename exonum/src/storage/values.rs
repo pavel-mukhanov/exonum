@@ -39,7 +39,7 @@ use crate::helpers::Round;
 /// # extern crate exonum;
 /// # extern crate byteorder;
 /// use std::borrow::Cow;
-/// use exonum::storage::StorageValue;
+/// use exonum::storage::BinaryValue;
 /// use exonum::crypto::{self, CryptoHash, Hash};
 /// use byteorder::{LittleEndian, ByteOrder};
 ///
@@ -57,7 +57,7 @@ use crate::helpers::Round;
 ///     }
 /// }
 ///
-/// impl StorageValue for Data {
+/// impl BinaryValue for Data {
 ///     fn into_bytes(self) -> Vec<u8> {
 ///         let mut buffer = vec![0; 6];
 ///         LittleEndian::write_i16(&mut buffer[0..2], self.a);
@@ -73,7 +73,7 @@ use crate::helpers::Round;
 /// }
 /// # fn main() {}
 /// ```
-pub trait StorageValue: UniqueHash + Sized {
+pub trait BinaryValue: UniqueHash + Sized {
     /// Serialize a value into a vector of bytes.
     fn into_bytes(self) -> Vec<u8>;
 
@@ -82,7 +82,7 @@ pub trait StorageValue: UniqueHash + Sized {
 }
 
 /// No-op implementation.
-impl StorageValue for () {
+impl BinaryValue for () {
     fn into_bytes(self) -> Vec<u8> {
         Vec::new()
     }
@@ -90,7 +90,7 @@ impl StorageValue for () {
     fn from_bytes(_value: Cow<[u8]>) -> Self {}
 }
 
-impl StorageValue for bool {
+impl BinaryValue for bool {
     fn into_bytes(self) -> Vec<u8> {
         vec![self as u8]
     }
@@ -106,7 +106,7 @@ impl StorageValue for bool {
     }
 }
 
-impl StorageValue for u8 {
+impl BinaryValue for u8 {
     fn into_bytes(self) -> Vec<u8> {
         vec![self]
     }
@@ -118,7 +118,7 @@ impl StorageValue for u8 {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for u16 {
+impl BinaryValue for u16 {
     fn into_bytes(self) -> Vec<u8> {
         let mut v = vec![0; 2];
         LittleEndian::write_u16(&mut v, self);
@@ -131,7 +131,7 @@ impl StorageValue for u16 {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for u32 {
+impl BinaryValue for u32 {
     fn into_bytes(self) -> Vec<u8> {
         let mut v = vec![0; 4];
         LittleEndian::write_u32(&mut v, self);
@@ -144,7 +144,7 @@ impl StorageValue for u32 {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for u64 {
+impl BinaryValue for u64 {
     fn into_bytes(self) -> Vec<u8> {
         let mut v = vec![0; mem::size_of::<u64>()];
         LittleEndian::write_u64(&mut v, self);
@@ -157,7 +157,7 @@ impl StorageValue for u64 {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for u128 {
+impl BinaryValue for u128 {
     fn into_bytes(self) -> Vec<u8> {
         let mut v = vec![0; mem::size_of::<u128>()];
         LittleEndian::write_u128(&mut v, self);
@@ -169,7 +169,7 @@ impl StorageValue for u128 {
     }
 }
 
-impl StorageValue for i8 {
+impl BinaryValue for i8 {
     fn into_bytes(self) -> Vec<u8> {
         vec![self as u8]
     }
@@ -181,7 +181,7 @@ impl StorageValue for i8 {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for i16 {
+impl BinaryValue for i16 {
     fn into_bytes(self) -> Vec<u8> {
         let mut v = vec![0; 2];
         LittleEndian::write_i16(&mut v, self);
@@ -194,7 +194,7 @@ impl StorageValue for i16 {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for i32 {
+impl BinaryValue for i32 {
     fn into_bytes(self) -> Vec<u8> {
         let mut v = vec![0; 4];
         LittleEndian::write_i32(&mut v, self);
@@ -207,7 +207,7 @@ impl StorageValue for i32 {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for i64 {
+impl BinaryValue for i64 {
     fn into_bytes(self) -> Vec<u8> {
         let mut v = vec![0; 8];
         LittleEndian::write_i64(&mut v, self);
@@ -220,7 +220,7 @@ impl StorageValue for i64 {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for i128 {
+impl BinaryValue for i128 {
     fn into_bytes(self) -> Vec<u8> {
         let mut v = vec![0; 16];
         LittleEndian::write_i128(&mut v, self);
@@ -232,7 +232,7 @@ impl StorageValue for i128 {
     }
 }
 
-impl StorageValue for Hash {
+impl BinaryValue for Hash {
     fn into_bytes(self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
@@ -242,7 +242,7 @@ impl StorageValue for Hash {
     }
 }
 
-impl StorageValue for PublicKey {
+impl BinaryValue for PublicKey {
     fn into_bytes(self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
@@ -252,7 +252,7 @@ impl StorageValue for PublicKey {
     }
 }
 
-impl StorageValue for Vec<u8> {
+impl BinaryValue for Vec<u8> {
     fn into_bytes(self) -> Vec<u8> {
         self
     }
@@ -263,7 +263,7 @@ impl StorageValue for Vec<u8> {
 }
 
 /// Uses UTF-8 string serialization.
-impl StorageValue for String {
+impl BinaryValue for String {
     fn into_bytes(self) -> Vec<u8> {
         Self::into_bytes(self)
     }
@@ -274,7 +274,7 @@ impl StorageValue for String {
 }
 
 /// Uses little-endian encoding.
-impl StorageValue for DateTime<Utc> {
+impl BinaryValue for DateTime<Utc> {
     fn into_bytes(self) -> Vec<u8> {
         let secs = self.timestamp();
         let nanos = self.timestamp_subsec_nanos();
@@ -292,17 +292,17 @@ impl StorageValue for DateTime<Utc> {
     }
 }
 
-impl StorageValue for Round {
+impl BinaryValue for Round {
     fn into_bytes(self) -> Vec<u8> {
         self.0.into_bytes()
     }
 
     fn from_bytes(value: Cow<[u8]>) -> Self {
-        Round(<u32 as StorageValue>::from_bytes(value))
+        Round(<u32 as BinaryValue>::from_bytes(value))
     }
 }
 
-impl StorageValue for Uuid {
+impl BinaryValue for Uuid {
     fn into_bytes(self) -> Vec<u8> {
         self.as_bytes().to_vec()
     }
@@ -312,7 +312,7 @@ impl StorageValue for Uuid {
     }
 }
 
-impl StorageValue for Decimal {
+impl BinaryValue for Decimal {
     fn into_bytes(self) -> Vec<u8> {
         self.serialize().to_vec()
     }
@@ -476,12 +476,12 @@ mod tests {
         assert_round_trip_eq(&values);
     }
 
-    fn assert_round_trip_eq<T: StorageValue + Clone + PartialEq + Debug>(values: &[T]) {
+    fn assert_round_trip_eq<T: BinaryValue + Clone + PartialEq + Debug>(values: &[T]) {
         for value in values {
             let bytes = value.clone().into_bytes();
             assert_eq!(
                 *value,
-                <T as StorageValue>::from_bytes(Cow::Borrowed(&bytes))
+                <T as BinaryValue>::from_bytes(Cow::Borrowed(&bytes))
             );
         }
     }

@@ -23,7 +23,8 @@ use std::{any::Any, borrow::Cow, convert::Into, error::Error, fmt, u8};
 use crate::crypto::{CryptoHash, Hash, PublicKey};
 use crate::messages::{HexStringRepresentation, RawTransaction, Signed, SignedMessage};
 use crate::proto::{self, ProtobufConvert};
-use crate::storage::{Fork, StorageValue};
+use crate::storage::{Fork};
+use exonum_merkledb::{ObjectHash, BinaryValue};
 
 //  User-defined error codes (`TransactionErrorType::Code(u8)`) have a `0...255` range.
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_lossless))]
@@ -424,21 +425,29 @@ impl ProtobufConvert for TransactionResult {
     }
 }
 
-impl StorageValue for TransactionResult {
+impl BinaryValue for TransactionResult {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_pb()
+            .write_to_bytes()
+            .expect("Failed to serialize TransactionResult to protobuf.")
+    }
+
     fn into_bytes(self) -> Vec<u8> {
         self.to_pb()
             .write_to_bytes()
             .expect("Failed to serialize TransactionResult to protobuf.")
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
         let mut block = <Self as ProtobufConvert>::ProtoStruct::new();
         block
             .merge_from_bytes(bytes.as_ref())
             .expect("Failed to parse TransactionResult from protobuf.");
-        ProtobufConvert::from_pb(block).expect("Failed to convert TransactionResult from protobuf.")
+        ProtobufConvert::from_pb(block)
     }
 }
+
+impl_object_hash_for_binary_value! { TransactionResult }
 
 fn status_as_u16(status: &TransactionResult) -> u16 {
     match (*status).0 {
@@ -587,7 +596,7 @@ mod tests {
 
         for result in &results {
             let bytes = result.clone().into_bytes();
-            let new_result = TransactionResult::from_bytes(Cow::Borrowed(&bytes));
+            let new_result = TransactionResult::from_bytes(Cow::Borrowed(&bytes)).expect("Error while deserializing value");
             assert_eq!(*result, new_result);
         }
     }

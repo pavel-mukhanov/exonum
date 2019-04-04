@@ -22,9 +22,9 @@ use std::{cell::Cell, marker::PhantomData};
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageValue,
+    Fork, Snapshot,
 };
-use exonum_merkledb::BinaryKey;
+use exonum_merkledb::{BinaryKey, BinaryValue};
 
 /// A list of items where elements are added to the end of the list and are
 /// removed starting from the end of the list.
@@ -58,7 +58,7 @@ pub struct ListIndexIter<'a, V> {
 impl<T, V> ListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -265,7 +265,7 @@ where
 
 impl<'a, V> ListIndex<&'a mut Fork, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     fn set_len(&mut self, len: u64) {
         self.base.put(&(), len);
@@ -446,7 +446,7 @@ where
 impl<'a, T, V> ::std::iter::IntoIterator for &'a ListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = V;
     type IntoIter = ListIndexIter<'a, V>;
@@ -458,7 +458,7 @@ where
 
 impl<'a, V> Iterator for ListIndexIter<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = V;
 

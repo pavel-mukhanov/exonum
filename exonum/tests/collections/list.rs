@@ -22,7 +22,7 @@ use proptest::{
 };
 
 use super::ACTIONS_MAX_LEN;
-use exonum::storage::{Fork, ListIndex, ProofListIndex, StorageValue};
+use exonum::storage::{Fork, ListIndex, ProofListIndex};
 
 #[derive(Debug, Clone)]
 enum ListAction<V> {
@@ -71,10 +71,11 @@ impl<V> Modifier<Vec<V>> for ListAction<V> {
 
 mod list_index {
     use super::*;
+    use exonum_merkledb::{BinaryValue};
 
     impl<'a, V> Modifier<ListIndex<&'a mut Fork, V>> for ListAction<V>
     where
-        V: StorageValue,
+        V: BinaryValue,
     {
         fn modify(self, list: &mut ListIndex<&mut Fork, V>) {
             match self {
@@ -132,10 +133,11 @@ mod list_index {
 
 mod proof_list_index {
     use super::*;
+    use exonum_merkledb::{BinaryValue, ObjectHash};
 
     impl<'a, V> Modifier<ProofListIndex<&'a mut Fork, V>> for ListAction<V>
     where
-        V: StorageValue,
+        V: BinaryValue + ObjectHash,
     {
         fn modify(self, list: &mut ProofListIndex<&mut Fork, V>) {
             match self {

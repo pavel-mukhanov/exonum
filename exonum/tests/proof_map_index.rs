@@ -24,7 +24,7 @@
 
 use exonum::storage::{
     proof_map_index::{ProofMapKey, ProofPath},
-    Database, MapProof, MemoryDB, ProofMapIndex, Snapshot, StorageValue,
+    Database, MapProof, MemoryDB, ProofMapIndex, Snapshot,
 };
 use proptest::{prelude::*, test_runner::Config};
 
@@ -38,6 +38,7 @@ use crate::prop::{
     array,
     collection::{btree_map, vec},
 };
+use exonum_merkledb::{BinaryValue, ObjectHash};
 
 const INDEX_NAME: &str = "index";
 
@@ -45,7 +46,7 @@ fn check_map_proof<T, K, V>(proof: MapProof<K, V>, key: Option<K>, table: &Proof
 where
     T: AsRef<dyn Snapshot>,
     K: ProofMapKey + PartialEq + Debug,
-    V: StorageValue + PartialEq + Debug,
+    V: BinaryValue + ObjectHash + PartialEq + Debug,
 {
     let entries = key.map(|key| {
         let value = table.get(&key).unwrap();
@@ -70,7 +71,7 @@ fn check_map_multiproof<T, K, V>(
 ) where
     T: AsRef<dyn Snapshot>,
     K: ProofMapKey + Clone + PartialEq + Debug,
-    V: StorageValue + Clone + PartialEq + Debug,
+    V: BinaryValue + ObjectHash + Clone + PartialEq + Debug,
 {
     let (entries, missing_keys) = {
         let mut entries: Vec<(K, V)> = Vec::new();

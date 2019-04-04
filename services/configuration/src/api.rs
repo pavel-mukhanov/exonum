@@ -17,8 +17,9 @@ use exonum::{
     blockchain::{Schema as CoreSchema, StoredConfiguration},
     crypto::{CryptoHash, Hash},
     helpers::Height,
-    storage::StorageValue,
 };
+
+use exonum_merkledb::BinaryValue;
 
 use super::{Propose, ProposeData, Schema, Vote, VoteAgainst, VotingDecision};
 
@@ -131,9 +132,9 @@ impl PublicApi {
                 (cfg_hash, propose_data)
             })
             .filter(|&(_, ref propose_data)| {
-                let cfg = <StoredConfiguration as StorageValue>::from_bytes(
+                let cfg = <StoredConfiguration as BinaryValue>::from_bytes(
                     propose_data.tx_propose.cfg.as_bytes().into(),
-                );
+                ).expect("Error while deserializing value");
                 filter.matches(&cfg)
             })
             .map(|(hash, propose_data)| ProposeHashInfo { hash, propose_data })

@@ -20,7 +20,8 @@ use std::fmt;
 
 use crate::crypto::{self, CryptoHash, Hash};
 use crate::proto::{self, ProtobufConvert};
-use crate::storage::{base_index::BaseIndex, Fork, Snapshot, StorageValue};
+use crate::storage::{base_index::BaseIndex, Fork, Snapshot};
+use exonum_merkledb::BinaryValue;
 
 pub const INDEXES_METADATA_TABLE_NAME: &str = "__INDEXES_METADATA__";
 
@@ -163,13 +164,17 @@ impl CryptoHash for StorageMetadata {
     }
 }
 
-impl StorageValue for StorageMetadata {
+impl BinaryValue for StorageMetadata {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.try_serialize().unwrap()
+    }
+
     fn into_bytes(self) -> Vec<u8> {
         self.try_serialize().unwrap()
     }
 
-    fn from_bytes(v: ::std::borrow::Cow<[u8]>) -> Self {
-        StorageMetadata::try_deserialize(v.as_ref()).unwrap()
+    fn from_bytes(v: ::std::borrow::Cow<[u8]>) -> Result<Self, failure::Error> {
+        StorageMetadata::try_deserialize(v.as_ref()).map_err(|e|e.into())
     }
 }
 

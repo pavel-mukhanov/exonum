@@ -22,10 +22,10 @@ use self::key::ProofListKey;
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageValue,
+    Fork, Snapshot,
 };
 use crate::crypto::{hash, Hash, HashStream};
-use exonum_merkledb::BinaryKey;
+use exonum_merkledb::{ObjectHash, BinaryKey, BinaryValue};
 
 mod key;
 mod proof;
@@ -74,7 +74,7 @@ fn hash_pair(h1: &Hash, h2: &Hash) -> Hash {
 impl<T, V> ProofListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -448,7 +448,7 @@ where
 
 impl<'a, V> ProofListIndex<&'a mut Fork, V>
 where
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     fn set_len(&mut self, len: u64) {
         self.base.put(&(), len);
@@ -480,7 +480,7 @@ where
         let len = self.len();
         self.set_len(len + 1);
         let mut key = ProofListKey::new(1, len);
-        self.base.put(&key, value.hash());
+        self.base.put(&key, value.object_hash());
         self.base.put(&ProofListKey::leaf(len), value);
         while key.height() < self.height() {
             let hash = if key.is_left() {
@@ -551,7 +551,7 @@ where
             );
         }
         let mut key = ProofListKey::new(1, index);
-        self.base.put(&key, value.hash());
+        self.base.put(&key, value.object_hash());
         self.base.put(&ProofListKey::leaf(index), value);
         while key.height() < self.height() {
             let (left, right) = (key.as_left(), key.as_right());
@@ -601,7 +601,7 @@ where
 impl<'a, T, V> ::std::iter::IntoIterator for &'a ProofListIndex<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     type Item = V;
     type IntoIter = ProofListIndexIter<'a, V>;
@@ -613,7 +613,7 @@ where
 
 impl<'a, V> Iterator for ProofListIndexIter<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = V;
 

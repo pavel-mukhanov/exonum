@@ -15,8 +15,9 @@
 use serde::{de::Error, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{from_value, Error as SerdeJsonError, Value};
 
-use super::{super::StorageValue, hash_one, hash_pair, key::ProofListKey};
+use super::{hash_one, hash_pair, key::ProofListKey};
 use crate::crypto::Hash;
+use exonum_merkledb::{BinaryValue, ObjectHash};
 
 /// An enum that represents a proof of existence for a proof list elements.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,7 +46,7 @@ pub enum ListProofError {
     UnmatchedRootHash,
 }
 
-impl<V: StorageValue> ListProof<V> {
+impl<V: BinaryValue + ObjectHash> ListProof<V> {
     fn collect<'a>(
         &'a self,
         key: ProofListKey,
@@ -71,7 +72,7 @@ impl<V: StorageValue> ListProof<V> {
                     return Err(ListProofError::UnexpectedLeaf);
                 }
                 vec.push((key.index(), value));
-                value.hash()
+                value.object_hash()
             }
         };
         Ok(hash)

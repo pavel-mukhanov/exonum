@@ -22,9 +22,9 @@
 
 use std::{borrow::Cow, marker::PhantomData};
 
-use super::{Fork, Iter, Snapshot, StorageValue};
+use super::{Fork, Iter, Snapshot};
 use crate::storage::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
-use exonum_merkledb::BinaryKey;
+use exonum_merkledb::{BinaryKey, BinaryValue};
 
 /// Basic struct for all indices that implements common features.
 ///
@@ -164,12 +164,12 @@ where
     pub fn get<K, V>(&self, key: &K) -> Option<V>
     where
         K: BinaryKey + ?Sized,
-        V: StorageValue,
+        V: BinaryValue,
     {
         self.view
             .as_ref()
             .get(&self.name, &self.prefixed_key(key))
-            .map(|v| StorageValue::from_bytes(Cow::Owned(v)))
+            .map(|v| BinaryValue::from_bytes(Cow::Owned(v)).expect("Error while deserializing value"))
     }
 
     /// Returns `true` if the index contains a value of *any* type for the specified key of
@@ -190,7 +190,7 @@ where
     where
         P: BinaryKey,
         K: BinaryKey,
-        V: StorageValue,
+        V: BinaryValue,
     {
         let iter_prefix = self.prefixed_key(subprefix);
         BaseIndexIter {
@@ -211,7 +211,7 @@ where
         P: BinaryKey,
         F: BinaryKey + ?Sized,
         K: BinaryKey,
-        V: StorageValue,
+        V: BinaryValue,
     {
         let iter_prefix = self.prefixed_key(subprefix);
         let iter_from = self.prefixed_key(from);
@@ -243,7 +243,7 @@ impl<'a> BaseIndex<&'a mut Fork> {
     pub fn put<K, V>(&mut self, key: &K, value: V)
     where
         K: BinaryKey,
-        V: StorageValue,
+        V: BinaryValue,
     {
         self.set_index_type();
         let key = self.prefixed_key(key);
@@ -278,7 +278,7 @@ impl<'a> BaseIndex<&'a mut Fork> {
 impl<'a, K, V> Iterator for BaseIndexIter<'a, K, V>
 where
     K: BinaryKey,
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = (K::Owned, V);
 
@@ -290,7 +290,7 @@ where
             if k.starts_with(&self.index_id) {
                 return Some((
                     K::read(&k[self.base_prefix_len..]),
-                    V::from_bytes(Cow::Borrowed(v)),
+                    V::from_bytes(Cow::Borrowed(v)).expect("Error while deserializing value"),
                 ));
             }
         }

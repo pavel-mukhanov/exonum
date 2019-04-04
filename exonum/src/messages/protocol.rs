@@ -36,7 +36,8 @@ use crate::blockchain;
 use crate::crypto::{CryptoHash, Hash, PublicKey, SecretKey, PUBLIC_KEY_LENGTH, SIGNATURE_LENGTH};
 use crate::helpers::{Height, Round, ValidatorId};
 use crate::proto;
-use crate::storage::{proof_list_index as merkle, StorageValue};
+use crate::storage::{proof_list_index as merkle};
+use exonum_merkledb::BinaryValue;
 
 /// `SignedMessage` size with zero bytes payload.
 #[doc(hidden)]
@@ -1005,15 +1006,19 @@ impl<T: ProtocolMessage> From<Signed<T>> for Message {
     }
 }
 
-impl StorageValue for Message {
+impl BinaryValue for Message {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.signed_message().raw().to_vec()
+    }
+
     fn into_bytes(self) -> Vec<u8> {
         self.signed_message().raw().to_vec()
     }
 
-    fn from_bytes(value: Cow<[u8]>) -> Self {
+    fn from_bytes(value: Cow<[u8]>) -> Result<Self, failure::Error> {
         let message = SignedMessage::from_vec_unchecked(value.into_owned());
         // TODO: Remove additional deserialization. [ECR-2315]
-        Message::deserialize(message).unwrap()
+        Message::deserialize(message)
     }
 }
 

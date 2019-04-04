@@ -23,9 +23,9 @@ use std::{borrow::Borrow, marker::PhantomData};
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageValue,
+    Fork, Snapshot,
 };
-use exonum_merkledb::BinaryKey;
+use exonum_merkledb::{BinaryKey, BinaryValue};
 
 /// A map of keys and values. Access to the elements of this map is obtained using the keys.
 ///
@@ -84,7 +84,7 @@ impl<T, K, V> MapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
     K: BinaryKey,
-    V: StorageValue,
+    V: BinaryValue,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -348,7 +348,7 @@ where
 impl<'a, K, V> MapIndex<&'a mut Fork, K, V>
 where
     K: BinaryKey,
-    V: StorageValue,
+    V: BinaryValue,
 {
     /// Inserts a key-value pair into a map.
     ///
@@ -424,7 +424,7 @@ impl<'a, T, K, V> ::std::iter::IntoIterator for &'a MapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
     K: BinaryKey,
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = (K::Owned, V);
     type IntoIter = MapIndexIter<'a, K, V>;
@@ -437,7 +437,7 @@ where
 impl<'a, K, V> Iterator for MapIndexIter<'a, K, V>
 where
     K: BinaryKey,
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = (K::Owned, V);
 
@@ -459,7 +459,7 @@ where
 
 impl<'a, V> Iterator for MapIndexValues<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = V;
 

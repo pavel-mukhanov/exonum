@@ -30,7 +30,8 @@ use super::{
 };
 use crate::crypto::{hash, CryptoHash, Hash, HashStream};
 use crate::proto;
-use crate::storage::{Database, Fork, StorageValue};
+use crate::storage::{Database, Fork};
+use exonum_merkledb::{BinaryValue, ObjectHash};
 
 const IDX_NAME: &str = "idx_name";
 
@@ -324,7 +325,7 @@ fn check_map_proof<K, V>(
     table: &ProofMapIndex<&mut Fork, K, V>,
 ) where
     K: ProofMapKey + PartialEq + Debug + Serialize + DeserializeOwned,
-    V: StorageValue + PartialEq + Debug + Serialize + DeserializeOwned,
+    V: BinaryValue + ObjectHash + PartialEq + Debug + Serialize + DeserializeOwned,
 {
     let serialized_proof = serde_json::to_value(&proof).unwrap();
     let deserialized_proof: MapProof<K, V> = serde_json::from_value(serialized_proof).unwrap();
@@ -361,7 +362,7 @@ fn check_map_multiproof<K, V>(
     table: &ProofMapIndex<&mut Fork, K, V>,
 ) where
     K: ProofMapKey + Clone + PartialEq + Debug,
-    V: StorageValue + PartialEq + Debug,
+    V: BinaryValue + PartialEq + Debug,
 {
     let (entries, missing_keys) = {
         let mut entries: Vec<(K, V)> = Vec::new();
@@ -415,7 +416,7 @@ const MAX_CHECKED_ELEMENTS: usize = 1_024;
 fn check_proofs_for_data<K, V>(db: &dyn Database, data: Vec<(K, V)>, nonexisting_keys: Vec<K>)
 where
     K: ProofMapKey + Copy + PartialEq + Debug + Serialize + DeserializeOwned,
-    V: StorageValue + Clone + PartialEq + Debug + Serialize + DeserializeOwned,
+    V: BinaryValue + Clone + PartialEq + Debug + Serialize + DeserializeOwned,
 {
     let mut storage = db.fork();
     let mut table = ProofMapIndex::new(IDX_NAME, &mut storage);
@@ -449,7 +450,7 @@ where
 fn check_multiproofs_for_data<K, V>(db: &dyn Database, data: Vec<(K, V)>, nonexisting_keys: Vec<K>)
 where
     K: ProofMapKey + Copy + Ord + PartialEq + StdHash + Debug + Serialize,
-    V: StorageValue + Clone + PartialEq + Debug + Serialize,
+    V: BinaryValue + Clone + PartialEq + Debug + Serialize,
 {
     let mut storage = db.fork();
     let mut table = ProofMapIndex::new(IDX_NAME, &mut storage);

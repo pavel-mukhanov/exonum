@@ -29,16 +29,16 @@ use self::{
 use super::{
     base_index::{BaseIndex, BaseIndexIter},
     indexes_metadata::IndexType,
-    Fork, Snapshot, StorageValue,
+    Fork, Snapshot,
 };
 use crate::crypto::{CryptoHash, Hash, HashStream};
-use exonum_merkledb::BinaryKey;
+use exonum_merkledb::{BinaryKey, BinaryValue, ObjectHash};
 
 mod key;
 mod node;
 mod proof;
-#[cfg(test)]
-mod tests;
+//#[cfg(test)]
+//mod tests;
 
 /// A Merkelized version of a map that provides proofs of existence or non-existence for the map
 /// keys.
@@ -112,7 +112,7 @@ impl<T, K, V> ProofMapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -240,7 +240,7 @@ where
         match self.get_root_node() {
             Some((k, Node::Leaf(v))) => HashStream::new()
                 .update(k.as_bytes())
-                .update(v.hash().as_ref())
+                .update(v.object_hash().as_ref())
                 .hash(),
             Some((_, Node::Branch(branch))) => branch.hash(),
             None => Hash::zero(),
@@ -490,11 +490,11 @@ where
 impl<'a, K, V> ProofMapIndex<&'a mut Fork, K, V>
 where
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     fn insert_leaf(&mut self, key: &ProofPath, value: V) -> Hash {
         debug_assert!(key.is_leaf());
-        let hash = value.hash();
+        let hash = value.object_hash();
         self.base.put(key, value);
         hash
     }
@@ -593,7 +593,7 @@ where
                     branch.set_child(
                         prefix_path.bit(i),
                         &prefix_path.suffix(i),
-                        &prefix_data.hash(),
+                        &prefix_data.object_hash(),
                     );
                     let new_prefix = proof_path.prefix(i);
                     self.base.put(&new_prefix, branch);
@@ -768,7 +768,7 @@ impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     type Item = (K::Output, V);
     type IntoIter = ProofMapIndexIter<'a, K, V>;
@@ -781,7 +781,7 @@ where
 impl<'a, K, V> Iterator for ProofMapIndexIter<'a, K, V>
 where
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = (K::Output, V);
 
@@ -805,7 +805,7 @@ where
 
 impl<'a, V> Iterator for ProofMapIndexValues<'a, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
 {
     type Item = V;
 
@@ -818,10 +818,10 @@ impl<T, K, V> fmt::Debug for ProofMapIndex<T, K, V>
 where
     T: AsRef<dyn Snapshot>,
     K: ProofMapKey,
-    V: StorageValue + fmt::Debug,
+    V: BinaryValue + ObjectHash +fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct Entry<'a, T: 'a, K: 'a, V: 'a + StorageValue> {
+        struct Entry<'a, T: 'a, K: 'a, V: 'a + BinaryValue> {
             index: &'a ProofMapIndex<T, K, V>,
             path: ProofPath,
             hash: Hash,
@@ -832,7 +832,7 @@ where
         where
             T: AsRef<dyn Snapshot>,
             K: ProofMapKey,
-            V: StorageValue,
+            V: BinaryValue + ObjectHash,
         {
             fn new(index: &'a ProofMapIndex<T, K, V>, hash: Hash, path: ProofPath) -> Self {
                 Entry {
@@ -856,7 +856,7 @@ where
         where
             T: AsRef<dyn Snapshot>,
             K: ProofMapKey,
-            V: StorageValue + fmt::Debug,
+            V: BinaryValue +ObjectHash+ fmt::Debug,
         {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 match self.node {

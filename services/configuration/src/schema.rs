@@ -14,9 +14,11 @@
 
 //! Storage schema for the configuration service.
 
+use exonum_merkledb::{impl_object_hash_for_binary_value, BinaryValue, ObjectHash};
+
 use exonum::{
     crypto::{self, CryptoHash, Hash, HASH_SIZE},
-    storage::{Fork, ProofListIndex, ProofMapIndex, Snapshot, StorageValue},
+    storage::{Fork, ProofListIndex, ProofMapIndex, Snapshot},
 };
 
 use std::{borrow::Cow, ops::Deref};
@@ -78,7 +80,7 @@ pub enum VotingDecision {
 
 impl CryptoHash for VotingDecision {
     fn hash(&self) -> Hash {
-        let res = StorageValue::into_bytes(*self);
+        let res = BinaryValue::into_bytes(*self);
         res.hash()
     }
 }
@@ -93,8 +95,8 @@ impl VotingDecision {
     }
 }
 
-impl StorageValue for VotingDecision {
-    fn into_bytes(self) -> Vec<u8> {
+impl BinaryValue for VotingDecision {
+    fn to_bytes(&self) -> Vec<u8> {
         let (tag, mut res) = match self {
             VotingDecision::Yea(vote) => (YEA_TAG, vote.into_bytes()),
             VotingDecision::Nay(vote_against) => (NAY_TAG, vote_against.into_bytes()),
@@ -103,15 +105,16 @@ impl StorageValue for VotingDecision {
         res
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
         assert_eq!(bytes.len(), HASH_SIZE + 1);
         let tag = bytes[HASH_SIZE];
         let raw_hash = Hash::from_slice(&bytes[0..HASH_SIZE]).unwrap();
-        match tag {
+        let decision = match tag {
             YEA_TAG => VotingDecision::Yea(raw_hash),
             NAY_TAG => VotingDecision::Nay(raw_hash),
             _ => panic!("invalid voting tag: {}", tag),
-        }
+        };
+        Ok(decision)
     }
 }
 
@@ -173,22 +176,26 @@ impl CryptoHash for MaybeVote {
     }
 }
 
-impl StorageValue for MaybeVote {
-    fn into_bytes(self) -> Vec<u8> {
+impl BinaryValue for MaybeVote {
+    fn to_bytes(&self) -> Vec<u8> {
         match self.0 {
             Some(v) => v.into_bytes(),
             None => NO_VOTE_BYTES.clone(),
         }
     }
 
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        if NO_VOTE_BYTES.as_slice().eq(bytes.as_ref()) {
+    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
+        let res = if NO_VOTE_BYTES.as_slice().eq(bytes.as_ref()) {
             MaybeVote::none()
         } else {
-            MaybeVote::some(VotingDecision::from_bytes(bytes))
-        }
+            MaybeVote::some(VotingDecision::from_bytes(bytes).expect("Error while deserializing value"))
+        };
+
+        Ok(res)
     }
 }
+
+impl_object_hash_for_binary_value! { ProposeData, MaybeVote }
 
 /// Database schema used by the configuration service.
 #[derive(Debug)]

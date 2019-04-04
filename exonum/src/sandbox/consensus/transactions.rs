@@ -319,7 +319,7 @@ fn incorrect_tx_in_request() {
 #[test]
 fn response_size_larger_than_max_message_len() {
     use crate::messages::{RAW_TRANSACTION_HEADER, TRANSACTION_RESPONSE_EMPTY_SIZE};
-    use crate::storage::StorageValue;
+    use exonum_merkledb::BinaryValue;
 
     let sandbox = timestamping_sandbox();
     let sandbox_state = SandboxState::new();

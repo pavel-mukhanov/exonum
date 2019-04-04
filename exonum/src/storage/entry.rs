@@ -17,10 +17,10 @@
 use std::marker::PhantomData;
 
 use super::{
-    base_index::BaseIndex, indexes_metadata::IndexType, Fork, Snapshot, StorageValue,
+    base_index::BaseIndex, indexes_metadata::IndexType, Fork, Snapshot,
 };
 use crate::crypto::Hash;
-use exonum_merkledb::BinaryKey;
+use exonum_merkledb::{BinaryKey, BinaryValue, ObjectHash};
 
 /// An index that may only contain one element.
 ///
@@ -37,7 +37,7 @@ pub struct Entry<T, V> {
 impl<T, V> Entry<T, V>
 where
     T: AsRef<dyn Snapshot>,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     /// Creates a new index representation based on the name and storage view.
     ///
@@ -159,14 +159,14 @@ where
     pub fn hash(&self) -> Hash {
         self.base
             .get::<(), V>(&())
-            .map(|v| v.hash())
+            .map(|v| v.object_hash())
             .unwrap_or_default()
     }
 }
 
 impl<'a, V> Entry<&'a mut Fork, V>
 where
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     /// Changes a value of the entry.
     ///

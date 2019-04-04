@@ -127,7 +127,7 @@ pub use self::{
     rocksdb::RocksDB,
     sparse_list_index::SparseListIndex,
     value_set_index::ValueSetIndex,
-    values::StorageValue,
+//    values::BinaryValue,
 };
 
 /// A specialized `Result` type for I/O operations with storage.
@@ -144,7 +144,7 @@ mod indexes_metadata;
 mod memorydb;
 mod options;
 mod rocksdb;
-mod values;
+//mod values;
 
 pub mod key_set_index;
 pub mod list_index;

@@ -23,7 +23,7 @@ use super::{
     node::{BranchNode, Node},
 };
 use crate::crypto::{CryptoHash, Hash, HashStream};
-use crate::storage::StorageValue;
+use exonum_merkledb::{BinaryValue, ObjectHash};
 
 // Expected size of the proof, in number of hashed entries.
 const DEFAULT_PROOF_CAPACITY: usize = 8;
@@ -201,7 +201,7 @@ impl<K, V> Into<(K, Option<V>)> for OptionalEntry<K, V> {
 /// to obtain information about the proof.
 ///
 /// ```
-/// # use exonum::storage::{Database, MemoryDB, StorageValue, MapProof, ProofMapIndex};
+/// # use exonum::storage::{Database, MemoryDB, BinaryValue, MapProof, ProofMapIndex};
 /// # use exonum::crypto::hash;
 /// let mut fork = { let db = MemoryDB::new(); db.fork() };
 /// let mut map = ProofMapIndex::new("index", &mut fork);
@@ -233,7 +233,7 @@ impl<K, V> Into<(K, Option<V>)> for OptionalEntry<K, V> {
 /// ```
 /// # extern crate exonum;
 /// # #[macro_use] extern crate serde_json;
-/// # use exonum::storage::{Database, MemoryDB, StorageValue, MapProof, ProofMapIndex};
+/// # use exonum::storage::{Database, MemoryDB, BinaryValue, MapProof, ProofMapIndex};
 /// # use exonum::storage::proof_map_index::ProofPath;
 /// # use exonum::crypto::{hash, CryptoHash};
 /// # fn main() {
@@ -477,7 +477,7 @@ impl<K, V> MapProof<K, V> {
 impl<K, V> MapProof<K, V>
 where
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
 {
     fn precheck(&self) -> Result<(), MapProofError> {
         use self::MapProofError::*;
@@ -566,7 +566,7 @@ where
         proof.extend(entries.iter().filter_map(|e| {
             e.as_kv().map(|(k, v)| MapProofEntry {
                 path: ProofPath::new(k),
-                hash: v.hash(),
+                hash: v.object_hash(),
             })
         }));
         // Rust docs state that in the case `self.proof` and `self.entries` are sorted
@@ -632,7 +632,7 @@ pub fn create_proof<K, V, F>(
 ) -> MapProof<K, V>
 where
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
     F: Fn(&ProofPath) -> Node<V>,
 {
     fn combine(
@@ -707,7 +707,7 @@ where
             } else {
                 MapProofBuilder::new()
                     .add_missing(key)
-                    .add_proof_entry(root_path, root_value.hash())
+                    .add_proof_entry(root_path, root_value.object_hash())
                     .create()
             }
         }
@@ -768,7 +768,7 @@ fn process_key<K, V, F>(
     lookup: &F,
 ) -> MapProofBuilder<K, V>
 where
-    V: StorageValue,
+    V: BinaryValue,
     F: Fn(&ProofPath) -> Node<V>,
 {
     // `unwrap()` is safe: there is at least 1 element in the contour by design
@@ -839,7 +839,7 @@ pub fn create_multiproof<K, V, KI, F>(
 ) -> MapProof<K, V>
 where
     K: ProofMapKey,
-    V: StorageValue,
+    V: BinaryValue + ObjectHash,
     KI: IntoIterator<Item = K>,
     F: Fn(&ProofPath) -> Node<V>,
 {
@@ -896,7 +896,7 @@ where
             builder = if let Some(key) = found_key {
                 builder.add_entry(key, root_value)
             } else {
-                builder.add_proof_entry(root_path, root_value.hash())
+                builder.add_proof_entry(root_path, root_value.object_hash())
             };
 
             builder.create()

@@ -190,7 +190,7 @@ impl Propose {
         author: PublicKey,
     ) -> Result<(StoredConfiguration, Hash), ServiceError> {
         use self::ServiceError::*;
-        use exonum::storage::StorageValue;
+        use exonum_merkledb::BinaryValue;
 
         let following_config = CoreSchema::new(snapshot).following_configuration();
         if let Some(following) = following_config {
@@ -204,7 +204,7 @@ impl Propose {
             StoredConfiguration::try_deserialize(self.cfg.as_bytes()).map_err(InvalidConfig)?;
         self.check_config_candidate(&config_candidate, snapshot)?;
 
-        let cfg = StoredConfiguration::from_bytes(self.cfg.as_bytes().into());
+        let cfg = StoredConfiguration::from_bytes(self.cfg.as_bytes().into()).expect("Error while deserializing value");
         let cfg_hash = CryptoHash::hash(&cfg);
         if let Some(old_propose) = Schema::new(snapshot).propose(&cfg_hash) {
             return Err(AlreadyProposed(old_propose));
@@ -356,7 +356,7 @@ impl VotingContext {
     }
 
     fn save(&self, fork: &mut Fork) {
-        use exonum::storage::StorageValue;
+        use exonum_merkledb::BinaryValue;
 
         let cfg_hash = &self.cfg_hash;
         let propose_data: ProposeData = Schema::new(fork.as_ref())
@@ -366,7 +366,7 @@ impl VotingContext {
 
         let propose = propose_data.tx_propose.clone();
         let prev_cfg_hash =
-            StoredConfiguration::from_bytes(propose.cfg.as_bytes().into()).previous_cfg_hash;
+            StoredConfiguration::from_bytes(propose.cfg.as_bytes().into()).expect("Error while deserializing value").previous_cfg_hash;
         let prev_cfg = CoreSchema::new(fork.as_ref())
             .configs()
             .get(&prev_cfg_hash)

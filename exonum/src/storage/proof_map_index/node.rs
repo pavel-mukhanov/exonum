@@ -17,16 +17,15 @@
 use std::borrow::Cow;
 
 use super::{
-    super::{StorageValue},
     key::{ChildKind, ProofPath, PROOF_PATH_SIZE},
 };
 use crate::crypto::{hash, CryptoHash, Hash, HASH_SIZE};
-use exonum_merkledb::BinaryKey;
+use exonum_merkledb::{BinaryKey, BinaryValue};
 
 const BRANCH_NODE_SIZE: usize = 2 * (HASH_SIZE + PROOF_PATH_SIZE);
 
 #[derive(Debug)]
-pub enum Node<T: StorageValue> {
+pub enum Node<T: BinaryValue> {
     Leaf(T),
     Branch(BranchNode),
 }
@@ -89,15 +88,19 @@ impl CryptoHash for BranchNode {
     }
 }
 
-impl StorageValue for BranchNode {
+impl BinaryValue for BranchNode {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.raw.clone()
+    }
+
     fn into_bytes(self) -> Vec<u8> {
         self.raw
     }
 
-    fn from_bytes(value: Cow<[u8]>) -> Self {
-        Self {
+    fn from_bytes(value: Cow<[u8]>) -> Result<Self, failure::Error> {
+        Ok(Self {
             raw: value.into_owned(),
-        }
+        })
     }
 }
 
