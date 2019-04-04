@@ -259,10 +259,6 @@ impl BinaryValue for StoredConfiguration {
         self.try_serialize().unwrap()
     }
 
-    fn into_bytes(self) -> Vec<u8> {
-        self.try_serialize().unwrap()
-    }
-
     fn from_bytes(v: ::std::borrow::Cow<[u8]>) -> Result<Self, failure::Error> {
         Self::try_deserialize(v.as_ref()).map_err(|e| e.into())
     }

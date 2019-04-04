@@ -57,10 +57,6 @@ impl BinaryValue for SparseListSize {
         self.to_array().to_vec()
     }
 
-    fn into_bytes(self) -> Vec<u8> {
-        self.to_array().to_vec()
-    }
-
     fn from_bytes(value: Cow<[u8]>) -> Result<Self, failure::Error> {
         let buf = value.as_ref();
         let capacity = BigEndian::read_u64(&buf[0..8]);

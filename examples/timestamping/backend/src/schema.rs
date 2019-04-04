@@ -17,8 +17,6 @@
 use super::proto;
 use chrono::{DateTime, Utc};
 
-use exonum_merkledb::{ObjectHash, BinaryValue, impl_object_hash_for_binary_value};
-
 use exonum::{
     crypto::Hash,
     storage::{Fork, ProofMapIndex, Snapshot},
@@ -69,8 +67,6 @@ impl TimestampEntry {
         }
     }
 }
-
-impl_object_hash_for_binary_value! { TimestampEntry }
 
 /// Timestamping database schema.
 #[derive(Debug)]

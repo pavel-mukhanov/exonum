@@ -1011,10 +1011,6 @@ impl BinaryValue for Message {
         self.signed_message().raw().to_vec()
     }
 
-    fn into_bytes(self) -> Vec<u8> {
-        self.signed_message().raw().to_vec()
-    }
-
     fn from_bytes(value: Cow<[u8]>) -> Result<Self, failure::Error> {
         let message = SignedMessage::from_vec_unchecked(value.into_owned());
         // TODO: Remove additional deserialization. [ECR-2315]

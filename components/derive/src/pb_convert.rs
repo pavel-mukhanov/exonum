@@ -123,12 +123,12 @@ fn implement_storage_traits(name: &Ident, cr: &dyn quote::ToTokens) -> impl quot
             }
         }
 
-//        impl exonum_merkledb::ObjectHash for #name {
-//             fn object_hash(&self) -> #cr::crypto::Hash {
-//                    let v = self.to_pb().write_to_bytes().unwrap();
-//                    #cr::crypto::hash(&v)
-//             }
-//        }
+        impl exonum_merkledb::ObjectHash for #name {
+             fn object_hash(&self) -> #cr::crypto::Hash {
+                let v = self.to_pb().write_to_bytes().unwrap();
+                #cr::crypto::hash(&v)
+             }
+        }
 
         // This trait assumes that we work with trusted data so we can unwrap here.
         impl exonum_merkledb::BinaryValue for #name {
@@ -141,7 +141,7 @@ fn implement_storage_traits(name: &Ident, cr: &dyn quote::ToTokens) -> impl quot
 
             fn from_bytes(value: std::borrow::Cow<[u8]>) -> Result<Self, failure::Error> {
                 let mut block = <Self as ProtobufConvert>::ProtoStruct::new();
-                block.merge_from_bytes(value.as_ref()).unwrap();
+                block.merge_from_bytes(value.as_ref())?;
                 ProtobufConvert::from_pb(block)
             }
         }

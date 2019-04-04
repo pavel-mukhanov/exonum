@@ -14,8 +14,6 @@
 
 //! Cryptocurrency wallet.
 
-use exonum_merkledb::{ObjectHash, BinaryValue, impl_object_hash_for_binary_value};
-
 use exonum::crypto::{Hash, PublicKey};
 
 use super::proto;
@@ -35,8 +33,6 @@ pub struct Wallet {
     /// `Hash` of the transactions history.
     pub history_hash: Hash,
 }
-
-impl_object_hash_for_binary_value! { Wallet }
 
 impl Wallet {
     /// Create new Wallet.

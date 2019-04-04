@@ -169,10 +169,6 @@ impl BinaryValue for StorageMetadata {
         self.try_serialize().unwrap()
     }
 
-    fn into_bytes(self) -> Vec<u8> {
-        self.try_serialize().unwrap()
-    }
-
     fn from_bytes(v: ::std::borrow::Cow<[u8]>) -> Result<Self, failure::Error> {
         StorageMetadata::try_deserialize(v.as_ref()).map_err(|e|e.into())
     }

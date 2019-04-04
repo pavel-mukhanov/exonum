@@ -432,12 +432,6 @@ impl BinaryValue for TransactionResult {
             .expect("Failed to serialize TransactionResult to protobuf.")
     }
 
-    fn into_bytes(self) -> Vec<u8> {
-        self.to_pb()
-            .write_to_bytes()
-            .expect("Failed to serialize TransactionResult to protobuf.")
-    }
-
     fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, failure::Error> {
         let mut block = <Self as ProtobufConvert>::ProtoStruct::new();
         block

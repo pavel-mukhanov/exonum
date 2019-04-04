@@ -195,7 +195,7 @@ impl BinaryValue for MaybeVote {
     }
 }
 
-impl_object_hash_for_binary_value! { ProposeData, MaybeVote }
+impl_object_hash_for_binary_value! { MaybeVote }
 
 /// Database schema used by the configuration service.
 #[derive(Debug)]
