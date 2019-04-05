@@ -17,9 +17,10 @@
 use super::proto;
 use chrono::{DateTime, Utc};
 
+use exonum_merkledb::{Fork, ProofMapIndex, Snapshot, IndexAccess, ObjectHash};
+
 use exonum::{
     crypto::Hash,
-    storage::{Fork, ProofMapIndex, Snapshot},
 };
 
 /// Stores content's hash and some metadata about it.
@@ -83,23 +84,23 @@ impl<T> Schema<T> {
 
 impl<T> Schema<T>
 where
-    T: AsRef<dyn Snapshot>,
+    T: IndexAccess,
 {
     /// Returns the `ProofMapIndex` of timestamps.
-    pub fn timestamps(&self) -> ProofMapIndex<&T, Hash, TimestampEntry> {
-        ProofMapIndex::new("timestamping.timestamps", &self.view)
+    pub fn timestamps(&self) -> ProofMapIndex<T, Hash, TimestampEntry> {
+        ProofMapIndex::new("timestamping.timestamps", self.view)
     }
 
     /// Returns the state hash of the timestamping service.
     pub fn state_hash(&self) -> Vec<Hash> {
-        vec![self.timestamps().merkle_root()]
+        vec![self.timestamps().object_hash()]
     }
 }
 
-impl<'a> Schema<&'a mut Fork> {
+impl<'a> Schema<&'a Fork> {
     /// Returns the mutable `ProofMapIndex` of timestamps.
-    pub fn timestamps_mut(&mut self) -> ProofMapIndex<&mut Fork, Hash, TimestampEntry> {
-        ProofMapIndex::new("timestamping.timestamps", &mut self.view)
+    pub fn timestamps_mut(&mut self) -> ProofMapIndex<&Fork, Hash, TimestampEntry> {
+        ProofMapIndex::new("timestamping.timestamps", &self.view)
     }
 
     /// Adds the timestamp entry to the database.

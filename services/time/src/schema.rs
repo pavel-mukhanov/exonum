@@ -13,9 +13,10 @@
 // limitations under the License.
 
 use chrono::{DateTime, Utc};
+
+use exonum_merkledb::{Entry, Fork, ProofMapIndex, Snapshot, ObjectHash};
 use exonum::{
     crypto::{Hash, PublicKey},
-    storage::{Entry, Fork, ProofMapIndex, Snapshot},
 };
 
 /// `Exonum-time` service database schema.
@@ -42,22 +43,22 @@ impl<T: AsRef<dyn Snapshot>> TimeSchema<T> {
 
     /// Returns hashes for stored tables.
     pub fn state_hash(&self) -> Vec<Hash> {
-        vec![self.validators_times().merkle_root(), self.time().hash()]
+        vec![self.validators_times().object_hash(), self.time().hash()]
     }
 }
 
-impl<'a> TimeSchema<&'a mut Fork> {
+impl<'a> TimeSchema<&'a Fork> {
     /// Mutable reference to the ['validators_times'][1] index.
     ///
     /// [1]: struct.TimeSchema.html#method.validators_times
-    pub fn validators_times_mut(&mut self) -> ProofMapIndex<&mut Fork, PublicKey, DateTime<Utc>> {
+    pub fn validators_times_mut(&mut self) -> ProofMapIndex<&Fork, PublicKey, DateTime<Utc>> {
         ProofMapIndex::new("exonum_time.validators_times", self.view)
     }
 
     /// Mutable reference to the ['time'][1] index.
     ///
     /// [1]: struct.TimeSchema.html#method.time
-    pub fn time_mut(&mut self) -> Entry<&mut Fork, DateTime<Utc>> {
+    pub fn time_mut(&mut self) -> Entry<&Fork, DateTime<Utc>> {
         Entry::new("exonum_time.time", self.view)
     }
 }

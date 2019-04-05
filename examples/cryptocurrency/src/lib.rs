@@ -41,9 +41,10 @@ pub mod proto;
 
 /// Persistent data.
 pub mod schema {
+    use exonum_merkledb::{Fork, MapIndex, Snapshot};
+
     use exonum::{
         crypto::PublicKey,
-        storage::{Fork, MapIndex, Snapshot},
     };
 
     use super::proto;
@@ -119,10 +120,10 @@ pub mod schema {
 
     /// A mutable version of the schema with an additional method to persist wallets
     /// to the storage.
-    impl<'a> CurrencySchema<&'a mut Fork> {
+    impl<'a> CurrencySchema<&'a Fork> {
         /// Returns a mutable version of the wallets table.
-        pub fn wallets_mut(&mut self) -> MapIndex<&mut Fork, PublicKey, Wallet> {
-            MapIndex::new("cryptocurrency.wallets", &mut self.view)
+        pub fn wallets_mut(&mut self) -> MapIndex<&Fork, PublicKey, Wallet> {
+            MapIndex::new("cryptocurrency.wallets", &self.view)
         }
     }
 }
@@ -388,12 +389,13 @@ pub mod api {
 
 /// Service declaration.
 pub mod service {
+    use exonum_merkledb::Snapshot;
+
     use exonum::{
         api::ServiceApiBuilder,
         blockchain::{Service, Transaction, TransactionSet},
         crypto::Hash,
         messages::RawTransaction,
-        storage::Snapshot,
     };
 
     use crate::{api::CryptocurrencyApi, transactions::CurrencyTransactions};

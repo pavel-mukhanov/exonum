@@ -13,7 +13,7 @@
 // limitations under the License.
 
 //! A special service which generates transactions on `after_commit` events.
-
+use exonum_merkledb::Snapshot;
 use super::proto;
 use exonum::{
     blockchain::{
@@ -22,7 +22,6 @@ use exonum::{
     crypto::Hash,
     helpers::Height,
     messages::RawTransaction,
-    storage::Snapshot,
 };
 
 use std::sync::{

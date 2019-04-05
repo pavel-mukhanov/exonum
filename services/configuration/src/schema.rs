@@ -14,11 +14,10 @@
 
 //! Storage schema for the configuration service.
 
-use exonum_merkledb::{impl_object_hash_for_binary_value, BinaryValue, ObjectHash};
+use exonum_merkledb::{impl_object_hash_for_binary_value, BinaryValue, ObjectHash, Fork, ProofListIndex, ProofMapIndex, Snapshot};
 
 use exonum::{
     crypto::{self, CryptoHash, Hash, HASH_SIZE},
-    storage::{Fork, ProofListIndex, ProofMapIndex, Snapshot},
 };
 
 use std::{borrow::Cow, ops::Deref};
@@ -254,30 +253,30 @@ where
     /// Returns state hash values used by the configuration service.
     pub fn state_hash(&self) -> Vec<Hash> {
         vec![
-            self.propose_data_by_config_hash().merkle_root(),
-            self.config_hash_by_ordinal().merkle_root(),
+            self.propose_data_by_config_hash().object_hash(),
+            self.config_hash_by_ordinal().object_hash(),
         ]
     }
 }
 
-impl<'a> Schema<&'a mut Fork> {
+impl<'a> Schema<&'a Fork> {
     /// Mutable version of the `propose_data_by_config_hash` index.
     pub(crate) fn propose_data_by_config_hash_mut(
         &mut self,
-    ) -> ProofMapIndex<&mut Fork, Hash, ProposeData> {
-        ProofMapIndex::new(PROPOSES, &mut self.view)
+    ) -> ProofMapIndex<&Fork, Hash, ProposeData> {
+        ProofMapIndex::new(PROPOSES, self.view)
     }
 
     /// Mutable version of the `config_hash_by_ordinal` index.
-    pub(crate) fn config_hash_by_ordinal_mut(&mut self) -> ProofListIndex<&mut Fork, Hash> {
-        ProofListIndex::new(PROPOSE_HASHES, &mut self.view)
+    pub(crate) fn config_hash_by_ordinal_mut(&mut self) -> ProofListIndex<&Fork, Hash> {
+        ProofListIndex::new(PROPOSE_HASHES, self.view)
     }
 
     /// Mutable version of the `votes_by_config_hash` index.
     pub(crate) fn votes_by_config_hash_mut(
         &mut self,
         config_hash: &Hash,
-    ) -> ProofListIndex<&mut Fork, MaybeVote> {
-        ProofListIndex::new_in_family(VOTES, config_hash, &mut self.view)
+    ) -> ProofListIndex<&Fork, MaybeVote> {
+        ProofListIndex::new_in_family(VOTES, config_hash, &self.view)
     }
 }

@@ -23,8 +23,7 @@ use std::{any::Any, borrow::Cow, convert::Into, error::Error, fmt, u8};
 use crate::crypto::{CryptoHash, Hash, PublicKey};
 use crate::messages::{HexStringRepresentation, RawTransaction, Signed, SignedMessage};
 use crate::proto::{self, ProtobufConvert};
-use exonum_merkledb::{Fork};
-use exonum_merkledb::{ObjectHash, BinaryValue};
+use exonum_merkledb::{Fork, ObjectHash, BinaryValue};
 
 //  User-defined error codes (`TransactionErrorType::Code(u8)`) have a `0...255` range.
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_lossless))]

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 //! Sample counter service.
+use exonum_merkledb::{Entry, Fork, Snapshot};
+
 use exonum::{
     api,
     blockchain::{
@@ -20,7 +22,6 @@ use exonum::{
     },
     crypto::{Hash, PublicKey, SecretKey},
     messages::{Message, RawTransaction, Signed},
-    storage::{Entry, Fork, Snapshot},
 };
 
 use super::proto;
@@ -50,8 +51,8 @@ impl<T: AsRef<dyn Snapshot>> CounterSchema<T> {
     }
 }
 
-impl<'a> CounterSchema<&'a mut Fork> {
-    fn entry_mut(&mut self) -> Entry<&mut Fork, u64> {
+impl<'a> CounterSchema<&'a Fork> {
+    fn entry_mut(&mut self) -> Entry<&Fork, u64> {
         Entry::new("counter.count", self.view)
     }
 

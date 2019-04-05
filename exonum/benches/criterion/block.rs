@@ -38,13 +38,15 @@
 //!   Accounts are stored in a `MapIndex`. Transactions are rolled back 50% of the time.
 
 use criterion::{Criterion, ParameterizedBenchmark, Throughput};
+
+use exonum_merkledb::{Database, DbOptions, Patch, RocksDB};
+
 use exonum::{
     blockchain::{Blockchain, Schema, Service, Transaction},
     crypto::{Hash, PublicKey, SecretKey},
     helpers::{Height, ValidatorId},
     messages::{RawTransaction, Signed},
     node::ApiSender,
-    storage::{Database, DbOptions, Patch, RocksDB},
 };
 use futures::sync::mpsc;
 use rand::{Rng, SeedableRng};
@@ -109,13 +111,13 @@ fn execute_block(blockchain: &Blockchain, height: u64, txs: &[Hash]) -> (Hash, P
 }
 
 mod timestamping {
+    use       exonum_merkledb::Snapshot;
     use super::{gen_keypair_from_rng, BoxedTx};
     use crate::proto;
     use exonum::{
         blockchain::{ExecutionResult, Service, Transaction, TransactionContext},
         crypto::{CryptoHash, Hash, PublicKey, SecretKey},
         messages::{Message, RawTransaction, Signed},
-        storage::Snapshot,
     };
     use rand::Rng;
 
@@ -209,13 +211,13 @@ mod timestamping {
 }
 
 mod cryptocurrency {
+    use exonum_merkledb::{MapIndex, ProofMapIndex, Snapshot};
     use super::{gen_keypair_from_rng, BoxedTx};
     use crate::proto;
     use exonum::{
         blockchain::{ExecutionError, ExecutionResult, Service, Transaction, TransactionContext},
         crypto::{Hash, PublicKey, SecretKey},
         messages::{Message, RawTransaction, Signed},
-        storage::{MapIndex, ProofMapIndex, Snapshot},
     };
     use rand::{seq::SliceRandom, Rng};
 

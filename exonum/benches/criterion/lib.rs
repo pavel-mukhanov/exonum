@@ -21,7 +21,6 @@ extern crate serde_derive;
 
 use crate::block::bench_block;
 use crate::crypto::bench_crypto;
-use exonum_merkledb::bench_storage;
 use crate::transactions::bench_verify_transactions;
 
 mod block;
@@ -34,7 +33,6 @@ criterion_group!(
     benches,
     bench_crypto,
     bench_block,
-    bench_storage,
     bench_verify_transactions
 );
 criterion_main!(benches);

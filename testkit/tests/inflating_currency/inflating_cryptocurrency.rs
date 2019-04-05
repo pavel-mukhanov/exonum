@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use exonum_merkledb::{Fork, MapIndex, Snapshot};
 
 use exonum::{
     api,
@@ -21,7 +22,6 @@ use exonum::{
     crypto::{Hash, PublicKey, SecretKey},
     helpers::Height,
     messages::{Message, RawTransaction, Signed},
-    storage::{Fork, MapIndex, Snapshot},
 };
 
 use super::proto;
@@ -91,8 +91,8 @@ impl<S: AsRef<dyn Snapshot>> CurrencySchema<S> {
     }
 }
 
-impl<'a> CurrencySchema<&'a mut Fork> {
-    pub fn wallets_mut(&mut self) -> MapIndex<&mut Fork, PublicKey, Wallet> {
+impl<'a> CurrencySchema<&'a Fork> {
+    pub fn wallets_mut(&mut self) -> MapIndex<&Fork, PublicKey, Wallet> {
         MapIndex::new("cryptocurrency.wallets", self.view)
     }
 }
@@ -155,7 +155,7 @@ impl Transaction for TxCreateWallet {
     fn execute(&self, mut tc: TransactionContext) -> ExecutionResult {
         let author = tc.author();
         let view = tc.fork();
-        let height = CoreSchema::new(&view).height();
+        let height = CoreSchema::new(view).height();
         let mut schema = CurrencySchema { view };
         if schema.wallet(&author).is_none() {
             let wallet = Wallet::new(&author, &self.name, INIT_BALANCE, height.0);
@@ -174,7 +174,7 @@ impl Transaction for TxTransfer {
             Err(ExecutionError::new(0))?
         }
         let view = tc.fork();
-        let height = CoreSchema::new(&view).height();
+        let height = CoreSchema::new(view).height();
         let mut schema = CurrencySchema { view };
         let sender = schema.wallet(&author);
         let receiver = schema.wallet(&self.to);

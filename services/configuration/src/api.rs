@@ -144,7 +144,8 @@ impl PublicApi {
 
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::let_and_return))]
     fn committed_configs(state: &ServiceApiState, filter: &FilterQuery) -> Vec<ConfigHashInfo> {
-        let core_schema = CoreSchema::new(state.snapshot());
+        let snapshot = state.snapshot();
+        let core_schema = CoreSchema::new(&snapshot);
         let actual_from = core_schema.configs_actual_from();
         let configs = core_schema.configs();
 
@@ -166,7 +167,7 @@ impl PublicApi {
     }
 
     fn handle_actual_config(state: &ServiceApiState, _query: ()) -> api::Result<ConfigHashInfo> {
-        let config = CoreSchema::new(state.snapshot()).actual_configuration();
+        let config = CoreSchema::new(&state.snapshot()).actual_configuration();
         Ok(Self::config_with_proofs(state, config))
     }
 
@@ -174,7 +175,7 @@ impl PublicApi {
         state: &ServiceApiState,
         _query: (),
     ) -> api::Result<Option<ConfigHashInfo>> {
-        Ok(CoreSchema::new(state.snapshot())
+        Ok(CoreSchema::new(&state.snapshot())
             .following_configuration()
             .map(|cfg| Self::config_with_proofs(state, cfg)))
     }

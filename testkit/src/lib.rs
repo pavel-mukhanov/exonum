@@ -173,6 +173,8 @@ use tokio_core::reactor::Core;
 use std::sync::{Arc, RwLock};
 use std::{fmt, net::SocketAddr};
 
+use exonum_merkledb::{Database, TemporaryDB, Patch, Snapshot};
+
 use exonum::{
     api::{
         backends::actix::{ApiRuntimeConfig, SystemRuntimeConfig},
@@ -184,7 +186,6 @@ use exonum::{
     helpers::{Height, ValidatorId},
     messages::{RawTransaction, Signed},
     node::{ApiSender, ExternalMessage, State as NodeState},
-    storage::{Database, MemoryDB, Patch, Snapshot},
 };
 
 use crate::checkpoint_db::{CheckpointDb, CheckpointDbHandler};
@@ -366,7 +367,7 @@ impl TestKitBuilder {
         let network =
             TestNetwork::with_our_role(self.our_validator_id, self.validator_count.unwrap_or(1));
         let genesis = network.genesis_config();
-        TestKit::assemble(MemoryDB::new(), self.services, network, genesis)
+        TestKit::assemble(TemporaryDB::new(), self.services, network, genesis)
     }
 
     /// Starts a testkit web server, which listens to public and private APIs exposed by
@@ -386,7 +387,7 @@ impl TestKitBuilder {
 /// (with no real network setup).
 pub struct TestKit {
     blockchain: Blockchain,
-    db_handler: CheckpointDbHandler<MemoryDB>,
+    db_handler: CheckpointDbHandler<TemporaryDB>,
     events_stream: Box<dyn Stream<Item = (), Error = ()> + Send + Sync>,
     network: TestNetwork,
     api_sender: ApiSender,
@@ -413,7 +414,7 @@ impl TestKit {
     }
 
     fn assemble(
-        database: MemoryDB,
+        database: TemporaryDB,
         services: Vec<Box<dyn Service>>,
         network: TestNetwork,
         genesis: GenesisConfig,
@@ -597,7 +598,8 @@ impl TestKit {
         self.poll_events();
         // Filter out already committed transactions; otherwise,
         // `create_block_with_transactions()` will panic.
-        let schema = CoreSchema::new(self.snapshot());
+        let snapshot = self.snapshot();
+        let schema = CoreSchema::new(&snapshot);
         let uncommitted_txs = transactions.into_iter().filter(|tx| {
             !schema.transactions().contains(&tx.hash())
                 || schema.transactions_pool().contains(&tx.hash())
@@ -672,7 +674,7 @@ impl TestKit {
                     let stored = cfg_proposal.stored_configuration().clone();
 
                     let mut fork = self.blockchain.fork();
-                    CoreSchema::new(&mut fork).commit_configuration(stored);
+                    CoreSchema::new(&fork).commit_configuration(stored);
                     self.cfg_proposal = Some(Committed(cfg_proposal));
 
                     return Some(fork.into_patch());
@@ -717,7 +719,7 @@ impl TestKit {
     {
         let tx_hashes: Vec<_> = {
             let blockchain = self.blockchain_mut();
-            let mut fork = blockchain.fork();
+            let fork = blockchain.fork();
             let hashes = {
                 let mut schema = CoreSchema::new(&fork);
 
@@ -811,7 +813,7 @@ impl TestKit {
 
     /// Adds transaction into persistent pool.
     pub fn add_tx(&mut self, transaction: Signed<RawTransaction>) {
-        let mut fork = self.blockchain.fork();
+        let fork = self.blockchain.fork();
         {
             let mut schema = CoreSchema::new(&fork);
             schema.add_transaction_into_pool(transaction);
@@ -1100,7 +1102,7 @@ impl TestKit {
 /// ```
 #[derive(Debug)]
 pub struct StoppedTestKit {
-    db: MemoryDB,
+    db: TemporaryDB,
     network: TestNetwork,
     cfg_proposal: Option<ConfigurationProposalState>,
 }
@@ -1113,7 +1115,8 @@ impl StoppedTestKit {
 
     /// Returns the height of latest committed block.
     pub fn height(&self) -> Height {
-        CoreSchema::new(self.snapshot()).height()
+        let snapshot = self.snapshot();
+        CoreSchema::new(&snapshot).height()
     }
 
     /// Returns the reference to test network.
@@ -1127,7 +1130,8 @@ impl StoppedTestKit {
     /// the `TestKit` (which is also what may happen with real Exonum apps).
     pub fn resume(self, services: Vec<Box<dyn Service>>) -> TestKit {
         let genesis = {
-            let schema = CoreSchema::new(self.db.snapshot());
+            let snapshot = self.db.snapshot();
+            let schema = CoreSchema::new(&snapshot);
             GenesisConfig::new(
                 schema
                     .configuration_by_height(Height(0))

@@ -21,13 +21,14 @@ extern crate serde_derive;
 #[macro_use]
 extern crate exonum_derive;
 
+use exonum_merkledb::{Fork, ProofMapIndex, Snapshot, ObjectHash};
+
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use exonum::{
     blockchain::{ExecutionResult, Service, Transaction, TransactionContext, TransactionSet},
     crypto::{gen_keypair, Hash, PublicKey, SecretKey},
     helpers::Height,
     messages::{Message, RawTransaction, Signed},
-    storage::{Fork, ProofMapIndex, Snapshot},
 };
 use exonum_testkit::TestKitBuilder;
 use exonum_time::{schema::TimeSchema, time_provider::MockTimeProvider, TimeService};
@@ -58,15 +59,15 @@ impl<T: AsRef<dyn Snapshot>> MarkerSchema<T> {
 
     /// Returns hashes for stored table.
     pub fn state_hash(&self) -> Vec<Hash> {
-        vec![self.marks().merkle_root()]
+        vec![self.marks().object_hash()]
     }
 }
 
-impl<'a> MarkerSchema<&'a mut Fork> {
+impl<'a> MarkerSchema<&'a Fork> {
     /// Mutable reference to the ['marks'][1] index.
     ///
     /// [1]: struct.MarkerSchema.html#method.marks
-    pub fn marks_mut(&mut self) -> ProofMapIndex<&mut Fork, PublicKey, i32> {
+    pub fn marks_mut(&mut self) -> ProofMapIndex<&Fork, PublicKey, i32> {
         ProofMapIndex::new(format!("{}.marks", SERVICE_NAME), self.view)
     }
 }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 //! Transaction definitions for the configuration service.
+use exonum_merkledb::{Fork, Snapshot, ObjectHash};
 
 use exonum::{
     blockchain::{
@@ -21,7 +22,6 @@ use exonum::{
     crypto::{CryptoHash, Hash, PublicKey, SecretKey},
     messages::{Message, RawTransaction, Signed},
     node::State,
-    storage::{Fork, Snapshot},
 };
 
 use crate::{
@@ -251,7 +251,7 @@ impl Propose {
     }
 
     /// Saves this proposal to the service schema.
-    fn save(&self, fork: &mut Fork, cfg: &StoredConfiguration, cfg_hash: Hash) {
+    fn save(&self, fork: &Fork, cfg: &StoredConfiguration, cfg_hash: Hash) {
         let prev_cfg = CoreSchema::new(fork.as_ref())
             .configs()
             .get(&cfg.previous_cfg_hash)
@@ -273,7 +273,7 @@ impl Propose {
 
             ProposeData::new(
                 self.clone(),
-                &votes_table.merkle_root(),
+                &votes_table.object_hash(),
                 num_validators as u64,
             )
         };
@@ -355,11 +355,11 @@ impl VotingContext {
         Ok(parsed)
     }
 
-    fn save(&self, fork: &mut Fork) {
+    fn save(&self, fork: &Fork) {
         use exonum_merkledb::BinaryValue;
 
         let cfg_hash = &self.cfg_hash;
-        let propose_data: ProposeData = Schema::new(fork.as_ref())
+        let propose_data: ProposeData = Schema::new(&fork)
             .propose_data_by_config_hash()
             .get(&self.cfg_hash)
             .unwrap();
@@ -387,7 +387,7 @@ impl VotingContext {
             votes.set(validator_id as u64, self.decision.into());
             ProposeData::new(
                 propose_data.tx_propose,
-                &votes.merkle_root(),
+                &votes.object_hash(),
                 propose_data.num_validators,
             )
         };
