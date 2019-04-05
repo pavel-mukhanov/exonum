@@ -472,7 +472,7 @@ mod tests {
     use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
     use super::{Fork, ListIndex, Snapshot};
-    use crate::storage::Database;
+    use exonum_merkledb::Database;
 
     fn gen_tempdir_name() -> String {
         thread_rng().sample_iter(&Alphanumeric).take(10).collect()
@@ -600,7 +600,7 @@ mod tests {
 
         use std::path::Path;
 
-        use crate::storage::{Database, ListIndex, MemoryDB};
+        use exonum_merkledb::{Database, ListIndex, MemoryDB};
 
         const IDX_NAME: &str = "idx_name";
 
@@ -664,7 +664,7 @@ mod tests {
 
         use std::path::Path;
 
-        use crate::storage::{Database, DbOptions, ListIndex, RocksDB};
+        use exonum_merkledb::{Database, DbOptions, ListIndex, RocksDB};
 
         const IDX_NAME: &str = "idx_name";
 

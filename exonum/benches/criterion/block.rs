@@ -428,7 +428,7 @@ fn prepare_txs(
     let mut fork = blockchain.fork();
 
     let tx_hashes = {
-        let mut schema = Schema::new(&mut fork);
+        let mut schema = Schema::new(&fork);
 
         // In the case of the block within `Bencher::iter()`, some transactions
         // may already be present in the pool. We don't particularly care about this.

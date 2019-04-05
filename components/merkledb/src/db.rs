@@ -641,6 +641,12 @@ impl<'a> IndexAccess for &'a Fork {
     }
 }
 
+impl <'a> AsRef<dyn Snapshot> for &'a Fork {
+    fn as_ref(&self) -> &dyn Snapshot {
+        self.snapshot()
+    }
+}
+
 impl AsRef<dyn Snapshot> for dyn Snapshot + 'static {
     fn as_ref(&self) -> &dyn Snapshot {
         self

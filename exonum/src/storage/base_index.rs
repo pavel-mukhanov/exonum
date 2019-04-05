@@ -22,9 +22,8 @@
 
 use std::{borrow::Cow, marker::PhantomData};
 
-use super::{Fork, Iter, Snapshot};
-use crate::storage::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
-use exonum_merkledb::{BinaryKey, BinaryValue};
+use exonum_merkledb::indexes_metadata::{self, IndexType, INDEXES_METADATA_TABLE_NAME};
+use exonum_merkledb::{BinaryKey, BinaryValue, Fork, Iter, Snapshot};
 
 /// Basic struct for all indices that implements common features.
 ///

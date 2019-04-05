@@ -22,7 +22,7 @@ use rocksdb::{
     self, DBIterator, Options as RocksDbOptions, WriteBatch, WriteOptions as RocksDBWriteOptions,
 };
 
-use crate::storage::{self, db::Change, Database, DbOptions, Iter, Iterator, Patch, Snapshot};
+use exonum_merkledb::{self, db::Change, Database, DbOptions, Iter, Iterator, Patch, Snapshot};
 
 impl From<rocksdb::Error> for storage::Error {
     fn from(err: rocksdb::Error) -> Self {

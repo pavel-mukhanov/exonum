@@ -196,7 +196,7 @@ mod rocksdb_tests {
     use std::path::Path;
 
     use super::super::{DbOptions, RocksDB};
-    use crate::storage::{Database, ListIndex, Snapshot};
+    use exonum_merkledb::{Database, ListIndex, Snapshot};
 
     fn rocksdb_database(path: &Path) -> RocksDB {
         let options = DbOptions::default();

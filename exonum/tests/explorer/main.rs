@@ -190,7 +190,7 @@ fn test_explorer_pool_transaction() {
 
     let mut fork = blockchain.fork();
     {
-        let mut schema = Schema::new(&mut fork);
+        let mut schema = Schema::new(&fork);
         schema.add_transaction_into_pool(tx_alice.clone());
     }
     blockchain.merge(fork.into_patch()).unwrap();
@@ -460,7 +460,7 @@ fn test_transaction_info_roundtrip() {
 
     let mut fork = blockchain.fork();
     {
-        let mut schema = Schema::new(&mut fork);
+        let mut schema = Schema::new(&fork);
         schema.add_transaction_into_pool(tx.clone());
     }
     blockchain.merge(fork.into_patch()).unwrap();

@@ -25,7 +25,7 @@ use crate::helpers::{Height, Milliseconds, Round, ValidatorId};
 use crate::messages::{
     Precommit, Prevote, PrevotesRequest, Propose, ProposeRequest, RawTransaction, Signed,
 };
-use crate::storage::{Database, MemoryDB, ProofListIndex};
+use exonum_merkledb::{Database, MemoryDB, ProofListIndex};
 
 pub type TimestampingSandbox = Sandbox;
 

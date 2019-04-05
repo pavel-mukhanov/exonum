@@ -130,7 +130,7 @@ pub use self::{
         Snapshot,
     },
     entry::Entry,
-    hash::{HashTag, ObjectHash},
+    hash::{HashTag, ObjectHash, root_hash},
     key_set_index::KeySetIndex,
     keys::BinaryKey,
     list_index::ListIndex,

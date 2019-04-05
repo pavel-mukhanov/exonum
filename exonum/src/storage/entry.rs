@@ -20,7 +20,7 @@ use super::{
     base_index::BaseIndex, indexes_metadata::IndexType, Fork, Snapshot,
 };
 use crate::crypto::Hash;
-use exonum_merkledb::{BinaryKey, BinaryValue, ObjectHash};
+use exonum_merkledb::{BinaryKey, BinaryValue, ObjectHash, Fork, Snapshot};
 
 /// An index that may only contain one element.
 ///

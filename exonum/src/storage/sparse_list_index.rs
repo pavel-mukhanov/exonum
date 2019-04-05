@@ -635,7 +635,7 @@ mod tests {
     use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
     use super::SparseListIndex;
-    use crate::storage::db::Database;
+    use exonum_merkledb::db::Database;
 
     const IDX_NAME: &str = "idx_name";
 
@@ -759,7 +759,7 @@ mod tests {
 
         use std::path::Path;
 
-        use crate::storage::{Database, MemoryDB};
+        use exonum_merkledb::{Database, MemoryDB};
 
         fn create_database(_: &Path) -> Box<dyn Database> {
             Box::new(MemoryDB::new())
@@ -787,7 +787,7 @@ mod tests {
 
         use std::path::Path;
 
-        use crate::storage::{Database, DbOptions, RocksDB};
+        use exonum_merkledb::{Database, DbOptions, RocksDB};
 
         fn create_database(path: &Path) -> Box<dyn Database> {
             let opts = DbOptions::default();

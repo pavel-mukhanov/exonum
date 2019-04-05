@@ -111,13 +111,8 @@ pub(crate) use self::indexes_metadata::StorageMetadata;
 #[doc(no_inline)]
 pub use self::proof_map_index::{HashedKey, MapProof, ProofMapIndex};
 pub use self::{
-    db::{
-        Change, Changes, ChangesIterator, Database, Fork, Iter, Iterator, Patch, PatchIterator,
-        Snapshot,
-    },
     entry::Entry,
     error::Error,
-    hash::UniqueHash,
     key_set_index::KeySetIndex,
     list_index::ListIndex,
     map_index::MapIndex,
@@ -134,13 +129,12 @@ pub use self::{
 pub type Result<T> = ::std::result::Result<T, Error>;
 
 mod base_index;
-mod db;
+//mod db;
 mod entry;
 mod error;
-mod hash;
+//mod hash;
 mod indexes_metadata;
 //mod keys;
-//mod keys_new;
 mod memorydb;
 mod options;
 mod rocksdb;

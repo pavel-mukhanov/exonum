@@ -30,7 +30,7 @@ use super::{
 };
 use crate::crypto::{hash, CryptoHash, Hash, HashStream};
 use crate::proto;
-use crate::storage::{Database, Fork};
+use exonum_merkledb::{Database, Fork};
 use exonum_merkledb::{BinaryValue, ObjectHash};
 
 const IDX_NAME: &str = "idx_name";
@@ -1380,7 +1380,7 @@ mod memorydb_tests {
 
     use std::path::Path;
 
-    use crate::storage::{Database, MemoryDB};
+    use exonum_merkledb::{Database, MemoryDB};
 
     fn create_database(_: &Path) -> Box<dyn Database> {
         Box::new(MemoryDB::new())
@@ -1394,7 +1394,7 @@ mod rocksdb_tests {
 
     use std::path::Path;
 
-    use crate::storage::{Database, DbOptions, RocksDB};
+    use exonum_merkledb::{Database, DbOptions, RocksDB};
 
     fn create_database(path: &Path) -> Box<dyn Database> {
         let opts = DbOptions::default();

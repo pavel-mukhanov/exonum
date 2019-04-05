@@ -439,7 +439,7 @@ impl TestKit {
             Box::new(api_channel.1.and_then(move |event| {
                 let mut fork = blockchain.fork();
                 {
-                    let mut schema = CoreSchema::new(&mut fork);
+                    let mut schema = CoreSchema::new(&fork);
                     match event {
                         ExternalMessage::Transaction(tx) => {
                             let hash = tx.hash();
@@ -719,7 +719,7 @@ impl TestKit {
             let blockchain = self.blockchain_mut();
             let mut fork = blockchain.fork();
             let hashes = {
-                let mut schema = CoreSchema::new(&mut fork);
+                let mut schema = CoreSchema::new(&fork);
 
                 txs.into_iter()
                     .map(|tx| {
@@ -813,7 +813,7 @@ impl TestKit {
     pub fn add_tx(&mut self, transaction: Signed<RawTransaction>) {
         let mut fork = self.blockchain.fork();
         {
-            let mut schema = CoreSchema::new(&mut fork);
+            let mut schema = CoreSchema::new(&fork);
             schema.add_transaction_into_pool(transaction);
         }
         self.blockchain

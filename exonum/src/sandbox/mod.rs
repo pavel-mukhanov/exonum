@@ -662,7 +662,7 @@ impl Sandbox {
             let mut recover = BTreeSet::new();
             let mut fork = blockchain.fork();
             {
-                let mut schema = Schema::new(&mut fork);
+                let mut schema = Schema::new(&fork);
                 for raw in txs {
                     let hash = raw.hash();
                     hashes.push(hash);
@@ -686,7 +686,7 @@ impl Sandbox {
         let patch = {
             let mut fork = blockchain.fork();
             {
-                let mut schema = Schema::new(&mut fork);
+                let mut schema = Schema::new(&fork);
                 for hash in recover {
                     schema.reject_transaction(&hash).unwrap();
                 }
@@ -1167,7 +1167,7 @@ mod tests {
     use crate::messages::RawTransaction;
     use crate::proto::schema::tests::TxAfterCommit;
     use crate::sandbox::sandbox_tests_helper::{add_one_height, SandboxState};
-    use crate::storage::Snapshot;
+    use exonum_merkledb::Snapshot;
 
     const SERVICE_ID: u16 = 1;
 

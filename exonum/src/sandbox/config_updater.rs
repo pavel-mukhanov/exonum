@@ -22,7 +22,7 @@ use crate::crypto::{Hash, PublicKey, SecretKey};
 use crate::helpers::Height;
 use crate::messages::{Message, RawTransaction, Signed};
 use crate::proto::ProtobufConvert;
-use crate::storage::Snapshot;
+use exonum_merkledb::Snapshot;
 
 pub const CONFIG_SERVICE: u16 = 1;
 

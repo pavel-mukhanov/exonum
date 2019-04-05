@@ -57,7 +57,7 @@ use crate::crypto::{self, CryptoHash, Hash, PublicKey, SecretKey};
 use crate::helpers::{Height, Round, ValidatorId};
 use crate::messages::{Connect, Message, Precommit, ProtocolMessage, RawTransaction, Signed};
 use crate::node::ApiSender;
-use crate::storage::{self, Database, Error, Fork, Patch, Snapshot};
+use exonum_merkledb::{self, Fork, Database, Patch, Snapshot, ObjectHash, IndexAccess};
 
 mod block;
 mod genesis;
@@ -154,7 +154,7 @@ impl Blockchain {
 
     /// Commits changes from the patch to the blockchain storage.
     /// See [`Fork`](../storage/struct.Fork.html) for details.
-    pub fn merge(&mut self, patch: Patch) -> Result<(), Error> {
+    pub fn merge(&mut self, patch: Patch) -> Result<(), failure::Error> {
         self.db.merge(patch)
     }
 
@@ -182,47 +182,49 @@ impl Blockchain {
     ///
     /// * If the genesis block was not committed.
     /// * If storage version is not specified or not supported.
-    pub fn initialize(&mut self, cfg: GenesisConfig) -> Result<(), Error> {
+    pub fn initialize(&mut self, cfg: GenesisConfig) -> Result<(), failure::Error> {
         let has_genesis_block = !Schema::new(&self.snapshot())
             .block_hashes_by_height()
             .is_empty();
         if has_genesis_block {
-            self.assert_storage_version();
+            //TODO: revert
+//            self.assert_storage_version();
         } else {
-            self.initialize_metadata();
+            //TODO: revert storage metadada
+//            self.initialize_metadata();
             self.create_genesis_block(cfg)?;
         }
         Ok(())
     }
 
     /// Initialized node-local metadata.
-    fn initialize_metadata(&mut self) {
-        let mut fork = self.db.fork();
-        storage::StorageMetadata::write_current(&mut fork);
-        if self.merge(fork.into_patch()).is_ok() {
-            info!(
-                "Storage version successfully initialized with value [{}].",
-                storage::StorageMetadata::read(&self.db.snapshot()).unwrap(),
-            )
-        } else {
-            panic!("Could not set database version.")
-        }
-    }
+//    fn initialize_metadata(&mut self) {
+//        let mut fork = self.db.fork();
+//        storage::StorageMetadata::write_current(&mut fork);
+//        if self.merge(fork.into_patch()).is_ok() {
+//            info!(
+//                "Storage version successfully initialized with value [{}].",
+//                storage::StorageMetadata::read(&self.db.snapshot()).unwrap(),
+//            )
+//        } else {
+//            panic!("Could not set database version.")
+//        }
+//    }
 
     /// Checks if storage version is supported.
     ///
     /// # Panics
     ///
     /// Panics if version is not supported or is not specified.
-    fn assert_storage_version(&self) {
-        match storage::StorageMetadata::read(self.db.snapshot()) {
-            Ok(ver) => info!("Storage version is supported with value [{}].", ver),
-            Err(e) => panic!("{}", e),
-        }
-    }
+//    fn assert_storage_version(&self) {
+//        match storage::StorageMetadata::read(self.db.snapshot()) {
+//            Ok(ver) => info!("Storage version is supported with value [{}].", ver),
+//            Err(e) => panic!("{}", e),
+//        }
+//    }
 
     /// Creates and commits the genesis block with the given genesis configuration.
-    fn create_genesis_block(&mut self, cfg: GenesisConfig) -> Result<(), Error> {
+    fn create_genesis_block(&mut self, cfg: GenesisConfig) -> Result<(), failure::Error> {
         let mut config_propose = StoredConfiguration {
             previous_cfg_hash: Hash::zero(),
             actual_from: Height::zero(),
@@ -247,7 +249,7 @@ impl Blockchain {
             }
             // Commit actual configuration
             {
-                let mut schema = Schema::new(&mut fork);
+                let mut schema = Schema::new(&fork);
                 if schema.block_hash_by_height(Height::zero()).is_some() {
                     // TODO create genesis block for MemoryDB and compare it hash with zero block. (ECR-1630)
                     return Ok(());
@@ -347,7 +349,7 @@ impl Blockchain {
 
                     for service in self.service_map.values() {
                         let service_id = service.service_id();
-                        let vec_service_state = service.state_hash(&fork);
+                        let vec_service_state = service.state_hash((&fork).snapshot());
                         for (idx, service_table_hash) in vec_service_state.into_iter().enumerate() {
                             let key = Self::service_table_unique_key(service_id, idx);
                             state_hashes.push((key, service_table_hash));
@@ -357,17 +359,19 @@ impl Blockchain {
                     state_hashes
                 };
 
-                let mut schema = Schema::new(&mut fork);
+                let schema = Schema::new(&fork);
 
                 let state_hash = {
                     let mut sum_table = schema.state_hash_aggregator_mut();
                     for (key, hash) in state_hashes {
                         sum_table.put(&key, hash)
                     }
-                    sum_table.merkle_root()
+                    //TODO: revert fix hash
+                    sum_table.object_hash()
                 };
 
-                let tx_hash = schema.block_transactions(height).merkle_root();
+                //TODO: revert fix hash
+                let tx_hash = schema.block_transactions(height).object_hash();
 
                 (tx_hash, state_hash)
             };
@@ -385,7 +389,7 @@ impl Blockchain {
             // Calculate block hash.
             let block_hash = block.hash();
             // Update height.
-            let mut schema = Schema::new(&mut fork);
+            let schema = Schema::new(&fork);
             schema.block_hashes_by_height_mut().push(block_hash);
             // Save block.
             schema.blocks_mut().put(&block_hash, block);
@@ -403,8 +407,11 @@ impl Blockchain {
         index: usize,
         fork: &mut Fork,
     ) -> Result<(), failure::Error> {
+
         let (tx, raw, service_name) = {
-            let schema = Schema::new(&fork);
+            let new_fork = &*fork;
+            let snapshot = new_fork.snapshot();
+            let schema = Schema::new(snapshot);
 
             let raw = schema.transactions().get(&tx_hash).ok_or_else(|| {
                 failure::err_msg(format!(
@@ -430,10 +437,11 @@ impl Blockchain {
             (tx, raw, service_name)
         };
 
-        fork.checkpoint();
+        //TODO: revert checkpoint
+//        fork.checkpoint();
 
         let catch_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            let context = TransactionContext::new(&mut *fork, service_name, &raw);
+            let context = TransactionContext::new(&*fork, service_name, &raw);
             tx.execute(context)
         }));
 
@@ -441,7 +449,7 @@ impl Blockchain {
             Ok(execution_result) => {
                 match execution_result {
                     Ok(()) => {
-                        fork.commit();
+                        fork.flush();
                     }
                     Err(ref e) => {
                         // Unlike panic, transaction failure isn't that rare, so logging the
@@ -456,7 +464,8 @@ impl Blockchain {
                 execution_result.map_err(TransactionError::from)
             }
             Err(err) => {
-                if err.is::<Error>() {
+                //TODO: check if storage error
+                if err.is::<failure::Error>() {
                     // Continue panic unwind if the reason is StorageError.
                     panic::resume_unwind(err);
                 }
@@ -469,7 +478,7 @@ impl Blockchain {
             }
         });
 
-        let mut schema = Schema::new(fork);
+        let mut schema = Schema::new(&*fork);
         schema.transaction_results_mut().put(&tx_hash, tx_result);
         schema.commit_transaction(&tx_hash);
         schema.block_transactions_mut(height).push(tx_hash);
@@ -481,7 +490,7 @@ impl Blockchain {
     /// Commits to the blockchain a new block with the indicated changes (patch),
     /// hash and Precommit messages. After that invokes `after_commit`
     /// for each service in the increasing order of their identifiers.
-    pub fn commit<I>(&mut self, patch: &Patch, block_hash: Hash, precommits: I) -> Result<(), Error>
+    pub fn commit<I>(&mut self, patch: &Patch, block_hash: Hash, precommits: I) -> Result<(), failure::Error>
     where
         I: Iterator<Item = Signed<Precommit>>,
     {
@@ -493,7 +502,7 @@ impl Blockchain {
             };
 
             {
-                let mut schema = Schema::new(&mut fork);
+                let schema = Schema::new(&fork);
                 for precommit in precommits {
                     schema.precommits_mut(&block_hash).push(precommit);
                 }
@@ -528,10 +537,10 @@ impl Blockchain {
 
     /// Saves the `Connect` message from a peer to the cache.
     pub(crate) fn save_peer(&mut self, pubkey: &PublicKey, peer: Signed<Connect>) {
-        let mut fork = self.fork();
+        let fork = self.fork();
 
         {
-            let mut schema = Schema::new(&mut fork);
+            let mut schema = Schema::new(&fork);
             schema.peers_cache_mut().put(pubkey, peer);
         }
 
@@ -541,10 +550,10 @@ impl Blockchain {
 
     /// Removes from the cache the `Connect` message from a peer.
     pub fn remove_peer_with_pubkey(&mut self, key: &PublicKey) {
-        let mut fork = self.fork();
+        let fork = self.fork();
 
         {
-            let mut schema = Schema::new(&mut fork);
+            let mut schema = Schema::new(&fork);
             let mut peers = schema.peers_cache_mut();
             peers.remove(key);
         }
@@ -555,7 +564,8 @@ impl Blockchain {
 
     /// Returns `Connect` messages from peers saved in the cache, if any.
     pub fn get_saved_peers(&self) -> HashMap<PublicKey, Signed<Connect>> {
-        let schema = Schema::new(self.snapshot());
+        let snapshot = &self.snapshot();
+        let schema = Schema::new(snapshot);
 
         let peers_cache_table = schema.peers_cache();
         peers_cache_table.iter().collect()
@@ -575,7 +585,7 @@ impl Blockchain {
         let mut fork = self.fork();
 
         {
-            let mut schema = Schema::new(&mut fork);
+            let mut schema = Schema::new(&fork);
             schema.consensus_messages_cache_mut().extend(iter);
             schema.set_consensus_round(round);
         }
@@ -586,11 +596,15 @@ impl Blockchain {
 }
 
 fn before_commit(service: &dyn Service, fork: &mut Fork) {
-    fork.checkpoint();
+    //TODO: revert checkpoint if it is not flush
+    //fork.checkpoint();
+    fork.flush();
     match panic::catch_unwind(panic::AssertUnwindSafe(|| service.before_commit(fork))) {
-        Ok(..) => fork.commit(),
+        //TODO: revert commit
+        Ok(..) => fork.flush(),
         Err(err) => {
-            if err.is::<Error>() {
+            //TODO: check if storage error
+            if err.is::<failure::Error>() {
                 // Continue panic unwind if the reason is StorageError.
                 panic::resume_unwind(err);
             }

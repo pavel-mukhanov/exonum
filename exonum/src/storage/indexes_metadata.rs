@@ -20,7 +20,7 @@ use std::fmt;
 
 use crate::crypto::{self, CryptoHash, Hash};
 use crate::proto::{self, ProtobufConvert};
-use crate::storage::{base_index::BaseIndex, Fork, Snapshot};
+use exonum_merkledb::{base_index::BaseIndex, Fork, Snapshot};
 use exonum_merkledb::BinaryValue;
 
 pub const INDEXES_METADATA_TABLE_NAME: &str = "__INDEXES_METADATA__";
@@ -197,7 +197,7 @@ mod tests {
         CORE_STORAGE_METADATA_KEY, INDEXES_METADATA_TABLE_NAME,
     };
     use crate::crypto::{Hash, PublicKey};
-    use crate::storage::{
+    use exonum_merkledb::{
         base_index::BaseIndex, Database, Fork, MapIndex, MemoryDB, ProofMapIndex,
     };
 

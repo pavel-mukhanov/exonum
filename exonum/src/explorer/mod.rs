@@ -34,7 +34,7 @@ use crate::blockchain::{
 use crate::crypto::{CryptoHash, Hash};
 use crate::helpers::Height;
 use crate::messages::{Precommit, RawTransaction, Signed};
-use crate::storage::{ListProof, Snapshot};
+use exonum_merkledb::{ListProof, Snapshot};
 
 /// Transaction parsing result.
 type ParseResult = Result<TransactionMessage, failure::Error>;

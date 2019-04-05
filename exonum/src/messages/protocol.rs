@@ -36,8 +36,7 @@ use crate::blockchain;
 use crate::crypto::{CryptoHash, Hash, PublicKey, SecretKey, PUBLIC_KEY_LENGTH, SIGNATURE_LENGTH};
 use crate::helpers::{Height, Round, ValidatorId};
 use crate::proto;
-use crate::storage::{proof_list_index as merkle};
-use exonum_merkledb::BinaryValue;
+use exonum_merkledb::{BinaryValue, root_hash};
 
 /// `SignedMessage` size with zero bytes payload.
 #[doc(hidden)]
@@ -686,7 +685,8 @@ impl BlockRequest {
 impl BlockResponse {
     /// Verify Merkle root of transactions in the block.
     pub fn verify_tx_hash(&self) -> bool {
-        *self.block().tx_hash() == merkle::root_hash(self.transactions())
+        //TODO: revert fix check
+        *self.block().tx_hash() == root_hash(self.transactions())
     }
 }
 

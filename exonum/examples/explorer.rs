@@ -85,7 +85,7 @@ pub fn sample_blockchain() -> Blockchain {
 
     let mut fork = blockchain.fork();
     {
-        let mut schema = Schema::new(&mut fork);
+        let mut schema = Schema::new(&fork);
         schema.add_transaction_into_pool(mempool_transaction().clone());
     }
     blockchain.merge(fork.into_patch()).unwrap();

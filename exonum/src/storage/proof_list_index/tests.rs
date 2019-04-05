@@ -19,7 +19,7 @@ use serde_json::{from_str, to_string};
 use self::ListProof::*;
 use super::{hash_one, hash_pair, root_hash, ListProof, ProofListIndex};
 use crate::crypto::{hash, CryptoHash, Hash};
-use crate::storage::Database;
+use exonum_merkledb::Database;
 
 const IDX_NAME: &str = "idx_name";
 
@@ -557,7 +557,7 @@ mod memorydb_tests {
 
     use std::path::Path;
 
-    use crate::storage::{Database, MemoryDB};
+    use exonum_merkledb::{Database, MemoryDB};
 
     fn create_database(_: &Path) -> Box<dyn Database> {
         Box::new(MemoryDB::new())
@@ -671,7 +671,7 @@ mod rocksdb_tests {
 
     use std::path::Path;
 
-    use crate::storage::{Database, DbOptions, RocksDB};
+    use exonum_merkledb::{Database, DbOptions, RocksDB};
 
     fn create_database(path: &Path) -> Box<dyn Database> {
         let opts = DbOptions::default();
@@ -783,7 +783,7 @@ mod rocksdb_tests {
 
 mod root_hash_tests {
     use crate::crypto::{self, Hash};
-    use crate::storage::{Database, MemoryDB, ProofListIndex};
+    use exonum_merkledb::{Database, MemoryDB, ProofListIndex};
 
     /// Cross-verify `root_hash()` with `ProofListIndex` against expected root hash value.
     fn assert_root_hash_correct(hashes: &[Hash]) {

@@ -21,7 +21,7 @@ extern crate serde_derive;
 
 use crate::block::bench_block;
 use crate::crypto::bench_crypto;
-use crate::storage::bench_storage;
+use exonum_merkledb::bench_storage;
 use crate::transactions::bench_verify_transactions;
 
 mod block;

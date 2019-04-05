@@ -33,7 +33,7 @@ use crate::events::network::ConnectedPeerAddr;
 use crate::helpers::{Height, Milliseconds, ValidatorId};
 use crate::messages::{Message, RawTransaction, ServiceTransaction, Signed};
 use crate::node::{ApiSender, ConnectInfo, NodeRole, State};
-use crate::storage::{Fork, Snapshot};
+use exonum_merkledb::{Fork, Snapshot, IndexAccess};
 
 /// A trait that describes the business logic of a certain service.
 ///
@@ -198,7 +198,7 @@ pub trait Service: Send + Sync + 'static {
     /// first up to the largest one.
     /// Effectively, this means that services should not rely on a particular ordering of
     /// Service::execute invocations.
-    fn before_commit(&self, fork: &mut Fork) {}
+    fn before_commit(&self, fork: &Fork) {}
 
     /// Handles block commit. This handler is invoked for each service after commit of the block.
     /// For example, a service can create one or more transactions if a specific condition
@@ -244,7 +244,7 @@ impl ServiceContext {
         service_id: u16,
     ) -> Self {
         let (stored_configuration, height) = {
-            let schema = Schema::new(fork.as_ref());
+            let schema = Schema::new(&fork);
             let stored_configuration = schema.actual_configuration();
             let height = schema.height();
             (stored_configuration, height)
@@ -274,9 +274,10 @@ impl ServiceContext {
 
     /// Returns the current database snapshot. This snapshot is used to
     /// retrieve schema information from the database.
-    pub fn snapshot(&self) -> &dyn Snapshot {
-        self.fork.as_ref()
-    }
+//    pub fn snapshot<'a>(&'a self) -> &'a dyn Snapshot {
+//        let fork: &'a Fork = &self.fork;
+//        fork.snapshot()
+//    }
 
     /// Returns the current blockchain height. This height is "height of the last committed block".
     pub fn height(&self) -> Height {
