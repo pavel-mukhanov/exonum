@@ -345,10 +345,11 @@ impl<'a, K: BinaryKey + ?Sized> From<(&'a str, &'a K)> for IndexAddress {
 //    fn changes(&self, _address: &IndexAddress) -> Self::Changes {}
 //}
 //
-//impl<'a> IndexAccess<'a> for &'a Box<dyn Snapshot> {
+
+//impl<'a> IndexAccess<'a> for &Box<dyn Snapshot> {
 //    type Changes = ();
 //
-//    fn snapshot(&self) -> &dyn Snapshot {
+//    fn snapshot(&self) -> &'a (dyn Snapshot +'a) {
 //        self.as_ref()
 //    }
 //
