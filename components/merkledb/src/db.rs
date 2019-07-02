@@ -644,6 +644,12 @@ impl<'a> AsRef<dyn Snapshot + 'a> for Fork<'a> {
     }
 }
 
+//impl <'a> AsRef<dyn Snapshot + 'a> for dyn Snapshot + 'a {
+//    fn as_ref(&self) -> &(dyn Snapshot + 'a) {
+//        self
+//    }
+//}
+
 impl<'a, T> ForkIter<'a, T>
 where
     T: StdIterator<Item = (&'a Vec<u8>, &'a Change)>,

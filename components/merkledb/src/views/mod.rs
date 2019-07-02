@@ -85,7 +85,7 @@ pub trait IndexAccess<'a>: Clone {
     /// because `snapshot` is read-only.
     type Changes: ChangeSet;
     /// Reference to `Snapshot` used in `View` implementation.
-    fn snapshot(&self) -> &'a dyn Snapshot;
+    fn snapshot(&self) -> &'a (dyn Snapshot + 'a);
     /// Returns changes related to specific `address`.
     fn changes(&self, address: &IndexAddress) -> Self::Changes;
 }
@@ -346,14 +346,20 @@ impl<'a, K: BinaryKey + ?Sized> From<(&'a str, &'a K)> for IndexAddress {
 //}
 //
 
-//impl<'a> IndexAccess<'a> for &Box<dyn Snapshot> {
-//    type Changes = ();
-//
-//    fn snapshot(&self) -> &'a (dyn Snapshot +'a) {
-//        self.as_ref()
+impl<'a> IndexAccess<'a> for &'a Box<dyn Snapshot + 'a> {
+    type Changes = ();
+
+    fn snapshot(&self) -> &'a (dyn Snapshot + 'a) {
+        (*self).as_ref()
+    }
+
+    fn changes(&self, _: &IndexAddress) -> Self::Changes {}
+}
+
+//impl <'a> AsRef<dyn Snapshot + 'a> for dyn Snapshot + 'a {
+//    fn as_ref(&self) -> &(dyn Snapshot + 'a) {
+//        self
 //    }
-//
-//    fn changes(&self, _: &IndexAddress) -> Self::Changes {}
 //}
 
 fn key_bytes<K: BinaryKey + ?Sized>(key: &K) -> Vec<u8> {

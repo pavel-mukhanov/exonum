@@ -20,7 +20,7 @@ pub use rocksdb::{BlockBasedOptions as RocksBlockOptions, WriteOptions as RocksD
 
 use std::{fmt, iter::Peekable, mem, path::Path, sync::Arc};
 
-use rocksdb::{self, ColumnFamily, DBIterator, Options as RocksDbOptions, WriteBatch};
+use rocksdb::{self, ColumnFamily, DBIterator, Options as RocksDbOptions, WriteBatch, DB};
 
 use crate::{
     db::{check_database, Change},
@@ -52,7 +52,9 @@ impl From<&DbOptions> for RocksDbOptions {
     }
 }
 
-/// A snapshot of a `RocksDB`.
+//type RocksDBSnapshot<'a> = rocksdb::Snapshot<'a>;
+
+// A snapshot of a `RocksDB`.
 pub struct RocksDBSnapshot<'a> {
     snapshot: rocksdb::Snapshot<'a>,
     db: Arc<rocksdb::DB>,
@@ -132,6 +134,7 @@ impl RocksDB {
 
         Ok(())
     }
+
 }
 
 impl Database for RocksDB {
@@ -157,7 +160,7 @@ impl Database for RocksDB {
 impl Snapshot for RocksDBSnapshot<'_> {
     fn get(&self, name: &str, key: &[u8]) -> Option<Vec<u8>> {
         if let Some(cf) = self.db.cf_handle(name) {
-            match self.snapshot.get_cf(cf, key) {
+            match self.db.get_cf(cf, key) {
                 Ok(value) => value.map(|v| v.to_vec()),
                 Err(e) => panic!(e),
             }
@@ -170,10 +173,10 @@ impl Snapshot for RocksDBSnapshot<'_> {
         use rocksdb::{Direction, IteratorMode};
         let iter = match self.db.cf_handle(name) {
             Some(cf) => self
-                .snapshot
+                .db
                 .iterator_cf(cf, IteratorMode::From(from, Direction::Forward))
                 .unwrap(),
-            None => self.snapshot.iterator(IteratorMode::Start),
+            None => self.db.iterator(IteratorMode::Start),
         };
         Box::new(RocksDBIterator {
             iter: iter.peekable(),
@@ -213,8 +216,8 @@ impl fmt::Debug for RocksDB {
     }
 }
 
-impl fmt::Debug for RocksDBSnapshot<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("RocksDBSnapshot").finish()
-    }
-}
+//impl fmt::Debug for RocksDBSnapshot<'_> {
+//    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//        f.debug_struct("RocksDBSnapshot").finish()
+//    }
+//}

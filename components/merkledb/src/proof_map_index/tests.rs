@@ -1496,7 +1496,10 @@ fn snapshot_after_drop() {
         }
 
         db.merge(fork.into_patch());
-//        db.snapshot()
+        let snap =        db.snapshot();
+            let index: ProofMapIndex<_, i32, i32> = ProofMapIndex::new(name, &snap);
+
+        assert_eq!(index.get(&1), Some(1));
     };
 
 //    let index: ProofMapIndex<_, i32, i32> = ProofMapIndex::new(name, &snapshot);
