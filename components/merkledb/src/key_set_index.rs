@@ -22,7 +22,10 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 use crate::views::IndexAddress;
 use crate::{
-    views::{AnyObject, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View},
+    views::{
+        AnyObject, FromView, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter,
+        View,
+    },
     BinaryKey, BinaryValue,
 };
 
@@ -33,9 +36,9 @@ use crate::{
 ///
 /// [`BinaryKey`]: ../trait.BinaryKey.html
 #[derive(Debug)]
-pub struct KeySetIndex<T: IndexAccess, K> {
-    base: View<T>,
-    state: IndexState<T, u64>,
+pub struct KeySetIndex<'a, T: IndexAccess<'a>, K> {
+    base: View<'a, T>,
+    state: IndexState<'a, T, u64>,
     _k: PhantomData<K>,
 }
 
@@ -52,12 +55,12 @@ pub struct KeySetIndexIter<'a, K> {
     base_iter: ViewIter<'a, K, ()>,
 }
 
-impl<T, K> AnyObject<T> for KeySetIndex<T, K>
+impl<'a, T, K> AnyObject<'a, T> for KeySetIndex<'a, T, K>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey,
 {
-    fn view(self) -> View<T> {
+    fn view(self) -> View<'a, T> {
         self.base
     }
 
@@ -70,10 +73,10 @@ where
     }
 }
 
-impl<T, K> FromView<T> for KeySetIndex<T, K>
-    where
-        T: IndexAccess,
-        K: BinaryKey,
+impl<'a, T, K> FromView<'a, T> for KeySetIndex<'a, T, K>
+where
+    T: IndexAccess<'a>,
+    K: BinaryKey,
 {
     fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
         Self::create_from(address, access)
@@ -84,9 +87,9 @@ impl<T, K> FromView<T> for KeySetIndex<T, K>
     }
 }
 
-impl<T, K> KeySetIndex<T, K>
+impl<'a, T, K> KeySetIndex<'a, T, K>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -374,9 +377,9 @@ where
     }
 }
 
-impl<'a, T, K> ::std::iter::IntoIterator for &'a KeySetIndex<T, K>
+impl<'a, T, K> ::std::iter::IntoIterator for &'a KeySetIndex<'a, T, K>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey,
 {
     type Item = K::Owned;

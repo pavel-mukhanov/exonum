@@ -39,7 +39,7 @@ use self::{
 
 //TODO: revert
 //use crate::views::{AnyObject, IndexAddress};
-use crate::views::{IndexAddress};
+use crate::views::IndexAddress;
 use crate::{
     views::{
         BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View,

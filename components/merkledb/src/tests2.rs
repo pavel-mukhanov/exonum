@@ -1,5 +1,4 @@
-
-use crate::{Database, Fork, TemporaryDB, ProofMapIndex, hash::*};
+use crate::{hash::*, Database, Fork, ProofMapIndex, TemporaryDB};
 
 const IDX_NAME: &str = "index";
 

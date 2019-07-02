@@ -21,7 +21,7 @@
 use std::{borrow::Borrow, marker::PhantomData};
 
 use super::{
-    views::{AnyObject, IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
+    views::{AnyObject, FromView, IndexAccess, IndexBuilder, IndexType, Iter as ViewIter, View},
     BinaryKey, BinaryValue,
 };
 use crate::views::{IndexAddress, IndexState};
@@ -34,9 +34,9 @@ use crate::views::{IndexAddress, IndexState};
 /// [`BinaryKey`]: ../trait.BinaryKey.html
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
-pub struct MapIndex<T: IndexAccess, K, V> {
-    base: View<T>,
-    state: IndexState<T, u64>,
+pub struct MapIndex<'a, T: IndexAccess<'a>, K, V> {
+    base: View<'a, T>,
+    state: IndexState<'a, T, u64>,
     _k: PhantomData<K>,
     _v: PhantomData<V>,
 }
@@ -80,13 +80,13 @@ pub struct MapIndexValues<'a, V> {
     base_iter: ViewIter<'a, (), V>,
 }
 
-impl<T, K, V> AnyObject<T> for MapIndex<T, K, V>
+impl<'a, T, K, V> AnyObject<'a, T> for MapIndex<'a, T, K, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey,
     V: BinaryValue,
 {
-    fn view(self) -> View<T> {
+    fn view(self) -> View<'a, T> {
         self.base
     }
 
@@ -99,11 +99,11 @@ where
     }
 }
 
-impl<T, K, V> FromView<T> for MapIndex<T, K, V>
-    where
-        T: IndexAccess,
-        K: BinaryKey,
-        V: BinaryValue,
+impl<'a, T, K, V> FromView<'a, T> for MapIndex<'a, T, K, V>
+where
+    T: IndexAccess<'a>,
+    K: BinaryKey,
+    V: BinaryValue,
 {
     fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
         Self::create_from(address, access)
@@ -114,9 +114,9 @@ impl<T, K, V> FromView<T> for MapIndex<T, K, V>
     }
 }
 
-impl<T, K, V> MapIndex<T, K, V>
+impl<'a, T, K, V> MapIndex<'a, T, K, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey,
     V: BinaryValue,
 {
@@ -533,9 +533,9 @@ where
     }
 }
 
-impl<'a, T, K, V> ::std::iter::IntoIterator for &'a MapIndex<T, K, V>
+impl<'a, T, K, V> ::std::iter::IntoIterator for &'a MapIndex<'a, T, K, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey,
     V: BinaryValue,
 {

@@ -20,8 +20,8 @@
 use std::marker::PhantomData;
 
 use crate::{
-    views::{FromView,
-        AnyObject, IndexAccess, IndexAddress, IndexBuilder, IndexState, IndexType,
+    views::{
+        AnyObject, FromView, IndexAccess, IndexAddress, IndexBuilder, IndexState, IndexType,
         Iter as ViewIter, View,
     },
     BinaryKey, BinaryValue,
@@ -75,9 +75,9 @@ where
 }
 
 impl<'a, T, V> FromView<'a, T> for ListIndex<'a, T, V>
-    where
-        T: IndexAccess<'a>,
-        V: BinaryValue,
+where
+    T: IndexAccess<'a>,
+    V: BinaryValue,
 {
     fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
         Self::create_from(address, access)
@@ -523,8 +523,7 @@ where
     }
 }
 
-//TODO: revert
-#[cfg(test2)]
+#[cfg(test)]
 mod tests {
     use crate::{list_index::ListIndex, views::IndexAccess, Database, Fork, TemporaryDB};
 

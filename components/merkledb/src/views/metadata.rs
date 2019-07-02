@@ -247,7 +247,6 @@ where
     cache: Cell<IndexMetadata<V>>,
     is_new: bool,
     _marker: PhantomData<&'a ()>,
-
 }
 
 impl<'a, T, V> IndexState<'a, T, V>

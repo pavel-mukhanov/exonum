@@ -27,7 +27,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use crate::views::IndexAddress;
 use crate::{
     views::{
-        AnyObject, BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType,
+        AnyObject, BinaryAttribute, FromView, IndexAccess, IndexBuilder, IndexState, IndexType,
         Iter as ViewIter, View,
     },
     BinaryKey, BinaryValue,
@@ -78,9 +78,9 @@ impl BinaryAttribute for SparseListSize {
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 /// [`ListIndex`]: <../list_index/struct.ListIndex.html>
 #[derive(Debug)]
-pub struct SparseListIndex<T: IndexAccess, V> {
-    base: View<T>,
-    state: IndexState<T, SparseListSize>,
+pub struct SparseListIndex<'a, T: IndexAccess<'a>, V> {
+    base: View<'a, T>,
+    state: IndexState<'a, T, SparseListSize>,
     _v: PhantomData<V>,
 }
 
@@ -120,12 +120,12 @@ pub struct SparseListIndexValues<'a, V> {
     base_iter: ViewIter<'a, (), V>,
 }
 
-impl<T, V> AnyObject<T> for SparseListIndex<T, V>
+impl<'a, T, V> AnyObject<'a, T> for SparseListIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue,
 {
-    fn view(self) -> View<T> {
+    fn view(self) -> View<'a, T> {
         self.base
     }
 
@@ -138,10 +138,10 @@ where
     }
 }
 
-impl<T, V> FromView<T> for SparseListIndex<T, V>
-    where
-        T: IndexAccess,
-        V: BinaryValue,
+impl<'a, T, V> FromView<'a, T> for SparseListIndex<'a, T, V>
+where
+    T: IndexAccess<'a>,
+    V: BinaryValue,
 {
     fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
         Self::create_from(address, access)
@@ -152,9 +152,9 @@ impl<T, V> FromView<T> for SparseListIndex<T, V>
     }
 }
 
-impl<T, V> SparseListIndex<T, V>
+impl<'a, T, V> SparseListIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -636,9 +636,9 @@ where
     }
 }
 
-impl<'a, T, V> ::std::iter::IntoIterator for &'a SparseListIndex<T, V>
+impl<'a, T, V> ::std::iter::IntoIterator for &'a SparseListIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue,
 {
     type Item = (u64, V);

@@ -134,7 +134,6 @@ impl RocksDB {
 
         Ok(())
     }
-
 }
 
 impl Database for RocksDB {

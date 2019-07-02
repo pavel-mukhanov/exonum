@@ -23,7 +23,10 @@ use std::marker::PhantomData;
 use exonum_crypto::Hash;
 
 use super::{
-    views::{AnyObject, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View},
+    views::{
+        AnyObject, FromView, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter,
+        View,
+    },
     BinaryKey, BinaryValue, ObjectHash,
 };
 use crate::views::IndexAddress;
@@ -35,9 +38,9 @@ use crate::views::IndexAddress;
 ///
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
-pub struct ValueSetIndex<T: IndexAccess, V> {
-    base: View<T>,
-    state: IndexState<T, u64>,
+pub struct ValueSetIndex<'a, T: IndexAccess<'a>, V> {
+    base: View<'a, T>,
+    state: IndexState<'a, T, u64>,
     _v: PhantomData<V>,
 }
 
@@ -67,12 +70,12 @@ pub struct ValueSetIndexHashes<'a> {
     base_iter: ViewIter<'a, Hash, ()>,
 }
 
-impl<T, V> AnyObject<T> for ValueSetIndex<T, V>
+impl<'a, T, V> AnyObject<'a, T> for ValueSetIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryKey,
 {
-    fn view(self) -> View<T> {
+    fn view(self) -> View<'a, T> {
         self.base
     }
 
@@ -85,10 +88,10 @@ where
     }
 }
 
-impl<T, V> FromView<T> for ValueSetIndex<T, V>
-    where
-        T: IndexAccess,
-        V: BinaryValue + ObjectHash,
+impl<'a, T, V> FromView<'a, T> for ValueSetIndex<'a, T, V>
+where
+    T: IndexAccess<'a>,
+    V: BinaryValue + ObjectHash,
 {
     fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
         Self::create_from(address, access)
@@ -99,10 +102,9 @@ impl<T, V> FromView<T> for ValueSetIndex<T, V>
     }
 }
 
-
-impl<T, V> ValueSetIndex<T, V>
+impl<'a, T, V> ValueSetIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue + ObjectHash,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -478,9 +480,9 @@ where
     }
 }
 
-impl<'a, T, V> ::std::iter::IntoIterator for &'a ValueSetIndex<T, V>
+impl<'a, T, V> ::std::iter::IntoIterator for &'a ValueSetIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue + ObjectHash,
 {
     type Item = (Hash, V);

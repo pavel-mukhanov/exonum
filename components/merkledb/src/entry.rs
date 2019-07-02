@@ -20,7 +20,7 @@ use exonum_crypto::Hash;
 
 use crate::views::IndexAddress;
 use crate::{
-    views::{AnyObject, IndexAccess, IndexBuilder, IndexState, IndexType, View},
+    views::{AnyObject, FromView, IndexAccess, IndexBuilder, IndexState, IndexType, View},
     BinaryKey, BinaryValue, ObjectHash,
 };
 
@@ -31,18 +31,18 @@ use crate::{
 ///
 /// [`BinaryValue`]: trait.BinaryValue.html
 #[derive(Debug)]
-pub struct Entry<T: IndexAccess, V> {
-    base: View<T>,
-    state: IndexState<T, ()>,
+pub struct Entry<'a, T: IndexAccess<'a>, V> {
+    base: View<'a, T>,
+    state: IndexState<'a, T, ()>,
     _v: PhantomData<V>,
 }
 
-impl<T, V> AnyObject<T> for Entry<T, V>
+impl<'a, T, V> AnyObject<'a, T> for Entry<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue,
 {
-    fn view(self) -> View<T> {
+    fn view(self) -> View<'a, T> {
         self.base
     }
 
@@ -55,12 +55,10 @@ where
     }
 }
 
-
-
-impl<T, V> FromView<T> for Entry<T, V>
-    where
-        T: IndexAccess,
-        V: BinaryValue + ObjectHash,
+impl<'a, T, V> FromView<'a, T> for Entry<'a, T, V>
+where
+    T: IndexAccess<'a>,
+    V: BinaryValue + ObjectHash,
 {
     fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
         Self::create_from(address, access)
@@ -71,9 +69,9 @@ impl<T, V> FromView<T> for Entry<T, V>
     }
 }
 
-impl<T, V> Entry<T, V>
+impl<'a, T, V> Entry<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue + ObjectHash,
 {
     /// Creates a new index representation based on the name and storage view.

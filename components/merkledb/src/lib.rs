@@ -129,19 +129,19 @@ pub use self::{
         Change, Changes, ChangesIterator, Database, Fork, Iter, Iterator, Patch, PatchIterator,
         Snapshot,
     },
-//    entry::Entry,
+    entry::Entry,
     error::Error,
     hash::{root_hash, HashTag, ObjectHash},
-//    key_set_index::KeySetIndex,
+    key_set_index::KeySetIndex,
     keys::BinaryKey,
-//    list_index::ListIndex,
-//    map_index::MapIndex,
+    list_index::ListIndex,
+    map_index::MapIndex,
     options::DbOptions,
-//    proof_list_index::{ListProof, ProofListIndex},
-//    sparse_list_index::SparseListIndex,
-//    value_set_index::ValueSetIndex,
+    proof_list_index::{ListProof, ProofListIndex},
+    sparse_list_index::SparseListIndex,
+    value_set_index::ValueSetIndex,
     values::BinaryValue,
-    views::{IndexAccess, IndexAddress, IndexBuilder}, // ObjectAccess, Ref, RefMut, View},
+    views::{IndexAccess, IndexAddress, IndexBuilder, ObjectAccess, Ref, RefMut, View},
 };
 
 #[macro_use]
@@ -154,7 +154,7 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 mod macros;
 mod backends;
 mod db;
-//mod entry;
+mod entry;
 mod error;
 mod hash;
 mod keys;
@@ -162,13 +162,13 @@ mod options;
 mod values;
 mod views;
 
-//pub mod key_set_index;
+pub mod key_set_index;
 pub mod list_index;
-//pub mod map_index;
-//pub mod proof_list_index;
+pub mod map_index;
+pub mod proof_list_index;
 pub mod proof_map_index;
-//pub mod sparse_list_index;
-//pub mod value_set_index;
+pub mod sparse_list_index;
+pub mod value_set_index;
 
 #[cfg(test)]
 mod tests2;

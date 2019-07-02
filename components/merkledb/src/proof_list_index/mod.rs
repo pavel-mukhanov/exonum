@@ -27,7 +27,10 @@ use self::{key::ProofListKey, proof::ProofOfAbsence};
 use crate::views::IndexAddress;
 use crate::{
     hash::HashTag,
-    views::{AnyObject, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View},
+    views::{
+        AnyObject, FromView, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter,
+        View,
+    },
     BinaryKey, BinaryValue, ObjectHash,
 };
 
@@ -45,9 +48,9 @@ mod tests;
 ///
 /// [`BinaryValue`]: ../trait.BinaryValue.html
 #[derive(Debug)]
-pub struct ProofListIndex<T: IndexAccess, V> {
-    base: View<T>,
-    state: IndexState<T, u64>,
+pub struct ProofListIndex<'a, T: IndexAccess<'a>, V> {
+    base: View<'a, T>,
+    state: IndexState<'a, T, u64>,
     _v: PhantomData<V>,
 }
 
@@ -64,12 +67,12 @@ pub struct ProofListIndexIter<'a, V> {
     base_iter: ViewIter<'a, ProofListKey, V>,
 }
 
-impl<T, V> AnyObject<T> for ProofListIndex<T, V>
+impl<'a, T, V> AnyObject<'a, T> for ProofListIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue,
 {
-    fn view(self) -> View<T> {
+    fn view(self) -> View<'a, T> {
         self.base
     }
 
@@ -82,10 +85,10 @@ where
     }
 }
 
-impl<T, V> FromView<T> for ProofListIndex<T, V>
-    where
-        T: IndexAccess,
-        V: BinaryValue + ObjectHash,
+impl<'a, T, V> FromView<'a, T> for ProofListIndex<'a, T, V>
+where
+    T: IndexAccess<'a>,
+    V: BinaryValue + ObjectHash,
 {
     fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
         Self::create_from(address, access)
@@ -96,9 +99,9 @@ impl<T, V> FromView<T> for ProofListIndex<T, V>
     }
 }
 
-impl<T, V> ProofListIndex<T, V>
+impl<'a, T, V> ProofListIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue,
 {
     /// Creates a new index representation based on the name and storage view.
@@ -635,9 +638,9 @@ where
     }
 }
 
-impl<T, V> ObjectHash for ProofListIndex<T, V>
+impl<'a, T, V> ObjectHash for ProofListIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue + ObjectHash,
 {
     /// Returns a list hash of the proof list or a hash value of the empty list.
@@ -675,9 +678,9 @@ where
     }
 }
 
-impl<'a, T, V> ::std::iter::IntoIterator for &'a ProofListIndex<T, V>
+impl<'a, T, V> ::std::iter::IntoIterator for &'a ProofListIndex<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryValue + ObjectHash,
 {
     type Item = V;

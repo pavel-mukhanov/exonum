@@ -385,8 +385,11 @@ fn test_fuzz_insert() {
     assert_eq!(index2.object_hash(), index1.object_hash());
 }
 
-fn check_map_proof<'a, K, V>(proof: MapProof<K, V>, key: Option<K>, table: &ProofMapIndex<'a, &'a Fork<'a>, K, V>)
-where
+fn check_map_proof<'a, K, V>(
+    proof: MapProof<K, V>,
+    key: Option<K>,
+    table: &ProofMapIndex<'a, &'a Fork<'a>, K, V>,
+) where
     K: BinaryKey + ObjectHash + PartialEq + Debug + Serialize + DeserializeOwned,
     V: BinaryValue + ObjectHash + PartialEq + Debug + Serialize + DeserializeOwned,
 {
@@ -1481,7 +1484,6 @@ fn test_tree_with_hashed_key() {
     );
 }
 
-
 //TODO: remove
 #[test]
 fn snapshot_after_drop() {
@@ -1496,13 +1498,13 @@ fn snapshot_after_drop() {
         }
 
         db.merge(fork.into_patch());
-        let snap =        db.snapshot();
-            let index: ProofMapIndex<_, i32, i32> = ProofMapIndex::new(name, &snap);
+        let snap = db.snapshot();
+        let index: ProofMapIndex<_, i32, i32> = ProofMapIndex::new(name, &snap);
 
         assert_eq!(index.get(&1), Some(1));
     };
 
-//    let index: ProofMapIndex<_, i32, i32> = ProofMapIndex::new(name, &snapshot);
-//
-//    assert_eq!(index.get(&1), Some(1));
+    //    let index: ProofMapIndex<_, i32, i32> = ProofMapIndex::new(name, &snapshot);
+    //
+    //    assert_eq!(index.get(&1), Some(1));
 }

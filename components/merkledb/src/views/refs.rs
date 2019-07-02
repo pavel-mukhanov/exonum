@@ -16,8 +16,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     views::{IndexAddress, IndexType, View},
-    BinaryKey, BinaryValue, Fork, IndexAccess, ObjectHash,
-    Snapshot,
+    BinaryKey, BinaryValue, Fork, IndexAccess, ObjectHash, Snapshot,
 };
 
 pub trait AnyObject<'a, T: IndexAccess<'a>> {
