@@ -385,7 +385,7 @@ fn test_fuzz_insert() {
     assert_eq!(index2.object_hash(), index1.object_hash());
 }
 
-fn check_map_proof<K, V>(proof: MapProof<K, V>, key: Option<K>, table: &ProofMapIndex<&Fork, K, V>)
+fn check_map_proof<'a, K, V>(proof: MapProof<K, V>, key: Option<K>, table: &ProofMapIndex<'a, &'a Fork, K, V>)
 where
     K: BinaryKey + ObjectHash + PartialEq + Debug + Serialize + DeserializeOwned,
     V: BinaryValue + ObjectHash + PartialEq + Debug + Serialize + DeserializeOwned,
@@ -419,10 +419,10 @@ where
     assert_eq!(deserialized_proof.root_hash(), proof.root_hash());
 }
 
-fn check_map_multiproof<K, V>(
+fn check_map_multiproof<'a, K, V>(
     proof: MapProof<K, V>,
     keys: Vec<K>,
-    table: &ProofMapIndex<&Fork, K, V>,
+    table: &ProofMapIndex<'a, &'a Fork, K, V>,
 ) where
     K: BinaryKey + ObjectHash + PartialEq + Debug,
     V: BinaryValue + ObjectHash + PartialEq + Debug,

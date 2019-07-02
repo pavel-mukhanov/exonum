@@ -23,6 +23,7 @@ use serde_derive::{Deserialize, Serialize};
 use crate::BinaryValue;
 
 use super::{IndexAccess, IndexAddress, View};
+use std::marker::PhantomData;
 
 /// Name of the column family used to store `IndexesPool`.
 const INDEXES_POOL_NAME: &str = "__INDEXES_POOL__";
@@ -161,13 +162,13 @@ impl<V> IndexMetadata<V> {
 ///
 /// Input `index_address` is replaced by output `index_address` based on the value
 /// taken from the indexes pool.
-pub fn index_metadata<T, V>(
+pub fn index_metadata<'a, T, V>(
     index_access: T,
     index_address: &IndexAddress,
     index_type: IndexType,
-) -> (IndexAddress, IndexState<T, V>)
+) -> (IndexAddress, IndexState<'a, T, V>)
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryAttribute + Copy + Default,
 {
     let index_name = index_address.fully_qualified_name();
@@ -190,9 +191,9 @@ where
 
 /// Persistent pool used to store indexes metadata in the database.
 /// Pool size is used as an identifier of newly created indexes.
-struct IndexesPool<T: IndexAccess>(View<T>);
+struct IndexesPool<'a, T: IndexAccess<'a>>(View<'a, T>);
 
-impl<T: IndexAccess> IndexesPool<T> {
+impl<'a, T: IndexAccess<'a>> IndexesPool<'a, T> {
     fn new(index_access: T) -> Self {
         Self(View::new(index_access, INDEXES_POOL_NAME))
     }
@@ -236,21 +237,23 @@ impl<T: IndexAccess> IndexesPool<T> {
 
 /// Wrapper struct to manipulate `IndexMetadata` for an index with provided `index_name`.
 /// Metadata value is cached for faster access.
-pub struct IndexState<T, V>
+pub struct IndexState<'a, T, V>
 where
     V: BinaryAttribute + Default + Copy,
-    T: IndexAccess,
+    T: IndexAccess<'a>,
 {
     index_access: T,
     index_name: Vec<u8>,
     cache: Cell<IndexMetadata<V>>,
     is_new: bool,
+    _marker: PhantomData<&'a ()>,
+
 }
 
-impl<T, V> IndexState<T, V>
+impl<'a, T, V> IndexState<'a, T, V>
 where
     V: BinaryAttribute + Default + Copy,
-    T: IndexAccess,
+    T: IndexAccess<'a>,
 {
     fn new(index_access: T, index_name: Vec<u8>, metadata: IndexMetadata<V>, is_new: bool) -> Self {
         Self {
@@ -258,6 +261,7 @@ where
             index_name,
             cache: Cell::new(metadata),
             is_new,
+            _marker: PhantomData,
         }
     }
 
@@ -289,9 +293,9 @@ where
     }
 }
 
-impl<T, V> std::fmt::Debug for IndexState<T, V>
+impl<'a, T, V> std::fmt::Debug for IndexState<'a, T, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     V: BinaryAttribute + Default + Copy,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

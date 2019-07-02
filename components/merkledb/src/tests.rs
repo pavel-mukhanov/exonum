@@ -32,3 +32,4 @@ fn should_compile() {
     let _: SparseListIndex<_, ()> = SparseListIndex::new_in_family("", "", &fork);
     let _: ValueSetIndex<_, ()> = ValueSetIndex::new_in_family("", "", &fork);
 }
+

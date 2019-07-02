@@ -16,7 +16,7 @@
 
 pub use self::{
     metadata::{BinaryAttribute, IndexState, IndexType},
-    refs::{AnyObject, ObjectAccess, Ref, RefMut},
+//    refs::{AnyObject, ObjectAccess, Ref, RefMut},
 };
 
 use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData, ops::Deref};
@@ -27,9 +27,11 @@ use super::{
 };
 
 mod metadata;
-mod refs;
-#[cfg(test)]
-mod tests;
+
+//TODO: revert
+//mod refs;
+//#[cfg(test)]
+//mod tests;
 
 /// Separator between the name and the additional bytes in family indexes.
 const INDEX_NAME_SEPARATOR: &[u8] = &[0];
@@ -37,13 +39,13 @@ const INDEX_NAME_SEPARATOR: &[u8] = &[0];
 /// Represents current view of the database by specified `address` and
 /// changes that took place after that view had been created. `View`
 /// implementation provides an interface to work with related `changes`.
-pub struct View<T: IndexAccess> {
+pub struct View<'a, T: IndexAccess<'a>> {
     address: IndexAddress,
     index_access: T,
     changes: T::Changes,
 }
 
-impl<T: IndexAccess> fmt::Debug for View<T> {
+impl<'a, T: IndexAccess<'a>> fmt::Debug for View<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("View")
             .field("address", &self.address)
@@ -77,13 +79,13 @@ impl ChangeSet for ChangesRef<'_> {
 }
 
 /// Base trait that allows to access and modify indexes.
-pub trait IndexAccess: Clone {
+pub trait IndexAccess<'a>: Clone {
     /// Type of the `changes` that will be applied to the database.
     /// In case of `snapshot` changes is represented by the empty type,
     /// because `snapshot` is read-only.
     type Changes: ChangeSet;
     /// Reference to `Snapshot` used in `View` implementation.
-    fn snapshot(&self) -> &dyn Snapshot;
+    fn snapshot(&self) -> &'a dyn Snapshot;
     /// Returns changes related to specific `address`.
     fn changes(&self, address: &IndexAddress) -> Self::Changes;
 }
@@ -111,9 +113,9 @@ pub struct IndexBuilder<T> {
     index_type: IndexType,
 }
 
-impl<T> IndexBuilder<T>
+impl<'a, T> IndexBuilder<T>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
 {
     /// Creates a new index based on provided `index_access'.
     pub fn new(index_access: T) -> Self {
@@ -166,7 +168,7 @@ where
         }
     }
 
-    fn create_state<V>(self) -> (View<T>, IndexState<T, V>)
+    fn create_state<V>(self) -> (View<'a, T>, IndexState<'a, T, V>)
     where
         V: BinaryAttribute + Default + Copy,
     {
@@ -190,7 +192,7 @@ where
     ///
     /// - Panics if index metadata doesn't match expected.
     /// - Panics if index name is empty.
-    pub fn build<V>(self) -> (View<T>, IndexState<T, V>)
+    pub fn build<V>(self) -> (View<'a, T>, IndexState<'a, T, V>)
     where
         V: BinaryAttribute + Default + Copy,
     {
@@ -198,7 +200,7 @@ where
     }
 
     /// Similar to `build`, but returns `None` if index has not been created yet.
-    pub fn build_existed<V>(self) -> Option<(View<T>, IndexState<T, V>)>
+    pub fn build_existed<V>(self) -> Option<(View<'a, T>, IndexState<'a, T, V>)>
     where
         V: BinaryAttribute + Default + Copy,
     {
@@ -330,34 +332,34 @@ impl<'a, K: BinaryKey + ?Sized> From<(&'a str, &'a K)> for IndexAddress {
     }
 }
 
-impl<T> IndexAccess for T
-where
-    T: Deref<Target = dyn Snapshot> + Clone,
-{
-    type Changes = ();
-
-    fn snapshot(&self) -> &dyn Snapshot {
-        self.deref()
-    }
-
-    fn changes(&self, _address: &IndexAddress) -> Self::Changes {}
-}
-
-impl<'a> IndexAccess for &'a Box<dyn Snapshot> {
-    type Changes = ();
-
-    fn snapshot(&self) -> &dyn Snapshot {
-        self.as_ref()
-    }
-
-    fn changes(&self, _: &IndexAddress) -> Self::Changes {}
-}
+//impl<'a, T> IndexAccess<'a> for T
+//where
+//    T: Deref<Target = dyn Snapshot> + Clone,
+//{
+//    type Changes = ();
+//
+//    fn snapshot(&self) -> &dyn Snapshot {
+//        self.deref()
+//    }
+//
+//    fn changes(&self, _address: &IndexAddress) -> Self::Changes {}
+//}
+//
+//impl<'a> IndexAccess<'a> for &'a Box<dyn Snapshot> {
+//    type Changes = ();
+//
+//    fn snapshot(&self) -> &dyn Snapshot {
+//        self.as_ref()
+//    }
+//
+//    fn changes(&self, _: &IndexAddress) -> Self::Changes {}
+//}
 
 fn key_bytes<K: BinaryKey + ?Sized>(key: &K) -> Vec<u8> {
     concat_keys!(key)
 }
 
-impl<T: IndexAccess> View<T> {
+impl<'a, T: IndexAccess<'a>> View<'a, T> {
     ///TODO: add documentation
     pub fn new<I: Into<IndexAddress>>(index_access: T, address: I) -> Self {
         let address = address.into();

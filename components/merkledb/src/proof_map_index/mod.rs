@@ -36,7 +36,10 @@ use self::{
     key::{BitsRange, ChildKind, VALUE_KEY_PREFIX},
     proof::{create_multiproof, create_proof},
 };
-use crate::views::{AnyObject, IndexAddress};
+
+//TODO: revert
+//use crate::views::{AnyObject, IndexAddress};
+use crate::views::{IndexAddress};
 use crate::{
     views::{
         BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View,
@@ -47,6 +50,7 @@ use crate::{
 mod key;
 mod node;
 mod proof;
+
 #[cfg(test)]
 mod tests;
 
@@ -61,9 +65,9 @@ const LEN_SIZE: usize = size_of::<u64>();
 ///
 /// [`BinaryKey`]: ../trait.BinaryKey.html
 /// [`BinaryValue`]: ../trait.BinaryValue.html
-pub struct ProofMapIndex<T: IndexAccess, K, V> {
-    base: View<T>,
-    state: IndexState<T, ProofMapState>,
+pub struct ProofMapIndex<'a, T: IndexAccess<'a>, K, V> {
+    base: View<'a, T>,
+    state: IndexState<'a, T, ProofMapState>,
     _k: PhantomData<K>,
     _v: PhantomData<V>,
 }
@@ -109,24 +113,25 @@ pub struct ProofMapIndexValues<'a, V> {
     base_iter: ViewIter<'a, Vec<u8>, V>,
 }
 
-impl<T, K, V> AnyObject<T> for ProofMapIndex<T, K, V>
-where
-    T: IndexAccess,
-    K: BinaryKey + ObjectHash,
-    V: BinaryValue + ObjectHash,
-{
-    fn view(self) -> View<T> {
-        self.base
-    }
-
-    fn object_type(&self) -> IndexType {
-        IndexType::ProofMap
-    }
-
-    fn metadata(&self) -> Vec<u8> {
-        self.state.metadata().to_bytes()
-    }
-}
+//TODO: revert
+//impl<T, K, V> AnyObject<T> for ProofMapIndex<T, K, V>
+//where
+//    T: IndexAccess,
+//    K: BinaryKey + ObjectHash,
+//    V: BinaryValue + ObjectHash,
+//{
+//    fn view(self) -> View<T> {
+//        self.base
+//    }
+//
+//    fn object_type(&self) -> IndexType {
+//        IndexType::ProofMap
+//    }
+//
+//    fn metadata(&self) -> Vec<u8> {
+//        self.state.metadata().to_bytes()
+//    }
+//}
 
 /// TODO Clarify documentation. [ECR-2820]
 enum RemoveAction {
@@ -210,9 +215,9 @@ impl BinaryAttribute for ProofMapState {
     }
 }
 
-impl<T, K, V> ProofMapIndex<T, K, V>
+impl<'a, T, K, V> ProofMapIndex<'a, T, K, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey + ObjectHash,
     V: BinaryValue + ObjectHash,
 {
@@ -963,9 +968,9 @@ where
     }
 }
 
-impl<T, K, V> ObjectHash for ProofMapIndex<T, K, V>
+impl<'a, T, K, V> ObjectHash for ProofMapIndex<'a, T, K, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey + ObjectHash,
     V: BinaryValue + ObjectHash,
 {
@@ -998,9 +1003,9 @@ where
     }
 }
 
-impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<T, K, V>
+impl<'a, T, K, V> ::std::iter::IntoIterator for &'a ProofMapIndex<'a, T, K, V>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     K: BinaryKey + ObjectHash,
     V: BinaryValue + ObjectHash,
 {
@@ -1048,77 +1053,78 @@ where
     }
 }
 
-#[allow(clippy::use_self)]
-impl<T, K, V> fmt::Debug for ProofMapIndex<T, K, V>
-where
-    T: IndexAccess,
-    K: BinaryKey + ObjectHash,
-    V: BinaryValue + ObjectHash + fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct Entry<'a, T: 'a + IndexAccess, K: 'a, V: 'a + BinaryValue> {
-            index: &'a ProofMapIndex<T, K, V>,
-            path: ProofPath,
-            hash: Hash,
-            node: Node,
-        }
-
-        impl<'a, T, K, V> Entry<'a, T, K, V>
-        where
-            T: IndexAccess,
-            K: BinaryKey + ObjectHash,
-            V: BinaryValue + ObjectHash,
-        {
-            fn new(index: &'a ProofMapIndex<T, K, V>, hash: Hash, path: ProofPath) -> Self {
-                Entry {
-                    index,
-                    path,
-                    hash,
-                    node: index.get_node_unchecked(&path),
-                }
-            }
-
-            fn child(&self, self_branch: &BranchNode, kind: ChildKind) -> Self {
-                Self::new(
-                    self.index,
-                    self_branch.child_hash(kind),
-                    self_branch.child_path(kind),
-                )
-            }
-        }
-
-        impl<'a, T, K, V> fmt::Debug for Entry<'a, T, K, V>
-        where
-            T: IndexAccess,
-            K: BinaryKey + ObjectHash,
-            V: BinaryValue + ObjectHash + fmt::Debug,
-        {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                match self.node {
-                    Node::Leaf(ref value) => f
-                        .debug_struct("Leaf")
-                        .field("key", &self.path)
-                        .field("hash", &self.hash)
-                        .field("value", value)
-                        .finish(),
-                    Node::Branch(ref branch) => f
-                        .debug_struct("Branch")
-                        .field("path", &self.path)
-                        .field("hash", &self.hash)
-                        .field("left", &self.child(branch, ChildKind::Left))
-                        .field("right", &self.child(branch, ChildKind::Right))
-                        .finish(),
-                }
-            }
-        }
-
-        if let Some(prefix) = self.get_root_path() {
-            let root_entry = Entry::new(self, self.object_hash(), prefix);
-            f.debug_struct("ProofMapIndex")
-                .field("entries", &root_entry)
-                .finish()
-        } else {
-            f.debug_struct("ProofMapIndex").finish()
-        }
-    }
-}
+//TODO: revert
+//#[allow(clippy::use_self)]
+//impl<'b, T, K, V> fmt::Debug for ProofMapIndex<'b, T, K, V>
+//where
+//    T: IndexAccess<'b>,
+//    K: BinaryKey + ObjectHash,
+//    V: BinaryValue + ObjectHash + fmt::Debug,
+//{
+//    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//        struct Entry<'a, T: 'a + IndexAccess<'a>, K: 'a, V: 'a + BinaryValue> {
+//            index: &'a ProofMapIndex<'a, T, K, V>,
+//            path: ProofPath,
+//            hash: Hash,
+//            node: Node,
+//        }
+//
+//        impl<'a, T, K, V> Entry<'a, T, K, V>
+//        where
+//            T: IndexAccess<'a>,
+//            K: BinaryKey + ObjectHash,
+//            V: BinaryValue + ObjectHash,
+//        {
+//            fn new(index: &'a ProofMapIndex<'a, T, K, V>, hash: Hash, path: ProofPath) -> Self {
+//                Entry {
+//                    index,
+//                    path,
+//                    hash,
+//                    node: index.get_node_unchecked(&path),
+//                }
+//            }
+//
+//            fn child(&self, self_branch: &BranchNode, kind: ChildKind) -> Self {
+//                Self::new(
+//                    self.index,
+//                    self_branch.child_hash(kind),
+//                    self_branch.child_path(kind),
+//                )
+//            }
+//        }
+//
+//        impl<'a, T, K, V> fmt::Debug for Entry<'a, T, K, V>
+//        where
+//            T: IndexAccess<'a>,
+//            K: BinaryKey + ObjectHash,
+//            V: BinaryValue + ObjectHash + fmt::Debug,
+//        {
+//            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//                match self.node {
+//                    Node::Leaf(ref value) => f
+//                        .debug_struct("Leaf")
+//                        .field("key", &self.path)
+//                        .field("hash", &self.hash)
+//                        .field("value", value)
+//                        .finish(),
+//                    Node::Branch(ref branch) => f
+//                        .debug_struct("Branch")
+//                        .field("path", &self.path)
+//                        .field("hash", &self.hash)
+//                        .field("left", &self.child(branch, ChildKind::Left))
+//                        .field("right", &self.child(branch, ChildKind::Right))
+//                        .finish(),
+//                }
+//            }
+//        }
+//
+//        if let Some(prefix) = self.get_root_path() {
+//            let root_entry = Entry::new(self, self.object_hash(), prefix);
+//            f.debug_struct("ProofMapIndex")
+//                .field("entries", &root_entry)
+//                .finish()
+//        } else {
+//            f.debug_struct("ProofMapIndex").finish()
+//        }
+//    }
+//}

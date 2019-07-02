@@ -499,7 +499,7 @@ pub trait Database: Send + Sync + 'static {
 ///
 /// **Note.** Unless stated otherwise, "key" in the method descriptions below refers
 /// to a full key (a string column family name + key as an array of bytes within the family).
-pub trait Snapshot: 'static {
+pub trait Snapshot {
     /// Returns a value corresponding to the specified key as a raw vector of bytes,
     /// or `None` if it does not exist.
     fn get(&self, name: &str, key: &[u8]) -> Option<Vec<u8>>;
@@ -621,10 +621,10 @@ impl Fork {
     }
 }
 
-impl<'a> IndexAccess for &'a Fork {
+impl<'a> IndexAccess<'a> for &'a Fork {
     type Changes = ChangesRef<'a>;
 
-    fn snapshot(&self) -> &dyn Snapshot {
+    fn snapshot(&self) -> &'a dyn Snapshot {
         &self.flushed
     }
 

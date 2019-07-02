@@ -53,8 +53,8 @@ impl From<&DbOptions> for RocksDbOptions {
 }
 
 /// A snapshot of a `RocksDB`.
-pub struct RocksDBSnapshot {
-    snapshot: rocksdb::Snapshot<'static>,
+pub struct RocksDBSnapshot<'a> {
+    snapshot: rocksdb::Snapshot<'a>,
     db: Arc<rocksdb::DB>,
 }
 
@@ -154,7 +154,7 @@ impl Database for RocksDB {
     }
 }
 
-impl Snapshot for RocksDBSnapshot {
+impl Snapshot for RocksDBSnapshot<'_> {
     fn get(&self, name: &str, key: &[u8]) -> Option<Vec<u8>> {
         if let Some(cf) = self.db.cf_handle(name) {
             match self.snapshot.get_cf(cf, key) {
@@ -213,7 +213,7 @@ impl fmt::Debug for RocksDB {
     }
 }
 
-impl fmt::Debug for RocksDBSnapshot {
+impl fmt::Debug for RocksDBSnapshot<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RocksDBSnapshot").finish()
     }

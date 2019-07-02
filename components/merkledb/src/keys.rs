@@ -334,7 +334,8 @@ impl BinaryKey for Decimal {
     }
 }
 
-#[cfg(test)]
+//TODO: revert
+#[cfg(test2)]
 mod tests {
     use super::*;
 
