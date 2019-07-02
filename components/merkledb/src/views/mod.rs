@@ -30,7 +30,7 @@ mod metadata;
 
 //TODO: revert
 //mod refs;
-//#[cfg(test)]
+#[cfg(test)]
 //mod tests;
 
 /// Separator between the name and the additional bytes in family indexes.

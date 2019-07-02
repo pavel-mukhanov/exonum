@@ -135,9 +135,9 @@ impl RocksDB {
 }
 
 impl Database for RocksDB {
-    fn snapshot(&self) -> Box<dyn Snapshot> {
+    fn snapshot<'a>(&'a self) -> Box<dyn Snapshot + 'a> {
         Box::new(RocksDBSnapshot {
-            snapshot: unsafe { mem::transmute(self.db.snapshot()) },
+            snapshot: self.db.snapshot(),
             db: Arc::clone(&self.db),
         })
     }

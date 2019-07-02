@@ -42,7 +42,7 @@ impl TemporaryDB {
 }
 
 impl Database for TemporaryDB {
-    fn snapshot(&self) -> Box<dyn Snapshot> {
+    fn snapshot<'a>(&'a self) -> Box<dyn Snapshot + 'a> {
         self.inner.snapshot()
     }
 

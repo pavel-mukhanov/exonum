@@ -392,15 +392,20 @@ pub enum Change {
 /// [`commit`]: #method.commit
 /// [`rollback`]: #method.rollback
 #[derive(Debug)]
-pub struct Fork {
-    flushed: FlushedFork,
+pub struct Fork<'a> {
+    flushed: FlushedFork<'a>,
     working_patch: WorkingPatch,
 }
 
-#[derive(Debug)]
-pub struct FlushedFork {
-    snapshot: Box<dyn Snapshot>,
+pub struct FlushedFork<'a> {
+    snapshot: Box<dyn Snapshot + 'a>,
     patch: Patch,
+}
+
+impl<'a> fmt::Debug for FlushedFork<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FlushedFork").finish()
+    }
 }
 
 pub(super) struct ForkIter<'a, T: StdIterator> {
@@ -451,9 +456,9 @@ enum NextIterValue {
 /// [`fork`]: #method.fork
 /// [`merge`]: #tymethod.merge
 /// [interior-mut]: https://doc.rust-lang.org/book/second-edition/ch15-05-interior-mutability.html
-pub trait Database: Send + Sync + 'static {
+pub trait Database: Send + Sync {
     /// Creates a new snapshot of the database from its current state.
-    fn snapshot(&self) -> Box<dyn Snapshot>;
+    fn snapshot<'a>(&'a self) -> Box<dyn Snapshot + 'a>;
 
     /// Creates a new fork of the database from its current state.
     fn fork(&self) -> Fork {
@@ -527,7 +532,7 @@ pub trait Iterator {
     fn peek(&mut self) -> Option<(&[u8], &[u8])>;
 }
 
-impl Snapshot for FlushedFork {
+impl Snapshot for FlushedFork<'_> {
     fn get(&self, name: &str, key: &[u8]) -> Option<Vec<u8>> {
         if let Some(changes) = self.patch.changes.get(name) {
             if let Some(change) = changes.data.get(key) {
@@ -566,7 +571,7 @@ impl Snapshot for FlushedFork {
     }
 }
 
-impl Fork {
+impl Fork<'_> {
     /// Finalizes all changes that were made after previous execution of the `flush` method.
     /// If no `flush` method had been called before, finalizes all changes that were
     /// made after creation of `Fork`.
@@ -621,7 +626,7 @@ impl Fork {
     }
 }
 
-impl<'a> IndexAccess<'a> for &'a Fork {
+impl<'a> IndexAccess<'a> for &'a Fork<'a> {
     type Changes = ChangesRef<'a>;
 
     fn snapshot(&self) -> &'a dyn Snapshot {
@@ -633,8 +638,8 @@ impl<'a> IndexAccess<'a> for &'a Fork {
     }
 }
 
-impl AsRef<dyn Snapshot> for Fork {
-    fn as_ref(&self) -> &(dyn Snapshot + 'static) {
+impl<'a> AsRef<dyn Snapshot + 'a> for Fork<'a> {
+    fn as_ref(&self) -> &(dyn Snapshot + 'a) {
         &self.flushed
     }
 }
