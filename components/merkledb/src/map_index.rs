@@ -99,6 +99,21 @@ where
     }
 }
 
+impl<T, K, V> FromView<T> for MapIndex<T, K, V>
+    where
+        T: IndexAccess,
+        K: BinaryKey,
+        V: BinaryValue,
+{
+    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        Self::create_from(address, access)
+    }
+
+    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        Self::get_from(address, access)
+    }
+}
+
 impl<T, K, V> MapIndex<T, K, V>
 where
     T: IndexAccess,

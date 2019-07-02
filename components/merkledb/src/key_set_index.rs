@@ -70,6 +70,20 @@ where
     }
 }
 
+impl<T, K> FromView<T> for KeySetIndex<T, K>
+    where
+        T: IndexAccess,
+        K: BinaryKey,
+{
+    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        Self::create_from(address, access)
+    }
+
+    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        Self::get_from(address, access)
+    }
+}
+
 impl<T, K> KeySetIndex<T, K>
 where
     T: IndexAccess,

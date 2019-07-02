@@ -133,6 +133,21 @@ pub struct ProofMapIndexValues<'a, V> {
 //    }
 //}
 
+//impl<T, K, V> FromView<T> for ProofMapIndex<T, K, V>
+//    where
+//        T: IndexAccess,
+//        K: BinaryKey + ObjectHash,
+//        V: BinaryValue + ObjectHash,
+//{
+//    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+//        Self::create_from(address, access)
+//    }
+//
+//    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+//        Self::get_from(address, access)
+//    }
+//}
+
 /// TODO Clarify documentation. [ECR-2820]
 enum RemoveAction {
     KeyNotFound,

@@ -16,7 +16,7 @@
 
 pub use self::{
     metadata::{BinaryAttribute, IndexState, IndexType},
-//    refs::{AnyObject, ObjectAccess, Ref, RefMut},
+    refs::{AnyObject, ObjectAccess, Ref, RefMut, FromView},
 };
 
 use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData, ops::Deref};
@@ -28,9 +28,9 @@ use super::{
 
 mod metadata;
 
+mod refs;
 //TODO: revert
-//mod refs;
-#[cfg(test)]
+//#[cfg(test)]
 //mod tests;
 
 /// Separator between the name and the additional bytes in family indexes.

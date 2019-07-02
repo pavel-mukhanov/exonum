@@ -138,6 +138,20 @@ where
     }
 }
 
+impl<T, V> FromView<T> for SparseListIndex<T, V>
+    where
+        T: IndexAccess,
+        V: BinaryValue,
+{
+    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        Self::create_from(address, access)
+    }
+
+    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        Self::get_from(address, access)
+    }
+}
+
 impl<T, V> SparseListIndex<T, V>
 where
     T: IndexAccess,

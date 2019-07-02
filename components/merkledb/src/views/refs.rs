@@ -16,17 +16,17 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     views::{IndexAddress, IndexType, View},
-    BinaryKey, BinaryValue, Entry, Fork, IndexAccess, KeySetIndex, ListIndex, MapIndex, ObjectHash,
-    ProofListIndex, ProofMapIndex, Snapshot, SparseListIndex, ValueSetIndex,
+    BinaryKey, BinaryValue, Fork, IndexAccess, ObjectHash,
+    Snapshot,
 };
 
-pub trait AnyObject<T: IndexAccess> {
-    fn view(self) -> View<T>;
+pub trait AnyObject<'a, T: IndexAccess<'a>> {
+    fn view(self) -> View<'a, T>;
     fn object_type(&self) -> IndexType;
     fn metadata(&self) -> Vec<u8>;
 }
 
-pub trait FromView<T: IndexAccess>
+pub trait FromView<'a, T: IndexAccess<'a>>
 where
     Self: Sized,
 {
@@ -34,122 +34,8 @@ where
     fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self>;
 }
 
-impl<T, V> FromView<T> for ListIndex<T, V>
-where
-    T: IndexAccess,
-    V: BinaryValue,
-{
-    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-        Self::create_from(address, access)
-    }
-
-    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-        Self::get_from(address, access)
-    }
-}
-
-impl<T, V> FromView<T> for Entry<T, V>
-where
-    T: IndexAccess,
-    V: BinaryValue + ObjectHash,
-{
-    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-        Self::create_from(address, access)
-    }
-
-    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-        Self::get_from(address, access)
-    }
-}
-
-impl<T, K> FromView<T> for KeySetIndex<T, K>
-where
-    T: IndexAccess,
-    K: BinaryKey,
-{
-    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-        Self::create_from(address, access)
-    }
-
-    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-        Self::get_from(address, access)
-    }
-}
-
-impl<T, V> FromView<T> for ProofListIndex<T, V>
-where
-    T: IndexAccess,
-    V: BinaryValue + ObjectHash,
-{
-    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-        Self::create_from(address, access)
-    }
-
-    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-        Self::get_from(address, access)
-    }
-}
-
-impl<T, K, V> FromView<T> for ProofMapIndex<T, K, V>
-where
-    T: IndexAccess,
-    K: BinaryKey + ObjectHash,
-    V: BinaryValue + ObjectHash,
-{
-    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-        Self::create_from(address, access)
-    }
-
-    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-        Self::get_from(address, access)
-    }
-}
-
-impl<T, K, V> FromView<T> for MapIndex<T, K, V>
-where
-    T: IndexAccess,
-    K: BinaryKey,
-    V: BinaryValue,
-{
-    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-        Self::create_from(address, access)
-    }
-
-    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-        Self::get_from(address, access)
-    }
-}
-
-impl<T, V> FromView<T> for SparseListIndex<T, V>
-where
-    T: IndexAccess,
-    V: BinaryValue,
-{
-    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-        Self::create_from(address, access)
-    }
-
-    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-        Self::get_from(address, access)
-    }
-}
-
-impl<T, V> FromView<T> for ValueSetIndex<T, V>
-where
-    T: IndexAccess,
-    V: BinaryValue + ObjectHash,
-{
-    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-        Self::create_from(address, access)
-    }
-
-    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-        Self::get_from(address, access)
-    }
-}
-
 /// Trait used to obtain references to database objects.
-pub trait ObjectAccess: IndexAccess {
+pub trait ObjectAccess<'a>: IndexAccess<'a> {
     /// Returns an immutable reference to an existing database object or `None` if
     /// the object with provided `address` is not found.
     ///
@@ -165,7 +51,7 @@ pub trait ObjectAccess: IndexAccess {
     fn get_object_existed<I, T>(&self, address: I) -> Option<Ref<T>>
     where
         I: Into<IndexAddress>,
-        T: FromView<Self>,
+        T: FromView<'a, Self>,
     {
         T::get(address, self.clone()).map(|value| Ref { value })
     }
@@ -183,7 +69,7 @@ pub trait ObjectAccess: IndexAccess {
     /// ```
     fn get_object_existed_mut<T, I>(&self, address: I) -> Option<RefMut<T>>
     where
-        T: FromView<Self>,
+        T: FromView<'a, Self>,
         I: Into<IndexAddress>,
     {
         T::get(address, self.clone()).map(|value| RefMut { value })
@@ -204,7 +90,7 @@ pub trait ObjectAccess: IndexAccess {
     fn get_object<I, T>(&self, address: I) -> RefMut<T>
     where
         I: Into<IndexAddress>,
-        T: FromView<Self>,
+        T: FromView<'a, Self>,
     {
         let address = address.into();
         let object = T::get(address.clone(), self.clone()).map(|value| RefMut { value });
@@ -217,55 +103,55 @@ pub trait ObjectAccess: IndexAccess {
         }
     }
 }
-
-impl ObjectAccess for &Box<dyn Snapshot> {}
-
-impl ObjectAccess for &Fork {}
-
-impl<T> ObjectAccess for T where T: Deref<Target = dyn Snapshot> + Clone {}
-
-impl Fork {
-    /// See: [ObjectAccess::get_object][1].
-    ///
-    /// [1]: trait.ObjectAccess.html#method.get_object
-    pub fn get_object<'a, I, T>(&'a self, address: I) -> RefMut<T>
-    where
-        I: Into<IndexAddress>,
-        T: FromView<&'a Self>,
-    {
-        let address = address.into();
-        let object = T::get(address.clone(), self).map(|value| RefMut { value });
-
-        match object {
-            Some(object) => object,
-            _ => RefMut {
-                value: T::create(address, self),
-            },
-        }
-    }
-
-    /// See: [ObjectAccess::get_object_existed][1].
-    ///
-    /// [1]: trait.ObjectAccess.html#method.get_object_existed
-    pub fn get_object_existed<'a, T, I>(&'a self, address: I) -> Option<Ref<T>>
-    where
-        T: FromView<&'a Self>,
-        I: Into<IndexAddress>,
-    {
-        T::get(address, self).map(|value| Ref { value })
-    }
-
-    /// See: [ObjectAccess::get_object_existed_mut][1].
-    ///
-    /// [1]: trait.ObjectAccess.html#method.get_object_existed_mut
-    pub fn get_object_existed_mut<'a, T, I>(&'a self, address: I) -> Option<RefMut<T>>
-    where
-        T: FromView<&'a Self>,
-        I: Into<IndexAddress>,
-    {
-        T::get(address, self).map(|value| RefMut { value })
-    }
-}
+//TODO: revert
+//impl ObjectAccess<'_> for &Box<dyn Snapshot> {}
+//
+//impl ObjectAccess<'_> for &Fork<'_> {}
+//
+//impl<T> ObjectAccess<'_> for T where T: Deref<Target = dyn Snapshot> + Clone {}
+//
+//impl Fork<'_> {
+//    /// See: [ObjectAccess::get_object][1].
+//    ///
+//    /// [1]: trait.ObjectAccess.html#method.get_object
+//    pub fn get_object<'a, I, T>(&'a self, address: I) -> RefMut<T>
+//    where
+//        I: Into<IndexAddress>,
+//        T: FromView<'a, &'a Self>,
+//    {
+//        let address = address.into();
+//        let object = T::get(address.clone(), self).map(|value| RefMut { value });
+//
+//        match object {
+//            Some(object) => object,
+//            _ => RefMut {
+//                value: T::create(address, self),
+//            },
+//        }
+//    }
+//
+//    /// See: [ObjectAccess::get_object_existed][1].
+//    ///
+//    /// [1]: trait.ObjectAccess.html#method.get_object_existed
+//    pub fn get_object_existed<'a, T, I>(&'a self, address: I) -> Option<Ref<T>>
+//    where
+//        T: FromView<'a, &'a Self>,
+//        I: Into<IndexAddress>,
+//    {
+//        T::get(address, self).map(|value| Ref { value })
+//    }
+//
+//    /// See: [ObjectAccess::get_object_existed_mut][1].
+//    ///
+//    /// [1]: trait.ObjectAccess.html#method.get_object_existed_mut
+//    pub fn get_object_existed_mut<'a, T, I>(&'a self, address: I) -> Option<RefMut<T>>
+//    where
+//        T: FromView<'a, &'a Self>,
+//        I: Into<IndexAddress>,
+//    {
+//        T::get(address, self).map(|value| RefMut { value })
+//    }
+//}
 
 #[derive(Debug)]
 /// Utility trait to provide immutable references to `MerkleDB` objects.
@@ -302,7 +188,8 @@ impl<T> DerefMut for RefMut<T> {
     }
 }
 
-#[cfg(test)]
+//TODO: revert
+#[cfg(test2)]
 mod tests {
     use crate::{
         db::Database,

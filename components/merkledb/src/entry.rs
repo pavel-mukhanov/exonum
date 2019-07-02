@@ -55,6 +55,22 @@ where
     }
 }
 
+
+
+impl<T, V> FromView<T> for Entry<T, V>
+    where
+        T: IndexAccess,
+        V: BinaryValue + ObjectHash,
+{
+    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        Self::create_from(address, access)
+    }
+
+    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        Self::get_from(address, access)
+    }
+}
+
 impl<T, V> Entry<T, V>
 where
     T: IndexAccess,
