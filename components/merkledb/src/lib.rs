@@ -171,4 +171,4 @@ pub mod sparse_list_index;
 pub mod value_set_index;
 
 #[cfg(test)]
-mod tests2;
+mod tests;

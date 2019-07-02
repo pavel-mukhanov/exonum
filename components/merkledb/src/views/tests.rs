@@ -21,7 +21,7 @@ use crate::{
 const IDX_NAME: &str = "idx_name";
 const PREFIXED_IDX: (&str, &[u8]) = ("idx", &[1_u8, 2, 3] as &[u8]);
 
-fn assert_iter<T: IndexAccess>(view: &View<T>, from: u8, assumed: &[(u8, u8)]) {
+fn assert_iter<'a, T: IndexAccess<'a>>(view: &View<'a, T>, from: u8, assumed: &[(u8, u8)]) {
     let mut iter = view.iter_bytes(&[from]);
     let mut values = Vec::new();
     while let Some((k, v)) = iter.next() {
@@ -31,7 +31,7 @@ fn assert_iter<T: IndexAccess>(view: &View<T>, from: u8, assumed: &[(u8, u8)]) {
     assert_eq!(values, assumed);
 }
 
-fn assert_initial_state<T: IndexAccess>(view: &View<T>) {
+fn assert_initial_state<'a, T: IndexAccess<'a>>(view: &View<'a, T>) {
     assert_eq!(view.get_bytes(&[1]), Some(vec![1]));
     assert_eq!(view.get_bytes(&[2]), Some(vec![2]));
     assert_eq!(view.get_bytes(&[3]), Some(vec![3]));
@@ -472,7 +472,7 @@ fn multiple_indexes() {
     let fork = db.fork();
     let list: ListIndex<_, u32> = ListIndex::new(IDX_NAME, &fork);
     let mut map = MapIndex::new_in_family("idx", &3, &fork);
-    for item in &list {
+    for item in list.iter() {
         map.put(&item, item.to_string());
     }
 
@@ -542,7 +542,7 @@ fn views_in_same_family() {
 fn rollbacks_for_indexes_in_same_family() {
     use crate::ProofListIndex;
 
-    fn indexes(fork: &Fork) -> (ProofListIndex<&Fork, i64>, ProofListIndex<&Fork, i64>) {
+    fn indexes<'a>(fork: &'a Fork<'a>) -> (ProofListIndex<'a, &'a Fork<'a>, i64>, ProofListIndex<'a, &'a Fork<'a>, i64>) {
         let list1 = ProofListIndex::new_in_family("foo", &1, fork);
         let list2 = ProofListIndex::new_in_family("foo", &2, fork);
 
@@ -604,7 +604,7 @@ fn clear_sibling_views() {
     const IDX_1: (&str, &[u8]) = ("foo", &[1_u8, 2] as &[u8]);
     const IDX_2: (&str, &[u8]) = ("foo", &[1_u8, 3] as &[u8]);
 
-    fn assert_view_states<I: IndexAccess + Copy>(db_view: I) {
+    fn assert_view_states<'a, I: IndexAccess<'a> + Copy>(db_view: I) {
         let view1 = View::new(db_view, IDX_1);
         let view2 = View::new(db_view, IDX_2);
 
@@ -814,7 +814,7 @@ fn test_metadata_index_family_incorrect() {
 fn multiple_patch() {
     use crate::ListIndex;
 
-    fn list_index<View: IndexAccess>(view: View) -> ListIndex<View, u64> {
+    fn list_index<'a, View: IndexAccess<'a>>(view: View) -> ListIndex<'a, View, u64> {
         ListIndex::new("list_index", view)
     }
 

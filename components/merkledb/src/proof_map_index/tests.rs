@@ -1483,28 +1483,3 @@ fn test_tree_with_hashed_key() {
         hash_isolated_node(&ProofPath::new(&other_key), &HashTag::hash_leaf(&[1, 2, 3]))
     );
 }
-
-//TODO: remove
-#[test]
-fn snapshot_after_drop() {
-    let name = "index";
-    let snapshot = {
-        let db = TemporaryDB::new();
-
-        let mut fork = db.fork();
-        {
-            let mut index = ProofMapIndex::new(name, &fork);
-            index.put(&1, 1);
-        }
-
-        db.merge(fork.into_patch());
-        let snap = db.snapshot();
-        let index: ProofMapIndex<_, i32, i32> = ProofMapIndex::new(name, &snap);
-
-        assert_eq!(index.get(&1), Some(1));
-    };
-
-    //    let index: ProofMapIndex<_, i32, i32> = ProofMapIndex::new(name, &snapshot);
-    //
-    //    assert_eq!(index.get(&1), Some(1));
-}

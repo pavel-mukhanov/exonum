@@ -29,9 +29,8 @@ use super::{
 mod metadata;
 
 mod refs;
-//TODO: revert
-//#[cfg(test)]
-//mod tests;
+#[cfg(test)]
+mod tests;
 
 /// Separator between the name and the additional bytes in family indexes.
 const INDEX_NAME_SEPARATOR: &[u8] = &[0];
@@ -344,7 +343,7 @@ impl<'a, K: BinaryKey + ?Sized> From<(&'a str, &'a K)> for IndexAddress {
 //
 //    fn changes(&self, _address: &IndexAddress) -> Self::Changes {}
 //}
-//
+
 
 impl<'a> IndexAccess<'a> for &'a Box<dyn Snapshot + 'a> {
     type Changes = ();

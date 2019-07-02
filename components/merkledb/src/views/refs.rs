@@ -103,10 +103,10 @@ pub trait ObjectAccess<'a>: IndexAccess<'a> {
     }
 }
 //TODO: revert
-//impl ObjectAccess<'_> for &Box<dyn Snapshot> {}
-//
-//impl ObjectAccess<'_> for &Fork<'_> {}
-//
+impl <'a> ObjectAccess<'a> for &'a Box<dyn Snapshot + 'a> {}
+
+impl <'a> ObjectAccess<'a> for &'a Fork<'a> {}
+
 //impl<T> ObjectAccess<'_> for T where T: Deref<Target = dyn Snapshot> + Clone {}
 //
 //impl Fork<'_> {
