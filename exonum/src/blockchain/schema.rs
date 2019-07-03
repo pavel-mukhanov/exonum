@@ -24,6 +24,7 @@ use crate::{
     messages::{Connect, Message, Precommit, RawTransaction, Signed},
     proto,
 };
+use serde::export::PhantomData;
 
 /// Defines `&str` constants with given name and value.
 macro_rules! define_names {
@@ -122,22 +123,23 @@ impl TxLocation {
 /// the deployed services and store general-purpose information, such as
 /// committed transactions.
 #[derive(Debug)]
-pub struct Schema<T> {
+pub struct Schema<'a, T> {
     access: T,
+    _lifetime: PhantomData<&'a ()>,
 }
 
-impl<T> Schema<T>
+impl<'a, T> Schema<'a, T>
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
 {
     /// Constructs information schema for the given `snapshot`.
     pub fn new(access: T) -> Self {
-        Self { access }
+        Self { access, _lifetime: PhantomData }
     }
 
     /// Returns a table that represents a map with a key-value pair of a
     /// transaction hash and raw transaction message.
-    pub fn transactions(&self) -> MapIndex<T, Hash, Signed<RawTransaction>> {
+    pub fn transactions(&self) -> MapIndex<'a, T, Hash, Signed<RawTransaction>> {
         MapIndex::new(TRANSACTIONS, self.access.clone())
     }
 
@@ -146,12 +148,12 @@ where
     ///
     /// This method can be used to retrieve a proof that a certain transaction
     /// result is present in the blockchain.
-    pub fn transaction_results(&self) -> ProofMapIndex<T, Hash, TransactionResult> {
+    pub fn transaction_results(&self) -> ProofMapIndex<'a, T, Hash, TransactionResult> {
         ProofMapIndex::new(TRANSACTION_RESULTS, self.access.clone())
     }
 
     /// Returns an entry that represents a count of committed transactions in the blockchain.
-    pub(crate) fn transactions_len_index(&self) -> Entry<T, u64> {
+    pub(crate) fn transactions_len_index(&self) -> Entry<'a, T, u64> {
         Entry::new(TRANSACTIONS_LEN, self.access.clone())
     }
 
@@ -163,12 +165,12 @@ where
     }
 
     /// Returns a table that represents a set of uncommitted transactions hashes.
-    pub fn transactions_pool(&self) -> KeySetIndex<T, Hash> {
+    pub fn transactions_pool(&self) -> KeySetIndex<'a, T, Hash> {
         KeySetIndex::new(TRANSACTIONS_POOL, self.access.clone())
     }
 
     /// Returns an entry that represents count of uncommitted transactions.
-    pub(crate) fn transactions_pool_len_index(&self) -> Entry<T, u64> {
+    pub(crate) fn transactions_pool_len_index(&self) -> Entry<'a, T, u64> {
         Entry::new(TRANSACTIONS_POOL_LEN, self.access.clone())
     }
 
@@ -180,41 +182,41 @@ where
 
     /// Returns a table that keeps the block height and transaction position inside the block for every
     /// transaction hash.
-    pub fn transactions_locations(&self) -> MapIndex<T, Hash, TxLocation> {
+    pub fn transactions_locations(&self) -> MapIndex<'a, T, Hash, TxLocation> {
         MapIndex::new(TRANSACTIONS_LOCATIONS, self.access.clone())
     }
 
     /// Returns a table that stores a block object for every block height.
-    pub fn blocks(&self) -> MapIndex<T, Hash, Block> {
+    pub fn blocks(&self) -> MapIndex<'a, T, Hash, Block> {
         MapIndex::new(BLOCKS, self.access.clone())
     }
 
     /// Returns a table that keeps block hashes for corresponding block heights.
-    pub fn block_hashes_by_height(&self) -> ListIndex<T, Hash> {
+    pub fn block_hashes_by_height(&self) -> ListIndex<'a, T, Hash> {
         ListIndex::new(BLOCK_HASHES_BY_HEIGHT, self.access.clone())
     }
 
     /// Returns a table that keeps a list of transactions for each block.
-    pub fn block_transactions(&self, height: Height) -> ProofListIndex<T, Hash> {
+    pub fn block_transactions(&self, height: Height) -> ProofListIndex<'a, T, Hash> {
         let height: u64 = height.into();
         ProofListIndex::new_in_family(BLOCK_TRANSACTIONS, &height, self.access.clone())
     }
 
     /// Returns a table that keeps a list of precommits for the block with the given hash.
-    pub fn precommits(&self, hash: &Hash) -> ListIndex<T, Signed<Precommit>> {
+    pub fn precommits(&self, hash: &Hash) -> ListIndex<'a, T, Signed<Precommit>> {
         ListIndex::new_in_family(PRECOMMITS, hash, self.access.clone())
     }
 
     /// Returns a table that represents a map with a key-value pair of a
     /// configuration hash and contents.
-    pub fn configs(&self) -> ProofMapIndex<T, Hash, StoredConfiguration> {
+    pub fn configs(&self) -> ProofMapIndex<'a, T, Hash, StoredConfiguration> {
         // configs patricia merkle tree <block height> json
         ProofMapIndex::new(CONFIGS, self.access.clone())
     }
 
     /// Returns an auxiliary table that keeps hash references to configurations in
     /// the increasing order of their `actual_from` height.
-    pub fn configs_actual_from(&self) -> ListIndex<T, ConfigReference> {
+    pub fn configs_actual_from(&self) -> ListIndex<'a, T, ConfigReference> {
         ListIndex::new(CONFIGS_ACTUAL_FROM, self.access.clone())
     }
 
@@ -233,19 +235,19 @@ where
     ///
     /// Core tables participate in the resulting state_hash with `CORE_SERVICE`
     /// service_id. Their vector is returned by the `core_state_hash` method.
-    pub fn state_hash_aggregator(&self) -> ProofMapIndex<T, Hash, Hash> {
+    pub fn state_hash_aggregator(&self) -> ProofMapIndex<'a, T, Hash, Hash> {
         ProofMapIndex::new(STATE_HASH_AGGREGATOR, self.access.clone())
     }
 
     /// Returns peers that have to be recovered in case of process restart
     /// after abnormal termination.
-    pub(crate) fn peers_cache(&self) -> MapIndex<T, PublicKey, Signed<Connect>> {
+    pub(crate) fn peers_cache(&self) -> MapIndex<'a, T, PublicKey, Signed<Connect>> {
         MapIndex::new(PEERS_CACHE, self.access.clone())
     }
 
     /// Returns consensus messages that have to be recovered in case of process restart
     /// after abnormal termination.
-    pub(crate) fn consensus_messages_cache(&self) -> ListIndex<T, Message> {
+    pub(crate) fn consensus_messages_cache(&self) -> ListIndex<'a, T, Message> {
         ListIndex::new(CONSENSUS_MESSAGES_CACHE, self.access.clone())
     }
 

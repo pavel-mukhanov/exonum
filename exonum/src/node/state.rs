@@ -917,11 +917,11 @@ impl State {
     }
 
     /// Adds propose from other node. Returns `ProposeState` if it is a new propose.
-    pub fn add_propose<S: IndexAccess>(
+    pub fn add_propose<'a, S: IndexAccess<'a>>(
         &mut self,
         msg: Signed<Propose>,
-        transactions: &MapIndex<S, Hash, Signed<RawTransaction>>,
-        transaction_pool: &KeySetIndex<S, Hash>,
+        transactions: &MapIndex<'a, S, Hash, Signed<RawTransaction>>,
+        transaction_pool: &KeySetIndex<'a, S, Hash>,
     ) -> Result<&ProposeState, failure::Error> {
         let propose_hash = msg.hash();
         match self.proposes.entry(propose_hash) {
@@ -985,11 +985,11 @@ impl State {
     ///
     /// - Already there is an incomplete block.
     /// - Received block has already committed transaction.
-    pub fn create_incomplete_block<S: IndexAccess>(
+    pub fn create_incomplete_block<'a, S: IndexAccess<'a>>(
         &mut self,
         msg: &Signed<BlockResponse>,
-        txs: &MapIndex<S, Hash, Signed<RawTransaction>>,
-        txs_pool: &KeySetIndex<S, Hash>,
+        txs: &MapIndex<'a, S, Hash, Signed<RawTransaction>>,
+        txs_pool: &KeySetIndex<'a, S, Hash>,
     ) -> &IncompleteBlock {
         assert!(self.incomplete_block().is_none());
 

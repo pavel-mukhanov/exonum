@@ -16,6 +16,7 @@ use crate::blockchain::Blockchain;
 use crate::crypto::{PublicKey, SecretKey};
 use crate::node::ApiSender;
 use exonum_merkledb::Snapshot;
+use std::mem;
 
 /// Provides the current blockchain state to API handlers.
 ///
@@ -41,7 +42,7 @@ impl ServiceApiState {
 
     /// Creates a read-only snapshot of the current blockchain state.
     pub fn snapshot(&self) -> Box<dyn Snapshot> {
-        self.blockchain.snapshot()
+        unsafe { mem::transmute(self.blockchain.snapshot()) }
     }
 
     /// Returns the public key of the current node.

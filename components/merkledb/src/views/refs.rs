@@ -16,7 +16,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     views::{IndexAddress, IndexType, View},
-    BinaryKey, BinaryValue, Fork, IndexAccess, ObjectHash, Snapshot,
+    Fork, IndexAccess, Snapshot,
 };
 
 pub trait AnyObject<'a, T: IndexAccess<'a>> {
@@ -102,55 +102,55 @@ pub trait ObjectAccess<'a>: IndexAccess<'a> {
         }
     }
 }
-//TODO: revert
 impl <'a> ObjectAccess<'a> for &'a Box<dyn Snapshot + 'a> {}
 
 impl <'a> ObjectAccess<'a> for &'a Fork<'a> {}
 
+//TODO: revert
 //impl<T> ObjectAccess<'_> for T where T: Deref<Target = dyn Snapshot> + Clone {}
-//
-//impl Fork<'_> {
-//    /// See: [ObjectAccess::get_object][1].
-//    ///
-//    /// [1]: trait.ObjectAccess.html#method.get_object
-//    pub fn get_object<'a, I, T>(&'a self, address: I) -> RefMut<T>
-//    where
-//        I: Into<IndexAddress>,
-//        T: FromView<'a, &'a Self>,
-//    {
-//        let address = address.into();
-//        let object = T::get(address.clone(), self).map(|value| RefMut { value });
-//
-//        match object {
-//            Some(object) => object,
-//            _ => RefMut {
-//                value: T::create(address, self),
-//            },
-//        }
-//    }
-//
-//    /// See: [ObjectAccess::get_object_existed][1].
-//    ///
-//    /// [1]: trait.ObjectAccess.html#method.get_object_existed
-//    pub fn get_object_existed<'a, T, I>(&'a self, address: I) -> Option<Ref<T>>
-//    where
-//        T: FromView<'a, &'a Self>,
-//        I: Into<IndexAddress>,
-//    {
-//        T::get(address, self).map(|value| Ref { value })
-//    }
-//
-//    /// See: [ObjectAccess::get_object_existed_mut][1].
-//    ///
-//    /// [1]: trait.ObjectAccess.html#method.get_object_existed_mut
-//    pub fn get_object_existed_mut<'a, T, I>(&'a self, address: I) -> Option<RefMut<T>>
-//    where
-//        T: FromView<'a, &'a Self>,
-//        I: Into<IndexAddress>,
-//    {
-//        T::get(address, self).map(|value| RefMut { value })
-//    }
-//}
+
+impl <'a> Fork<'a> {
+    /// See: [ObjectAccess::get_object][1].
+    ///
+    /// [1]: trait.ObjectAccess.html#method.get_object
+    pub fn get_object<I, T>(&'a self, address: I) -> RefMut<T>
+    where
+        I: Into<IndexAddress>,
+        T: FromView<'a, &'a Self>,
+    {
+        let address = address.into();
+        let object = T::get(address.clone(), self).map(|value| RefMut { value });
+
+        match object {
+            Some(object) => object,
+            _ => RefMut {
+                value: T::create(address, self),
+            },
+        }
+    }
+
+    /// See: [ObjectAccess::get_object_existed][1].
+    ///
+    /// [1]: trait.ObjectAccess.html#method.get_object_existed
+    pub fn get_object_existed<T, I>(&'a self, address: I) -> Option<Ref<T>>
+    where
+        T: FromView<'a, &'a Self>,
+        I: Into<IndexAddress>,
+    {
+        T::get(address, self).map(|value| Ref { value })
+    }
+
+    /// See: [ObjectAccess::get_object_existed_mut][1].
+    ///
+    /// [1]: trait.ObjectAccess.html#method.get_object_existed_mut
+    pub fn get_object_existed_mut<T, I>(&'a self, address: I) -> Option<RefMut<T>>
+    where
+        T: FromView<'a, &'a Self>,
+        I: Into<IndexAddress>,
+    {
+        T::get(address, self).map(|value| RefMut { value })
+    }
+}
 
 #[derive(Debug)]
 /// Utility trait to provide immutable references to `MerkleDB` objects.
@@ -187,8 +187,7 @@ impl<T> DerefMut for RefMut<T> {
     }
 }
 
-//TODO: revert
-#[cfg(test2)]
+#[cfg(test)]
 mod tests {
     use crate::{
         db::Database,

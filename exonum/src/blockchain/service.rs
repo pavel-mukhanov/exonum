@@ -220,17 +220,17 @@ pub trait Service: Send + Sync + 'static {
 /// of the `Service` trait and is used for the interaction between service
 /// business logic and the current node state.
 #[derive(Debug)]
-pub struct ServiceContext {
+pub struct ServiceContext<'a> {
     validator_id: Option<ValidatorId>,
     service_keypair: (PublicKey, SecretKey),
     api_sender: ApiSender,
-    fork: Fork,
+    fork: Fork<'a>,
     stored_configuration: StoredConfiguration,
     height: Height,
     service_id: u16,
 }
 
-impl ServiceContext {
+impl<'a> ServiceContext<'a> {
     /// Creates service context for the given node.
     ///
     /// This method is necessary if you want to implement an alternative exonum node.
@@ -240,7 +240,7 @@ impl ServiceContext {
         service_public_key: PublicKey,
         service_secret_key: SecretKey,
         api_sender: ApiSender,
-        fork: Fork,
+        fork: Fork<'a>,
         service_id: u16,
     ) -> Self {
         let (stored_configuration, height) = {

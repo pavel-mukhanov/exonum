@@ -5,15 +5,15 @@ use rand::{rngs::StdRng, RngCore, SeedableRng};
 const SEED: [u8; 32] = [100; 32];
 const ITEM_COUNT: u16 = 10000;
 
-fn bench_fn<T, F>(b: &mut Bencher, index_access: T, benchmark: F)
+fn bench_fn<'a, T, F>(b: &mut Bencher, index_access: T, benchmark: F)
 where
-    T: IndexAccess,
+    T: IndexAccess<'a>,
     F: Fn(T),
 {
     b.iter(|| benchmark(index_access.clone()))
 }
 
-fn bench_with_index_access<T: IndexAccess>(index_access: T) {
+fn bench_with_index_access<'a, T: IndexAccess<'a>>(index_access: T) {
     for _ in 0..ITEM_COUNT {
         let mut rng: StdRng = SeedableRng::from_seed(SEED);
         let index: ListIndex<_, u32> =
@@ -22,7 +22,7 @@ fn bench_with_index_access<T: IndexAccess>(index_access: T) {
     }
 }
 
-fn bench_with_object_access<T: ObjectAccess>(object_access: T) {
+fn bench_with_object_access<'a, T: ObjectAccess<'a>>(object_access: T) {
     for _ in 0..ITEM_COUNT {
         let mut rng: StdRng = SeedableRng::from_seed(SEED);
         let index: RefMut<ListIndex<_, u32>> = object_access.get_object(("index", &rng.next_u32()));

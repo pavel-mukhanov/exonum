@@ -178,7 +178,7 @@ pub trait Transaction: ::std::fmt::Debug + Send + 'static + ::erased_serde::Seri
 /// Wrapper around database and tx hash.
 #[derive(Debug)]
 pub struct TransactionContext<'a> {
-    fork: &'a Fork,
+    fork: &'a Fork<'a>,
     service_id: u16,
     service_name: &'a str,
     tx_hash: Hash,

@@ -101,9 +101,9 @@ pub struct CommittedTransactionSummary {
 }
 
 impl CommittedTransactionSummary {
-    fn new<T>(schema: &Schema<T>, tx_hash: &Hash) -> Option<Self>
+    fn new<'a, T>(schema: &Schema<'a, T>, tx_hash: &Hash) -> Option<Self>
     where
-        T: AsRef<dyn Snapshot> + IndexAccess,
+        T: AsRef<dyn Snapshot> + IndexAccess<'a>,
     {
         let tx = schema.transactions().get(tx_hash)?;
         let service_id = tx.payload().service_id();

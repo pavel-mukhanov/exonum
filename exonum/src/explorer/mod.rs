@@ -624,7 +624,7 @@ impl TransactionInfo {
 ///
 /// [`Snapshot`]: ../../exonum_merkledb/trait.Snapshot.html
 pub struct BlockchainExplorer<'a> {
-    snapshot: Box<dyn Snapshot>,
+    snapshot: Box<dyn Snapshot + 'a>,
     transaction_parser: Box<dyn 'a + Fn(Signed<RawTransaction>) -> ParseResult>,
 }
 

@@ -19,12 +19,13 @@ pub use self::{
     refs::{AnyObject, FromView, ObjectAccess, Ref, RefMut},
 };
 
-use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData, ops::Deref};
+use std::{borrow::Cow, fmt, iter::Peekable, marker::PhantomData};
 
 use super::{
     db::{Change, ChangesRef, ForkIter, ViewChanges},
     BinaryKey, BinaryValue, Iter as BytesIter, Iterator as BytesIterator, Snapshot,
 };
+use std::ops::Deref;
 
 mod metadata;
 
@@ -333,17 +334,29 @@ impl<'a, K: BinaryKey + ?Sized> From<(&'a str, &'a K)> for IndexAddress {
 
 //impl<'a, T> IndexAccess<'a> for T
 //where
-//    T: Deref<Target = dyn Snapshot> + Clone,
+//    T: Deref<Target = dyn Snapshot + 'a> + Clone,
 //{
 //    type Changes = ();
 //
-//    fn snapshot(&self) -> &dyn Snapshot {
-//        self.deref()
+//    fn snapshot(&self) -> &'a (dyn Snapshot + 'a)  {
+//        let der = self.deref();
+//        der
+////        self.deref()
 //    }
 //
 //    fn changes(&self, _address: &IndexAddress) -> Self::Changes {}
 //}
 
+impl<'a> IndexAccess<'a> for &'a (dyn Snapshot + 'a) {
+    type Changes = ();
+
+    fn snapshot(&self) -> &'a (dyn Snapshot + 'a) {
+//        let snap = self;
+        *self
+    }
+
+    fn changes(&self, _: &IndexAddress) -> Self::Changes {}
+}
 
 impl<'a> IndexAccess<'a> for &'a Box<dyn Snapshot + 'a> {
     type Changes = ();
@@ -354,12 +367,6 @@ impl<'a> IndexAccess<'a> for &'a Box<dyn Snapshot + 'a> {
 
     fn changes(&self, _: &IndexAddress) -> Self::Changes {}
 }
-
-//impl <'a> AsRef<dyn Snapshot + 'a> for dyn Snapshot + 'a {
-//    fn as_ref(&self) -> &(dyn Snapshot + 'a) {
-//        self
-//    }
-//}
 
 fn key_bytes<K: BinaryKey + ?Sized>(key: &K) -> Vec<u8> {
     concat_keys!(key)

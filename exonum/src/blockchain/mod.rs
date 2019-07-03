@@ -131,7 +131,7 @@ impl Blockchain {
     }
 
     /// Creates a read-only snapshot of the current storage state.
-    pub fn snapshot(&self) -> Box<dyn Snapshot> {
+    pub fn snapshot<'a>(&'a self) -> Box<dyn Snapshot + 'a> {
         self.db.snapshot()
     }
 

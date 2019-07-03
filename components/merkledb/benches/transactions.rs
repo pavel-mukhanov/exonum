@@ -25,6 +25,7 @@ use exonum_merkledb::{
     impl_object_hash_for_binary_value, BinaryValue, Database, Fork, ListIndex, MapIndex,
     ObjectAccess, ObjectHash, ProofListIndex, ProofMapIndex, RefMut, TemporaryDB,
 };
+use serde::export::PhantomData;
 
 const SEED: [u8; 32] = [100; 32];
 const SAMPLE_SIZE: usize = 10;
@@ -194,31 +195,31 @@ impl Transaction {
     }
 }
 
-struct RefSchema<T: ObjectAccess>(T);
+struct RefSchema<'a, T: ObjectAccess<'a>>(T, PhantomData<&'a ()>);
 
-impl<T: ObjectAccess> RefSchema<T> {
+impl<'a, T: ObjectAccess<'a>> RefSchema<'a, T> {
     fn new(object_access: T) -> Self {
-        Self(object_access)
+        Self(object_access, PhantomData)
     }
 
-    fn transactions(&self) -> RefMut<MapIndex<T, Hash, Transaction>> {
+    fn transactions(&self) -> RefMut<MapIndex<'a, T, Hash, Transaction>> {
         self.0.get_object("transactions")
     }
 
-    fn blocks(&self) -> RefMut<ListIndex<T, Hash>> {
+    fn blocks(&self) -> RefMut<ListIndex<'a, T, Hash>> {
         self.0.get_object("blocks")
     }
 
-    fn wallets(&self) -> RefMut<ProofMapIndex<T, PublicKey, Wallet>> {
+    fn wallets(&self) -> RefMut<ProofMapIndex<'a, T, PublicKey, Wallet>> {
         self.0.get_object("wallets")
     }
 
-    fn wallets_history(&self, owner: &PublicKey) -> RefMut<ProofListIndex<T, Hash>> {
+    fn wallets_history(&self, owner: &PublicKey) -> RefMut<ProofListIndex<'a, T, Hash>> {
         self.0.get_object(("wallets.history", owner))
     }
 }
 
-impl<T: ObjectAccess> RefSchema<T> {
+impl<'a, T: ObjectAccess<'a>> RefSchema<'a, T> {
     fn add_transaction_to_history(&self, owner: &PublicKey, tx_hash: Hash) -> Hash {
         let mut history = self.wallets_history(owner);
         history.push(tx_hash);

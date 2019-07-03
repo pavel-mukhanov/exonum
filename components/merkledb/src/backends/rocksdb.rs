@@ -18,9 +18,9 @@
 
 pub use rocksdb::{BlockBasedOptions as RocksBlockOptions, WriteOptions as RocksDBWriteOptions};
 
-use std::{fmt, iter::Peekable, mem, path::Path, sync::Arc};
+use std::{fmt, iter::Peekable, path::Path, sync::Arc};
 
-use rocksdb::{self, ColumnFamily, DBIterator, Options as RocksDbOptions, WriteBatch, DB};
+use rocksdb::{self, ColumnFamily, DBIterator, Options as RocksDbOptions, WriteBatch};
 
 use crate::{
     db::{check_database, Change},
@@ -159,7 +159,7 @@ impl Database for RocksDB {
 impl Snapshot for RocksDBSnapshot<'_> {
     fn get(&self, name: &str, key: &[u8]) -> Option<Vec<u8>> {
         if let Some(cf) = self.db.cf_handle(name) {
-            match self.db.get_cf(cf, key) {
+            match self.snapshot.get_cf(cf, key) {
                 Ok(value) => value.map(|v| v.to_vec()),
                 Err(e) => panic!(e),
             }
@@ -172,10 +172,10 @@ impl Snapshot for RocksDBSnapshot<'_> {
         use rocksdb::{Direction, IteratorMode};
         let iter = match self.db.cf_handle(name) {
             Some(cf) => self
-                .db
+                .snapshot
                 .iterator_cf(cf, IteratorMode::From(from, Direction::Forward))
                 .unwrap(),
-            None => self.db.iterator(IteratorMode::Start),
+            None => self.snapshot.iterator(IteratorMode::Start),
         };
         Box::new(RocksDBIterator {
             iter: iter.peekable(),

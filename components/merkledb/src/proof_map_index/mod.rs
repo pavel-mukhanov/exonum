@@ -37,11 +37,8 @@ use self::{
     proof::{create_multiproof, create_proof},
 };
 
-//TODO: revert
-//use crate::views::{AnyObject, IndexAddress};
-use crate::views::IndexAddress;
 use crate::{
-    views::{
+    views::{FromView, AnyObject, IndexAddress,
         BinaryAttribute, IndexAccess, IndexBuilder, IndexState, IndexType, Iter as ViewIter, View,
     },
     BinaryKey, BinaryValue, HashTag, ObjectHash,
@@ -113,40 +110,39 @@ pub struct ProofMapIndexValues<'a, V> {
     base_iter: ViewIter<'a, Vec<u8>, V>,
 }
 
-//TODO: revert
-//impl<T, K, V> AnyObject<T> for ProofMapIndex<T, K, V>
-//where
-//    T: IndexAccess,
-//    K: BinaryKey + ObjectHash,
-//    V: BinaryValue + ObjectHash,
-//{
-//    fn view(self) -> View<T> {
-//        self.base
-//    }
-//
-//    fn object_type(&self) -> IndexType {
-//        IndexType::ProofMap
-//    }
-//
-//    fn metadata(&self) -> Vec<u8> {
-//        self.state.metadata().to_bytes()
-//    }
-//}
+impl<'a, T, K, V> AnyObject<'a, T> for ProofMapIndex<'a, T, K, V>
+where
+    T: IndexAccess<'a>,
+    K: BinaryKey + ObjectHash,
+    V: BinaryValue + ObjectHash,
+{
+    fn view(self) -> View<'a, T> {
+        self.base
+    }
 
-//impl<T, K, V> FromView<T> for ProofMapIndex<T, K, V>
-//    where
-//        T: IndexAccess,
-//        K: BinaryKey + ObjectHash,
-//        V: BinaryValue + ObjectHash,
-//{
-//    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
-//        Self::create_from(address, access)
-//    }
-//
-//    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
-//        Self::get_from(address, access)
-//    }
-//}
+    fn object_type(&self) -> IndexType {
+        IndexType::ProofMap
+    }
+
+    fn metadata(&self) -> Vec<u8> {
+        self.state.metadata().to_bytes()
+    }
+}
+
+impl<'a, T, K, V> FromView<'a, T> for ProofMapIndex<'a, T, K, V>
+    where
+        T: IndexAccess<'a>,
+        K: BinaryKey + ObjectHash,
+        V: BinaryValue + ObjectHash,
+{
+    fn create<I: Into<IndexAddress>>(address: I, access: T) -> Self {
+        Self::create_from(address, access)
+    }
+
+    fn get<I: Into<IndexAddress>>(address: I, access: T) -> Option<Self> {
+        Self::get_from(address, access)
+    }
+}
 
 /// TODO Clarify documentation. [ECR-2820]
 enum RemoveAction {
@@ -1068,11 +1064,23 @@ where
     }
 }
 
+//TODO: change to the origin implementation
+impl<'a, T, K, V> fmt::Debug for ProofMapIndex<'a, T, K, V>
+    where
+        T: IndexAccess<'a>,
+        K: BinaryKey + ObjectHash,
+        V: BinaryValue + ObjectHash + fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("ProofMapIndex").finish()
+    }
+}
+
 //TODO: revert
 //#[allow(clippy::use_self)]
-//impl<'b, T, K, V> fmt::Debug for ProofMapIndex<'b, T, K, V>
+//impl<'a, T, K, V> fmt::Debug for ProofMapIndex<'a, T, K, V>
 //where
-//    T: IndexAccess<'b>,
+//    T: IndexAccess<'a>,
 //    K: BinaryKey + ObjectHash,
 //    V: BinaryValue + ObjectHash + fmt::Debug,
 //{
@@ -1137,9 +1145,11 @@ where
 //            let root_entry = Entry::new(self, self.object_hash(), prefix);
 //            f.debug_struct("ProofMapIndex")
 //                .field("entries", &root_entry)
-//                .finish()
+//                .finish();
 //        } else {
-//            f.debug_struct("ProofMapIndex").finish()
+//            f.debug_struct("ProofMapIndex").finish();
 //        }
+//
+//        Ok(())
 //    }
 //}
