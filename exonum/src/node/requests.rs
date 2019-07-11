@@ -81,7 +81,9 @@ impl NodeHandler {
             - TRANSACTION_RESPONSE_EMPTY_SIZE;
 
         for hash in msg.txs() {
-            let tx = schema.transactions().get(hash);
+            let pool = self.blockchain.transaction_pool();
+            let pool = pool.read().unwrap();
+            let tx = pool.get(hash);
             if let Some(tx) = tx {
                 let raw = tx.signed_message().raw().to_vec();
                 if txs_size + raw.len() + RAW_TRANSACTION_HEADER > unoccupied_message_size {

@@ -119,13 +119,8 @@ impl NodeHandler {
         let snapshot = self.blockchain.snapshot();
         let schema = Schema::with_pool(&snapshot, self.blockchain.transaction_pool().clone());
         let pool = schema.transactions_pool_map();
-        for (tx_hash, _) in pool.read().unwrap().iter() {
-            self.broadcast(
-                schema
-                    .transactions()
-                    .get(&tx_hash)
-                    .expect("Rebroadcast: invalid transaction hash"),
-            )
+        for (tx_hash, tx) in pool.read().unwrap().iter() {
+            self.broadcast(tx.clone())
         }
     }
 }
