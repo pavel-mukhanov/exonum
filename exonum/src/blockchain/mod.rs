@@ -383,7 +383,6 @@ impl Blockchain {
         let (tx, raw, service_name) = {
             let new_fork = &*fork;
             let snapshot = new_fork.snapshot();
-            let schema = Schema::new(snapshot);
             let pool = self.transaction_pool.read().unwrap();
 
             let raw = pool.get(&tx_hash).ok_or_else(|| {
@@ -474,7 +473,7 @@ impl Blockchain {
             };
 
             {
-                let mut schema = Schema::new(&fork);
+                let schema = Schema::new(&fork);
                 schema.precommits(&block_hash).extend(precommits);
 
                 // Consensus messages cache is useful only during one height, so it should be

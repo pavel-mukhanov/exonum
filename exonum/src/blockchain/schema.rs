@@ -178,11 +178,6 @@ where
         KeySetIndex::new(TRANSACTIONS_POOL, self.access.clone())
     }
 
-//    /// Returns a table that represents a set of uncommitted transactions hashes.
-//    pub fn transactions_pool_map_mut(&self) -> &mut BTreeMap<Hash, Signed<RawTransaction>> {
-//        &self.transaction_pool.()
-//    }
-
     pub fn transactions_pool_map(&self) -> Arc<RwLock<BTreeMap<Hash, Signed<RawTransaction>>>> {
         self.transaction_pool.clone()
     }
@@ -194,8 +189,6 @@ where
 
     /// Returns the number of transactions in the pool.
     pub fn transactions_pool_len(&self) -> u64 {
-//        let pool = self.transactions_pool_len_index();
-//        pool.get().unwrap_or(0)
         self.transaction_pool.read().unwrap().len() as u64
     }
 

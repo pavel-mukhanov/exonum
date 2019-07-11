@@ -216,12 +216,10 @@ fn create_metadata_for_pool<T, V>(index_access: T,
     };
 
     let mut new_address = IndexAddress::with_root("pool");
-
     if let Some(bytes) = index_address.bytes() {
         new_address = new_address.append_bytes(bytes);
     }
     let new_address = new_address.append_bytes(&vec![identifier]);
-
     let index_name = new_address.fully_qualified_name();
 
     let index_state = IndexState::new(index_access, index_name, metadata, false);

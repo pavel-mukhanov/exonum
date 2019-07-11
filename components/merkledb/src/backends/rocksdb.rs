@@ -95,21 +95,11 @@ impl RocksDB {
     fn do_merge(&self, patch: Patch, w_opts: &RocksDBWriteOptions) -> crate::Result<()> {
         let mut batch = WriteBatch::default();
         for (cf_name, changes) in patch {
-            info!("creating column family, cf_name {}", cf_name);
-
-            let cf_options = if cf_name == "pool" {
-                let mut options = DbOptions::default();
-//                options.write_buffer_size = Some(67108864 * 4); //256 mb
-                options
-            } else {
-                DbOptions::default()
-            };
-
             let cf = match self.db.cf_handle(&cf_name) {
                 Some(cf) => cf,
                 None => self
                     .db
-                    .create_cf(&cf_name, &cf_options.into())
+                    .create_cf(&cf_name, &DbOptions::default().into())
                     .unwrap(),
             };
 
