@@ -24,6 +24,8 @@ use crate::{
     messages::{Connect, Message, Precommit, RawTransaction, Signed},
     proto,
 };
+use std::collections::BTreeMap;
+use std::sync::{Arc, RwLock};
 
 /// Defines `&str` constants with given name and value.
 macro_rules! define_names {
@@ -124,6 +126,7 @@ impl TxLocation {
 #[derive(Debug)]
 pub struct Schema<T> {
     access: T,
+    transaction_pool: Arc<RwLock<BTreeMap<Hash, Signed<RawTransaction>>>>,
 }
 
 impl<T> Schema<T>
@@ -132,7 +135,15 @@ where
 {
     /// Constructs information schema for the given `snapshot`.
     pub fn new(access: T) -> Self {
-        Self { access }
+        Self { access, transaction_pool: Arc::new(RwLock::new(BTreeMap::new())) }
+    }
+
+    /// Constructs information schema for the given `snapshot`.
+    pub fn with_pool(access: T, transaction_pool: Arc<RwLock<BTreeMap<Hash, Signed<RawTransaction>>>>) -> Self {
+        Self {
+            access,
+            transaction_pool,
+        }
     }
 
     /// Returns a table that represents a map with a key-value pair of a
@@ -167,6 +178,15 @@ where
         KeySetIndex::new(TRANSACTIONS_POOL, self.access.clone())
     }
 
+//    /// Returns a table that represents a set of uncommitted transactions hashes.
+//    pub fn transactions_pool_map_mut(&self) -> &mut BTreeMap<Hash, Signed<RawTransaction>> {
+//        &self.transaction_pool.()
+//    }
+
+    pub fn transactions_pool_map(&self) -> Arc<RwLock<BTreeMap<Hash, Signed<RawTransaction>>>> {
+        self.transaction_pool.clone()
+    }
+
     /// Returns an entry that represents count of uncommitted transactions.
     pub(crate) fn transactions_pool_len_index(&self) -> Entry<T, u64> {
         Entry::new(TRANSACTIONS_POOL_LEN, self.access.clone())
@@ -174,8 +194,9 @@ where
 
     /// Returns the number of transactions in the pool.
     pub fn transactions_pool_len(&self) -> u64 {
-        let pool = self.transactions_pool_len_index();
-        pool.get().unwrap_or(0)
+//        let pool = self.transactions_pool_len_index();
+//        pool.get().unwrap_or(0)
+        self.transaction_pool.read().unwrap().len() as u64
     }
 
     /// Returns a table that keeps the block height and transaction position inside the block for every
@@ -456,15 +477,12 @@ where
     /// be sure to decrement it when transaction committed.
     #[doc(hidden)]
     pub fn add_transaction_into_pool(&mut self, tx: Signed<RawTransaction>) {
-        self.transactions_pool().insert(tx.hash());
-        let x = self.transactions_pool_len_index().get().unwrap_or(0);
-        self.transactions_pool_len_index().set(x + 1);
-        self.transactions().put(&tx.hash(), tx);
+        self.transactions_pool_map().write().unwrap().insert(tx.hash(), tx.clone());
     }
 
     /// Changes the transaction status from `in_pool`, to `committed`.
     pub(crate) fn commit_transaction(&mut self, hash: &Hash) {
-        self.transactions_pool().remove(hash);
+        self.transactions_pool_map().write().unwrap().remove(hash);
     }
 
     /// Updates transaction count of the blockchain.

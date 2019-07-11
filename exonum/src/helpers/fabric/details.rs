@@ -62,6 +62,7 @@ impl Run {
         let path = ctx
             .arg::<String>(DATABASE_PATH)
             .unwrap_or_else(|_| panic!("{} not found.", DATABASE_PATH));
+        info!("Database path {:?}", path);
         Box::new(RocksDB::open(Path::new(&path), options).expect("Can't load database file"))
     }
 

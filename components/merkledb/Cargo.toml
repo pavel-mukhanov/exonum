@@ -40,6 +40,8 @@ rand = "0.6.5"
 proptest = "0.9"
 modifier = "0.1"
 pretty_assertions = "0.6"
+log = "0.4.6"
+env_logger = "0.6.2"
 
 [[bench]]
 name = "criterion"

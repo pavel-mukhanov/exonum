@@ -76,7 +76,7 @@ impl SystemApi {
     fn handle_stats_info(self, name: &'static str, api_scope: &mut ServiceApiScope) -> Self {
         api_scope.endpoint(name, move |state: &ServiceApiState, _query: ()| {
             let snapshot = state.snapshot();
-            let schema = Schema::new(&snapshot);
+            let schema = Schema::with_pool(&snapshot, state.blockchain().transaction_pool().clone());
             Ok(StatsInfo {
                 tx_pool_size: schema.transactions_pool_len(),
                 tx_count: schema.transactions_len(),

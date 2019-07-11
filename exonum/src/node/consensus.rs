@@ -205,10 +205,10 @@ impl NodeHandler {
         let block_hash = block.hash();
         if self.state.block(&block_hash).is_none() {
             let snapshot = self.blockchain.snapshot();
-            let schema = Schema::new(&snapshot);
+            let schema = Schema::with_pool(&snapshot, self.blockchain.transaction_pool().clone());
             let has_unknown_txs = self
                 .state
-                .create_incomplete_block(&msg, &schema.transactions(), &schema.transactions_pool())
+                .create_incomplete_block(&msg, &schema.transactions(), &schema.transactions_pool_map())
                 .has_unknown_txs();
 
             let known_nodes = self.remove_request(&RequestData::Block(block.height()));
@@ -544,7 +544,7 @@ impl NodeHandler {
 
         let fork = self.blockchain.fork();
         {
-            let mut schema = Schema::new(&fork);
+            let mut schema = Schema::with_pool(&fork, self.blockchain.transaction_pool().clone());
             schema.add_transaction_into_pool(msg);
         }
         self.blockchain
@@ -683,8 +683,8 @@ impl NodeHandler {
                 return;
             }
             let snapshot = self.blockchain.snapshot();
-            let schema = Schema::new(&snapshot);
-            let pool = schema.transactions_pool();
+            let schema = Schema::with_pool(&snapshot, self.blockchain.transaction_pool().clone());
+            let pool = schema.transactions_pool_map();
             let pool_len = schema.transactions_pool_len();
 
             info!("LEADER: pool = {}", pool_len);
@@ -692,7 +692,7 @@ impl NodeHandler {
             let round = self.state.round();
             let max_count = ::std::cmp::min(u64::from(self.txs_block_limit()), pool_len);
 
-            let txs: Vec<Hash> = pool.iter().take(max_count as usize).collect();
+            let txs: Vec<Hash> = pool.read().unwrap().keys().cloned().take(max_count as usize).collect();
             let propose = self.sign_message(Propose::new(
                 validator_id,
                 self.state.height(),

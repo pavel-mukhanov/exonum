@@ -61,6 +61,7 @@ use exonum_merkledb::{
     self, Database, Error as StorageError, Fork, IndexAccess, ObjectHash, Patch,
     Result as StorageResult, Snapshot,
 };
+use std::sync::RwLock;
 
 mod block;
 mod genesis;
@@ -84,6 +85,7 @@ pub struct Blockchain {
     #[doc(hidden)]
     pub service_keypair: (PublicKey, SecretKey),
     pub(crate) api_sender: ApiSender,
+    transaction_pool: Arc<RwLock<BTreeMap<Hash, Signed<RawTransaction>>>>,
 }
 
 impl Blockchain {
@@ -112,6 +114,7 @@ impl Blockchain {
             service_map: Arc::new(service_map),
             service_keypair: (service_public_key, service_secret_key),
             api_sender,
+            transaction_pool: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
 
@@ -381,8 +384,9 @@ impl Blockchain {
             let new_fork = &*fork;
             let snapshot = new_fork.snapshot();
             let schema = Schema::new(snapshot);
+            let pool = self.transaction_pool.read().unwrap();
 
-            let raw = schema.transactions().get(&tx_hash).ok_or_else(|| {
+            let raw = pool.get(&tx_hash).ok_or_else(|| {
                 failure::err_msg(format!(
                     "BUG: Cannot find transaction in database. tx: {:?}",
                     tx_hash
@@ -404,7 +408,7 @@ impl Blockchain {
                 format_err!("Service <{}>: {}, tx: {:?}", service_name, error, tx_hash)
             })?;
 
-            (tx, raw, service_name)
+            (tx, raw.clone(), service_name)
         };
 
         let catch_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
@@ -440,7 +444,7 @@ impl Blockchain {
             }
         });
 
-        let mut schema = Schema::new(&*fork);
+        let mut schema = Schema::with_pool(&*fork, self.transaction_pool.clone());
         schema.transaction_results().put(&tx_hash, tx_result);
         schema.commit_transaction(&tx_hash);
         schema.block_transactions(height).push(tx_hash);
@@ -476,13 +480,6 @@ impl Blockchain {
                 // Consensus messages cache is useful only during one height, so it should be
                 // cleared when a new height is achieved.
                 schema.consensus_messages_cache().clear();
-                let txs_in_block = schema.last_block().tx_count();
-                let txs_count = schema.transactions_pool_len_index().get().unwrap_or(0);
-                debug_assert!(txs_count >= u64::from(txs_in_block));
-                schema
-                    .transactions_pool_len_index()
-                    .set(txs_count - u64::from(txs_in_block));
-                schema.update_transaction_count(u64::from(txs_in_block));
             }
             fork.into_patch()
         };
@@ -546,6 +543,14 @@ impl Blockchain {
         self.merge(fork.into_patch())
             .expect("Unable to save messages to the consensus cache");
     }
+
+//    pub fn transaction_pool_mut(&mut self) -> &mut BTreeMap<Hash, Signed<RawTransaction>> {
+//        &mut self.transaction_pool
+//    }
+
+    pub fn transaction_pool(&self) -> Arc<RwLock<BTreeMap<Hash, Signed<RawTransaction>>>> {
+        self.transaction_pool.clone()
+    }
 }
 
 fn before_commit(service: &dyn Service, fork: &mut Fork) {
@@ -579,6 +584,7 @@ impl Clone for Blockchain {
             service_map: Arc::clone(&self.service_map),
             api_sender: self.api_sender.clone(),
             service_keypair: self.service_keypair.clone(),
+            transaction_pool: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
 }

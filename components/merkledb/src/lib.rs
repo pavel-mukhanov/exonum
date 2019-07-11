@@ -121,6 +121,8 @@
     clippy::indexing_slicing,
 )]
 
+#![feature(rustc_private)]
+
 #[doc(no_inline)]
 pub use self::proof_map_index::{MapProof, ProofMapIndex};
 pub use self::{
@@ -146,6 +148,9 @@ pub use self::{
 
 #[macro_use]
 extern crate failure;
+
+#[macro_use]
+extern crate log;
 
 /// A specialized `Result` type for I/O operations with storage.
 pub type Result<T> = ::std::result::Result<T, Error>;

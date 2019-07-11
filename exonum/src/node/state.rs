@@ -989,14 +989,14 @@ impl State {
         &mut self,
         msg: &Signed<BlockResponse>,
         txs: &MapIndex<S, Hash, Signed<RawTransaction>>,
-        txs_pool: &KeySetIndex<S, Hash>,
+        txs_pool: &Arc<RwLock<BTreeMap<Hash, Signed<RawTransaction>>>>,
     ) -> &IncompleteBlock {
         assert!(self.incomplete_block().is_none());
 
         let mut unknown_txs = HashSet::new();
         for hash in msg.transactions() {
             if txs.get(hash).is_some() {
-                if !txs_pool.contains(hash) {
+                if !txs_pool.read().unwrap().contains_key(hash) {
                     panic!(
                         "Received block with already \
                          committed transaction"

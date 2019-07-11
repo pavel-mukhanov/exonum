@@ -170,22 +170,62 @@ where
     T: IndexAccess,
     V: BinaryAttribute + Copy + Default,
 {
-    let index_name = index_address.fully_qualified_name();
+    if index_address.name.starts_with("core.transaction") {
+        create_metadata_for_pool(index_access, index_address, index_type)
+    }  else {
+        let index_name = index_address.fully_qualified_name();
 
-    let mut pool = IndexesPool::new(index_access.clone());
-    let (metadata, is_new) = if let Some(metadata) = pool.index_metadata(&index_name) {
-        assert_eq!(
-            metadata.index_type, index_type,
-            "Index type doesn't match specified"
-        );
-        (metadata, false)
-    } else {
-        (pool.create_index_metadata(&index_name, index_type), true)
+        let mut pool = IndexesPool::new(index_access.clone());
+        let (metadata, is_new) = if let Some(metadata) = pool.index_metadata(&index_name) {
+            assert_eq!(
+                metadata.index_type, index_type,
+                "Index type doesn't match specified"
+            );
+            (metadata, false)
+        } else {
+            (pool.create_index_metadata(&index_name, index_type), true)
+        };
+
+        let index_address = metadata.index_address();
+        let index_state = IndexState::new(index_access, index_name, metadata, is_new);
+        (index_address, index_state)
+    }
+}
+
+fn create_metadata_for_pool<T, V>(index_access: T,
+                             index_address: &IndexAddress,
+                             index_type: IndexType,) -> (IndexAddress, IndexState<T, V>)
+    where
+        T: IndexAccess,
+        V: BinaryAttribute + Copy + Default,
+{
+    let identifier = match index_address.name.as_str() {
+        "core.transactions" => 0,
+        "core.transaction_results" => 1,
+        "core.transactions_len" => 2,
+        "core.transactions_pool" => 3,
+        "core.transactions_pool_len" => 4,
+        "core.transactions_locations" => 5,
+        _ => panic!("wrong index name"),
     };
 
-    let index_address = metadata.index_address();
-    let index_state = IndexState::new(index_access, index_name, metadata, is_new);
-    (index_address, index_state)
+    let metadata = IndexMetadata {
+        index_type,
+        identifier: identifier as u64,
+        state: V::default(),
+    };
+
+    let mut new_address = IndexAddress::with_root("pool");
+
+    if let Some(bytes) = index_address.bytes() {
+        new_address = new_address.append_bytes(bytes);
+    }
+    let new_address = new_address.append_bytes(&vec![identifier]);
+
+    let index_name = new_address.fully_qualified_name();
+
+    let index_state = IndexState::new(index_access, index_name, metadata, false);
+    (new_address.clone(), index_state)
 }
 
 /// Persistent pool used to store indexes metadata in the database.

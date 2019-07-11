@@ -40,6 +40,8 @@ pub struct DbOptions {
     ///
     /// Defaults to `true`.
     pub create_if_missing: bool,
+
+    pub write_buffer_size: Option<usize>,
 }
 
 impl Default for DbOptions {
@@ -47,6 +49,7 @@ impl Default for DbOptions {
         Self {
             max_open_files: None,
             create_if_missing: true,
+            write_buffer_size: Some(67108864),
         }
     }
 }
