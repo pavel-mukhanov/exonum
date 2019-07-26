@@ -17,7 +17,6 @@ use crate::blockchain::{get_tx, Schema};
 use crate::events::{
     error::LogError, Event, EventHandler, InternalEvent, InternalRequest, NetworkEvent,
 };
-use crate::messages::{RawTransaction, Signed};
 
 impl EventHandler for NodeHandler {
     fn handle_event(&mut self, event: Event) {
@@ -122,14 +121,15 @@ impl NodeHandler {
         let schema = Schema::new(&snapshot);
 
         //TODO: remove clone
-        let mut txs:Vec<Hash> = self.state.tx_cache().keys().cloned().collect();
-        txs.extend(schema.transactions_pool().iter());
-
+        let txs = {
+            let mut txs: Vec<Hash> = self.state.tx_cache().keys().cloned().collect();
+            txs.extend(schema.transactions_pool().iter());
+            txs
+        };
         for tx_hash in txs {
-            self.broadcast(
-                get_tx(&tx_hash, &schema.transactions(), &self.state.tx_cache())
-                    .expect("Rebroadcast: invalid transaction hash"),
-            )
+            let tx = get_tx(&tx_hash, &schema.transactions(), self.state.tx_cache_mut())
+                .expect("Rebroadcast: invalid transaction hash");
+            self.broadcast(tx);
         }
     }
 }

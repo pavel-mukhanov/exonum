@@ -58,8 +58,8 @@ use crate::helpers::{Height, Round, ValidatorId};
 use crate::messages::{Connect, Message, Precommit, ProtocolMessage, RawTransaction, Signed};
 use crate::node::ApiSender;
 use exonum_merkledb::{
-    self, Database, Error as StorageError, Fork, IndexAccess, KeySetIndex, MapIndex, ObjectHash,
-    Patch, Result as StorageResult, Snapshot,
+    self, Database, Error as StorageError, Fork, IndexAccess, ObjectHash, Patch,
+    Result as StorageResult, Snapshot,
 };
 
 mod block;
@@ -229,8 +229,13 @@ impl Blockchain {
                 schema.commit_configuration(config_propose);
             };
             self.merge(fork.into_patch())?;
-            self.create_patch(ValidatorId::zero(), Height::zero(), &[], &mut BTreeMap::new())
-                .1
+            self.create_patch(
+                ValidatorId::zero(),
+                Height::zero(),
+                &[],
+                &mut BTreeMap::new(),
+            )
+            .1
         };
         self.merge(patch)?;
         Ok(())
@@ -384,7 +389,7 @@ impl Blockchain {
             let snapshot = new_fork.snapshot();
             let schema = Schema::new(snapshot);
 
-            let raw = get_tx(&tx_hash, &schema.transactions(), &tx_cache).ok_or_else(|| {
+            let raw = get_tx(&tx_hash, &schema.transactions(), tx_cache).ok_or_else(|| {
                 failure::err_msg(format!(
                     "BUG: Cannot find transaction in database. tx: {:?}",
                     tx_hash
@@ -485,21 +490,21 @@ impl Blockchain {
                 let txs_count = schema.transactions_pool_len_index().get().unwrap_or(0);
 
                 //TODO: revert to txs_count from pool
-//                let txs_count = tx_cache.len() as u64;
-//                debug_assert!(txs_count >= u64::from(txs_in_block));
+                //                let txs_count = tx_cache.len() as u64;
+                //                debug_assert!(txs_count >= u64::from(txs_in_block));
 
-//                let tx_pool_len = txs_count - u64::from(txs_in_block);
-//                schema.transactions_pool_len_index().set(tx_pool_len);
+                //                let tx_pool_len = txs_count - u64::from(txs_in_block);
+                //                schema.transactions_pool_len_index().set(tx_pool_len);
                 schema.update_transaction_count(u64::from(txs_in_block));
 
-//                if tx_pool_len < u64::from(tx_block_limit) {
-                    for tx in tx_cache.values() {
-                        //TODO: remove clone
-                        schema.add_transaction_into_pool(tx.clone());
-                    }
+                //                if tx_pool_len < u64::from(tx_block_limit) {
+                for tx in tx_cache.values() {
+                    //TODO: remove clone
+                    schema.add_transaction_into_pool(tx.clone());
+                }
 
-                    tx_cache.clear();
-//                }
+                tx_cache.clear();
+                //                }
             }
             fork.into_patch()
         };
