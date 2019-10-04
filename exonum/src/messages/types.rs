@@ -17,7 +17,6 @@ pub use crate::runtime::AnyTx;
 use bit_vec::BitVec;
 use chrono::{DateTime, Utc};
 use exonum_merkledb::{BinaryValue, HashTag};
-use exonum_proto::ProtobufConvert;
 
 use std::convert::TryFrom;
 

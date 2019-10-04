@@ -21,6 +21,8 @@ include!(concat!(env!("OUT_DIR"), "/protobuf_mod.rs"));
 
 use failure::Error;
 
+pub use crate::proto::types::*;
+
 use crate::proto::types::{Hash, PublicKey, Signature};
 use crate::{HASH_SIZE, PUBLIC_KEY_LENGTH, SIGNATURE_LENGTH};
 use exonum_proto::ProtobufConvert;

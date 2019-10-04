@@ -26,6 +26,8 @@ extern crate serde_derive;
 #[macro_use]
 extern crate failure;
 
+pub use self::proto::*;
+
 #[doc(inline)]
 pub use self::crypto_impl::{
     HASH_SIZE, PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH, SEED_LENGTH, SIGNATURE_LENGTH,
