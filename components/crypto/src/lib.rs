@@ -23,6 +23,9 @@
 #[macro_use]
 extern crate serde_derive;
 
+#[macro_use]
+extern crate failure;
+
 #[doc(inline)]
 pub use self::crypto_impl::{
     HASH_SIZE, PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH, SEED_LENGTH, SIGNATURE_LENGTH,
@@ -49,6 +52,9 @@ use self::crypto_lib::sodiumoxide as crypto_impl;
 
 #[macro_use]
 mod macros;
+
+#[cfg(feature = "protobuf_serialization")]
+pub mod proto;
 
 pub(crate) mod crypto_lib;
 

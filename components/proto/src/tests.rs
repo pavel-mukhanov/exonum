@@ -15,7 +15,7 @@
 use bit_vec::BitVec;
 use chrono::{DateTime, TimeZone, Utc};
 use exonum_merkledb::{
-    BinaryKey, BinaryValue, Database, MapProof, ObjectHash, HashTag, ProofMapIndex, TemporaryDB,
+    BinaryKey, BinaryValue, Database, HashTag, MapProof, ObjectHash, ProofMapIndex, TemporaryDB,
 };
 
 use std::{borrow::Cow, collections::HashMap, fmt};

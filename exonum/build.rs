@@ -36,23 +36,37 @@ fn main() {
 
     create_path_to_protobuf_schema_env();
 
+    // Exonum crypto.
+    protobuf_generate(
+        "../components/crypto/src/proto",
+        &["../components/crypto/src/proto"],
+        "exonum_crypto_proto_mod.rs",
+    );
+
+    // Exonum crypto.
+    protobuf_generate(
+        "../components/proto/src/proto",
+        &["../components/proto/src/proto"],
+        "exonum_common_proto_mod.rs",
+    );
+
     protobuf_generate(
         "src/proto/schema/exonum",
-        &["src/proto/schema/exonum"],
+        &["src/proto/schema/exonum", "../components/crypto/src/proto", "../components/proto/src/proto"],
         "exonum_proto_mod.rs",
     );
 
     // Exonum external tests.
     protobuf_generate(
         "tests/explorer/blockchain/proto",
-        &["src/proto/schema/exonum"],
+        &["src/proto/schema/exonum", "../components/crypto/src/proto", "../components/proto/src/proto"],
         "exonum_tests_proto_mod.rs",
     );
 
     // Exonum benchmarks.
     protobuf_generate(
         "benches/criterion/proto",
-        &["src/proto/schema/exonum"],
+        &["src/proto/schema/exonum", "../components/crypto/src/proto"],
         "exonum_benches_proto_mod.rs",
     );
 }

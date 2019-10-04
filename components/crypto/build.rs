@@ -12,26 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto3";
-import "types.proto";
-import "google/protobuf/empty.proto";
+//! Common macros for crypto module.
 
-package exonum.proof;
+extern crate exonum_build;
 
-message MapProof {
-    repeated OptionalEntry entries = 1;
-    repeated MapProofEntry proof = 2;
+use exonum_build::{get_exonum_protobuf_files_path, protobuf_generate};
+
+fn main() {
+    #[cfg(feature = "protobuf_serialization")]
+    gen_proto_files();
 }
 
-message OptionalEntry {
-    bytes key = 1;
-    oneof maybe_value {
-        bytes value = 2;
-        google.protobuf.Empty no_value = 3;
-    }
-}
-
-message MapProofEntry {
-    bytes proof_path = 1;
-    exonum_crypto.Hash hash = 2;
+#[cfg(feature = "protobuf_serialization")]
+fn gen_proto_files() {
+    protobuf_generate("src/proto", &["src/proto"], "protobuf_mod.rs");
 }

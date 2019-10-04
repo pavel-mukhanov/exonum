@@ -479,7 +479,7 @@ impl ToTokens for ProtobufConvert {
                 use super::*;
 
                 use protobuf::Message as _ProtobufMessage;
-                use #cr::proto::ProtobufConvert;
+                use exonum_proto::ProtobufConvert;
 
                 #protobuf_convert
                 #merkledb_traits

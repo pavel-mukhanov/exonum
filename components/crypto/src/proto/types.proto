@@ -13,25 +13,11 @@
 // limitations under the License.
 
 syntax = "proto3";
-import "types.proto";
-import "google/protobuf/empty.proto";
 
-package exonum.proof;
+package exonum_crypto;
 
-message MapProof {
-    repeated OptionalEntry entries = 1;
-    repeated MapProofEntry proof = 2;
-}
+message Hash { bytes data = 1; }
 
-message OptionalEntry {
-    bytes key = 1;
-    oneof maybe_value {
-        bytes value = 2;
-        google.protobuf.Empty no_value = 3;
-    }
-}
+message PublicKey { bytes data = 1; }
 
-message MapProofEntry {
-    bytes proof_path = 1;
-    exonum_crypto.Hash hash = 2;
-}
+message Signature { bytes data = 1; }

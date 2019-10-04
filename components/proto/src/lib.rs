@@ -59,19 +59,25 @@
 //! }
 //! ```
 
-pub use self::schema::{
-    blockchain::{Block, TxLocation},
-    consensus::{
-        BlockRequest, BlockResponse, Connect, ExonumMessage, PeersRequest, Precommit, Prevote,
-        PrevotesRequest, Propose, ProposeRequest, SignedMessage, Status, TransactionsRequest,
-        TransactionsResponse,
-    },
-    helpers::{BitVec, Hash, PublicKey, Signature},
-    proof::{MapProof, MapProofEntry, OptionalEntry},
-    runtime::{AnyTx, CallInfo},
-};
+//pub use self::schema::{
+//    blockchain::{Block, TxLocation},
+//    consensus::{
+//        BlockRequest, BlockResponse, Connect, ExonumMessage, PeersRequest, Precommit, Prevote,
+//        PrevotesRequest, Propose, ProposeRequest, SignedMessage, Status, TransactionsRequest,
+//        TransactionsResponse,
+//    },
+//    helpers::{BitVec, Hash, PublicKey, Signature},
+//    proof::{MapProof, MapProofEntry, OptionalEntry},
+//    runtime::{AnyTx, CallInfo},
+//};
+//
 
-pub mod schema;
+use proto::common::BitVec;
+
+pub mod proto;
+
+#[macro_use]
+extern crate failure;
 
 #[macro_use]
 mod macros;
@@ -79,18 +85,11 @@ mod macros;
 mod tests;
 
 use chrono::{DateTime, TimeZone, Utc};
-use exonum_merkledb::{self, proof_map_index::PROOF_PATH_SIZE, BinaryKey, BinaryValue};
 use failure::Error;
-use protobuf::{well_known_types, RepeatedField, Message};
+use protobuf::well_known_types;
 
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
-use crate::{
-    crypto::{self},
-    helpers::{Height, Round, ValidatorId},
-};
-use exonum_merkledb::proof_map_index::ProofPath;
-use protobuf::well_known_types::Empty;
 use core::fmt;
 
 /// Used for establishing correspondence between rust struct
@@ -104,80 +103,6 @@ pub trait ProtobufConvert: Sized {
 
     /// ProtoStruct -> Struct
     fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error>;
-}
-
-impl ProtobufConvert for crypto::Hash {
-    type ProtoStruct = Hash;
-
-    fn to_pb(&self) -> Hash {
-        let mut hash = Hash::new();
-        hash.set_data(self.as_ref().to_vec());
-        hash
-    }
-
-    fn from_pb(pb: Hash) -> Result<Self, Error> {
-        let data = pb.get_data();
-        ensure!(data.len() == crypto::HASH_SIZE, "Wrong Hash size");
-        crypto::Hash::from_slice(data).ok_or_else(|| format_err!("Cannot convert Hash from bytes"))
-    }
-}
-
-impl ProtobufConvert for crypto::PublicKey {
-    type ProtoStruct = PublicKey;
-
-    fn to_pb(&self) -> PublicKey {
-        let mut key = PublicKey::new();
-        key.set_data(self.as_ref().to_vec());
-        key
-    }
-
-    fn from_pb(pb: PublicKey) -> Result<Self, Error> {
-        let data = pb.get_data();
-        ensure!(
-            data.len() == crypto::PUBLIC_KEY_LENGTH,
-            "Wrong PublicKey size"
-        );
-        crypto::PublicKey::from_slice(data)
-            .ok_or_else(|| format_err!("Cannot convert PublicKey from bytes"))
-    }
-}
-
-impl ProtobufConvert for crypto::Signature {
-    type ProtoStruct = Signature;
-
-    fn to_pb(&self) -> Signature {
-        let mut sign = Signature::new();
-        sign.set_data(self.as_ref().to_vec());
-        sign
-    }
-
-    fn from_pb(pb: Signature) -> Result<Self, Error> {
-        let data = pb.get_data();
-        ensure!(
-            data.len() == crypto::SIGNATURE_LENGTH,
-            "Wrong Signature size"
-        );
-        crypto::Signature::from_slice(data)
-            .ok_or_else(|| format_err!("Cannot convert Signature from bytes"))
-    }
-}
-
-impl ProtobufConvert for bit_vec::BitVec {
-    type ProtoStruct = BitVec;
-
-    fn to_pb(&self) -> BitVec {
-        let mut bit_vec = BitVec::new();
-        bit_vec.set_data(self.to_bytes());
-        bit_vec.set_len(self.len() as u64);
-        bit_vec
-    }
-
-    fn from_pb(pb: BitVec) -> Result<Self, Error> {
-        let data = pb.get_data();
-        let mut bit_vec = bit_vec::BitVec::from_bytes(data);
-        bit_vec.truncate(pb.get_len() as usize);
-        Ok(bit_vec)
-    }
 }
 
 impl ProtobufConvert for DateTime<Utc> {
@@ -206,46 +131,6 @@ impl ProtobufConvert for String {
 
     fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
         Ok(pb)
-    }
-}
-
-impl ProtobufConvert for Height {
-    type ProtoStruct = u64;
-
-    fn to_pb(&self) -> Self::ProtoStruct {
-        self.0
-    }
-
-    fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
-        Ok(Height(pb))
-    }
-}
-
-impl ProtobufConvert for Round {
-    type ProtoStruct = u32;
-
-    fn to_pb(&self) -> Self::ProtoStruct {
-        self.0
-    }
-
-    fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
-        Ok(Round(pb))
-    }
-}
-
-impl ProtobufConvert for ValidatorId {
-    type ProtoStruct = u32;
-
-    fn to_pb(&self) -> Self::ProtoStruct {
-        u32::from(self.0)
-    }
-
-    fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
-        ensure!(
-            pb <= u32::from(u16::max_value()),
-            "u32 is our of range for valid ValidatorId"
-        );
-        Ok(ValidatorId(pb as u16))
     }
 }
 
@@ -325,9 +210,9 @@ impl ProtobufConvert for Vec<u8> {
 // as a map keys.
 impl<K, T, S> ProtobufConvert for HashMap<K, T, S>
 where
-    K: Eq + std::hash::Hash + fmt::Debug + Clone + Sync + Send,
+    K: Eq + std::hash::Hash + fmt::Debug + Clone,
     T: ProtobufConvert,
-    S: Default + std::hash::BuildHasher + Sync + Send,
+    S: Default + std::hash::BuildHasher,
 {
     type ProtoStruct = HashMap<K, T::ProtoStruct, S>;
     fn to_pb(&self) -> Self::ProtoStruct {
@@ -340,83 +225,101 @@ where
     }
 }
 
-impl<K, V> ProtobufConvert for exonum_merkledb::MapProof<K, V>
-where
-    K: BinaryKey + ToOwned<Owned = K>,
-    V: BinaryValue,
-{
-    type ProtoStruct = MapProof;
+impl ProtobufConvert for bit_vec::BitVec {
+    type ProtoStruct = BitVec;
 
-    fn to_pb(&self) -> Self::ProtoStruct {
-        let mut map_proof = MapProof::new();
-
-        let proof: Vec<MapProofEntry> = self
-            .proof_unchecked()
-            .iter()
-            .map(|(p, h)| {
-                let mut entry = MapProofEntry::new();
-                entry.set_hash(h.to_pb());
-                entry.set_proof_path(p.as_bytes().to_vec());
-                entry
-            })
-            .collect();
-
-        let entries: Vec<OptionalEntry> = self
-            .all_entries_unchecked()
-            .map(|(key, value)| {
-                let mut entry = OptionalEntry::new();
-                let mut buf = vec![0u8; key.size()];
-                key.write(&mut buf);
-                entry.set_key(buf.to_vec());
-
-                match value {
-                    Some(value) => entry.set_value(value.to_bytes()),
-                    None => entry.set_no_value(Empty::new()),
-                }
-
-                entry
-            })
-            .collect();
-
-        map_proof.set_proof(RepeatedField::from_vec(proof));
-        map_proof.set_entries(RepeatedField::from_vec(entries));
-
-        map_proof
+    fn to_pb(&self) -> BitVec {
+        let mut bit_vec = BitVec::new();
+        bit_vec.set_data(self.to_bytes());
+        bit_vec.set_len(self.len() as u64);
+        bit_vec
     }
 
-    fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
-        let proof = pb
-            .get_proof()
-            .iter()
-            .map(|entry| {
-                let proof_path = entry.get_proof_path();
-                ensure!(proof_path.len() == PROOF_PATH_SIZE, "Not valid proof path");
-                Ok((
-                    ProofPath::read(entry.get_proof_path()),
-                    crypto::Hash::from_pb(entry.get_hash().clone())?,
-                ))
-            })
-            .collect::<Result<Vec<_>, Error>>()?;
-
-        let entries = pb
-            .get_entries()
-            .iter()
-            .map(|entry| {
-                let key = K::read(entry.get_key());
-
-                let value = if entry.has_value() {
-                    Some(V::from_bytes(Cow::Borrowed(entry.get_value()))?)
-                } else {
-                    None
-                };
-
-                Ok((key, value))
-            })
-            .collect::<Result<Vec<_>, Error>>()?;
-
-        Ok(exonum_merkledb::MapProof::from_raw_parts(&proof, entries))
+    fn from_pb(pb: BitVec) -> Result<Self, Error> {
+        let data = pb.get_data();
+        let mut bit_vec = bit_vec::BitVec::from_bytes(data);
+        bit_vec.truncate(pb.get_len() as usize);
+        Ok(bit_vec)
     }
 }
+
+//impl<K, V> ProtobufConvert for exonum_merkledb::MapProof<K, V>
+//where
+//    K: BinaryKey + ToOwned<Owned = K>,
+//    V: BinaryValue,
+//{
+//    type ProtoStruct = MapProof;
+//
+//    fn to_pb(&self) -> Self::ProtoStruct {
+//        let mut map_proof = MapProof::new();
+//
+//        let proof: Vec<MapProofEntry> = self
+//            .proof_unchecked()
+//            .iter()
+//            .map(|(p, h)| {
+//                let mut entry = MapProofEntry::new();
+//                entry.set_hash(h.to_pb());
+//                entry.set_proof_path(p.as_bytes().to_vec());
+//                entry
+//            })
+//            .collect();
+//
+//        let entries: Vec<OptionalEntry> = self
+//            .all_entries_unchecked()
+//            .map(|(key, value)| {
+//                let mut entry = OptionalEntry::new();
+//                let mut buf = vec![0u8; key.size()];
+//                key.write(&mut buf);
+//                entry.set_key(buf.to_vec());
+//
+//                match value {
+//                    Some(value) => entry.set_value(value.to_bytes()),
+//                    None => entry.set_no_value(Empty::new()),
+//                }
+//
+//                entry
+//            })
+//            .collect();
+//
+//        map_proof.set_proof(RepeatedField::from_vec(proof));
+//        map_proof.set_entries(RepeatedField::from_vec(entries));
+//
+//        map_proof
+//    }
+//
+//    fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
+//        let proof = pb
+//            .get_proof()
+//            .iter()
+//            .map(|entry| {
+//                let proof_path = entry.get_proof_path();
+//                ensure!(proof_path.len() == PROOF_PATH_SIZE, "Not valid proof path");
+//                Ok((
+//                    ProofPath::read(entry.get_proof_path()),
+//                    crypto::Hash::from_pb(entry.get_hash().clone())?,
+//                ))
+//            })
+//            .collect::<Result<Vec<_>, Error>>()?;
+//
+//        let entries = pb
+//            .get_entries()
+//            .iter()
+//            .map(|entry| {
+//                let key = K::read(entry.get_key());
+//
+//                let value = if entry.has_value() {
+//                    Some(V::from_bytes(Cow::Borrowed(entry.get_value()))?)
+//                } else {
+//                    None
+//                };
+//
+//                Ok((key, value))
+//            })
+//            .collect::<Result<Vec<_>, Error>>()?;
+//
+//        Ok(exonum_merkledb::MapProof::from_raw_parts(&proof, entries))
+//    }
+//}
 
 macro_rules! impl_protobuf_convert_scalar {
     ($name:tt) => {
