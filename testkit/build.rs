@@ -1,19 +1,23 @@
 extern crate exonum_build;
 
-use exonum_build::{get_exonum_protobuf_files_path, protobuf_generate};
+use exonum_build::{get_exonum_protobuf_files_path, protobuf_generate, get_exonum_protobuf_deps_files_path};
 
 fn main() {
     let exonum_protos = get_exonum_protobuf_files_path();
+    //TOOD: revert change
+    let deps = get_exonum_protobuf_deps_files_path();
+    let crypto_protos = deps.get(0).unwrap();
+    let common_protos = deps.get(1).unwrap();
     let protobuf_gen_data = [
         ("src/proto", vec!["src/proto"], "testkit_protobuf_mod.rs"),
         (
             "src/simple_supervisor/proto",
-            vec!["src/simple_supervisor/proto", &exonum_protos],
+            vec!["src/simple_supervisor/proto", &exonum_protos, &crypto_protos],
             "simple_supervisor_mod.rs",
         ),
         (
             "tests/inflating_currency/proto",
-            vec!["tests/inflating_currency/proto", &exonum_protos],
+            vec!["tests/inflating_currency/proto", &exonum_protos, &crypto_protos],
             "currency_example_protobuf_mod.rs",
         ),
         (
@@ -28,7 +32,7 @@ fn main() {
         ),
         (
             "tests/interfaces/proto",
-            vec!["tests/interfaces/proto", &exonum_protos],
+            vec!["tests/interfaces/proto", &exonum_protos, &crypto_protos],
             "interfaces_protobuf_mod.rs",
         ),
         (

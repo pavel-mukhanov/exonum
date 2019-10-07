@@ -12,10 +12,18 @@ fn create_path_to_protobuf_schema_env() {
     // Workaround for https://github.com/rust-lang/cargo/issues/3544
     // We "link" exonum with exonum_protobuf library
     // and dependents in their `build.rs` will have access to `$DEP_EXONUM_PROTOBUF_PROTOS`.
-    let path = env::current_dir()
-        .expect("Failed to get current dir.")
+
+    let current_dir = env::current_dir()
+        .expect("Failed to get current dir.");
+
+    let protos = current_dir
         .join("src/proto/schema/exonum");
-    println!("cargo:protos={}", path.to_str().unwrap());
+    println!("cargo:protos={}", protos.to_str().unwrap());
+
+    let crypto_protos = current_dir.join("../components/crypto/src/proto").canonicalize().unwrap();
+    let common_protos = current_dir.join("../components/proto/src/proto").canonicalize().unwrap();
+
+    println!("cargo:add_protos={},{}", crypto_protos.to_str().unwrap(), common_protos.to_str().unwrap());
 }
 
 fn write_user_agent_file() {
