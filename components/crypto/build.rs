@@ -16,10 +16,9 @@
 
 extern crate exonum_build;
 
-use exonum_build::{get_exonum_protobuf_files_path, protobuf_generate};
+use exonum_build::protobuf_generate;
 
 fn main() {
-    #[cfg(feature = "protobuf_serialization")]
     gen_proto_files();
 }
 
@@ -27,3 +26,6 @@ fn main() {
 fn gen_proto_files() {
     protobuf_generate("src/proto", &["src/proto"], "protobuf_mod.rs");
 }
+
+#[cfg(not(feature = "protobuf_serialization"))]
+fn gen_proto_files() {}

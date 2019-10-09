@@ -76,6 +76,9 @@ use exonum_proto::ProtobufConvert;
 
 pub mod schema;
 
+#[cfg(test)]
+mod tests;
+
 impl ProtobufConvert for Height {
     type ProtoStruct = u64;
 

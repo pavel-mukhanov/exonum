@@ -1,14 +1,12 @@
 extern crate exonum_build;
 
-use exonum_build::{get_exonum_protobuf_files_path, protobuf_generate, get_exonum_protobuf_deps_files_path};
+use exonum_build::{
+    get_exonum_protobuf_crypto_files_path, get_exonum_protobuf_files_path, protobuf_generate,
+};
 
 fn main() {
     let exonum_protos = get_exonum_protobuf_files_path();
-
-    // TODO: revert
-    let deps = get_exonum_protobuf_deps_files_path();
-    let crypto_protos = deps.get(0).unwrap();
-    let common_protos = deps.get(1).unwrap();
+    let crypto_protos = get_exonum_protobuf_crypto_files_path();
 
     let protobuf_gen_data = [
         (

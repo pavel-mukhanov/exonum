@@ -34,43 +34,7 @@
 //! struct and generate `ProtobufConvert` for it using `#[derive(ProtobufConvert)]`, which will validate
 //! your struct based on the validation function for `Hash`.
 //!
-//! # Examples
-//! ```
-//! extern crate exonum;
-//! #[macro_use] extern crate exonum_derive;
-//!
-//! use exonum::crypto::{PublicKey, Hash};
-//!
-//! // See doc_tests.proto for protobuf definitions of this structs.
-//!
-//! #[derive(ProtobufConvert)]
-//! #[exonum(pb = "exonum::proto::schema::doc_tests::MyStructSmall")]
-//! struct MyStructSmall {
-//!     key: PublicKey,
-//!     num_field: u32,
-//!     string_field: String,
-//! }
-//!
-//! #[derive(ProtobufConvert)]
-//! #[exonum(pb = "exonum::proto::schema::doc_tests::MyStructBig")]
-//! struct MyStructBig {
-//!     hash: Hash,
-//!     my_struct_small: MyStructSmall,
-//! }
-//! ```
-
-//pub use self::schema::{
-//    blockchain::{Block, TxLocation},
-//    consensus::{
-//        BlockRequest, BlockResponse, Connect, ExonumMessage, PeersRequest, Precommit, Prevote,
-//        PrevotesRequest, Propose, ProposeRequest, SignedMessage, Status, TransactionsRequest,
-//        TransactionsResponse,
-//    },
-//    helpers::{BitVec, Hash, PublicKey, Signature},
-//    proof::{MapProof, MapProofEntry, OptionalEntry},
-//    runtime::{AnyTx, CallInfo},
-//};
-//
+//TODO: revert the example
 
 use proto::common::BitVec;
 
@@ -84,10 +48,6 @@ extern crate serde_derive;
 
 #[macro_use]
 mod macros;
-
-//TODO: change revert uncomment
-//#[cfg(test)]
-//mod tests;
 
 use chrono::{DateTime, TimeZone, Utc};
 use failure::Error;
@@ -247,84 +207,6 @@ impl ProtobufConvert for bit_vec::BitVec {
         Ok(bit_vec)
     }
 }
-
-//impl<K, V> ProtobufConvert for exonum_merkledb::MapProof<K, V>
-//where
-//    K: BinaryKey + ToOwned<Owned = K>,
-//    V: BinaryValue,
-//{
-//    type ProtoStruct = MapProof;
-//
-//    fn to_pb(&self) -> Self::ProtoStruct {
-//        let mut map_proof = MapProof::new();
-//
-//        let proof: Vec<MapProofEntry> = self
-//            .proof_unchecked()
-//            .iter()
-//            .map(|(p, h)| {
-//                let mut entry = MapProofEntry::new();
-//                entry.set_hash(h.to_pb());
-//                entry.set_proof_path(p.as_bytes().to_vec());
-//                entry
-//            })
-//            .collect();
-//
-//        let entries: Vec<OptionalEntry> = self
-//            .all_entries_unchecked()
-//            .map(|(key, value)| {
-//                let mut entry = OptionalEntry::new();
-//                let mut buf = vec![0u8; key.size()];
-//                key.write(&mut buf);
-//                entry.set_key(buf.to_vec());
-//
-//                match value {
-//                    Some(value) => entry.set_value(value.to_bytes()),
-//                    None => entry.set_no_value(Empty::new()),
-//                }
-//
-//                entry
-//            })
-//            .collect();
-//
-//        map_proof.set_proof(RepeatedField::from_vec(proof));
-//        map_proof.set_entries(RepeatedField::from_vec(entries));
-//
-//        map_proof
-//    }
-//
-//    fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
-//        let proof = pb
-//            .get_proof()
-//            .iter()
-//            .map(|entry| {
-//                let proof_path = entry.get_proof_path();
-//                ensure!(proof_path.len() == PROOF_PATH_SIZE, "Not valid proof path");
-//                Ok((
-//                    ProofPath::read(entry.get_proof_path()),
-//                    crypto::Hash::from_pb(entry.get_hash().clone())?,
-//                ))
-//            })
-//            .collect::<Result<Vec<_>, Error>>()?;
-//
-//        let entries = pb
-//            .get_entries()
-//            .iter()
-//            .map(|entry| {
-//                let key = K::read(entry.get_key());
-//
-//                let value = if entry.has_value() {
-//                    Some(V::from_bytes(Cow::Borrowed(entry.get_value()))?)
-//                } else {
-//                    None
-//                };
-//
-//                Ok((key, value))
-//            })
-//            .collect::<Result<Vec<_>, Error>>()?;
-//
-//        Ok(exonum_merkledb::MapProof::from_raw_parts(&proof, entries))
-//    }
-//}
 
 macro_rules! impl_protobuf_convert_scalar {
     ($name:tt) => {

@@ -13,17 +13,22 @@ fn create_path_to_protobuf_schema_env() {
     // We "link" exonum with exonum_protobuf library
     // and dependents in their `build.rs` will have access to `$DEP_EXONUM_PROTOBUF_PROTOS`.
 
-    let current_dir = env::current_dir()
-        .expect("Failed to get current dir.");
+    let current_dir = env::current_dir().expect("Failed to get current dir.");
 
-    let protos = current_dir
-        .join("src/proto/schema/exonum");
+    let protos = current_dir.join("src/proto/schema/exonum");
     println!("cargo:protos={}", protos.to_str().unwrap());
 
-    let crypto_protos = current_dir.join("../components/crypto/src/proto").canonicalize().unwrap();
-    let common_protos = current_dir.join("../components/proto/src/proto").canonicalize().unwrap();
+    let crypto_protos = current_dir
+        .join("../components/crypto/src/proto")
+        .canonicalize()
+        .unwrap();
+    let common_protos = current_dir
+        .join("../components/proto/src/proto")
+        .canonicalize()
+        .unwrap();
 
-    println!("cargo:add_protos={},{}", crypto_protos.to_str().unwrap(), common_protos.to_str().unwrap());
+    println!("cargo:crypto_protos={}", crypto_protos.to_str().unwrap());
+    println!("cargo:common_protos={}", common_protos.to_str().unwrap());
 }
 
 fn write_user_agent_file() {
@@ -60,7 +65,11 @@ fn main() {
 
     protobuf_generate(
         "src/proto/schema/exonum",
-        &["src/proto/schema/exonum", "../components/crypto/src/proto", "../components/proto/src/proto"],
+        &[
+            "src/proto/schema/exonum",
+            "../components/crypto/src/proto",
+            "../components/proto/src/proto",
+        ],
         "exonum_proto_mod.rs",
     );
 
@@ -68,7 +77,11 @@ fn main() {
     //TODO: change revert
     protobuf_generate(
         "tests/explorer/blockchain/proto",
-        &["src/proto/schema/exonum", "../components/crypto/src/proto", "../components/proto/src/proto"],
+        &[
+            "src/proto/schema/exonum",
+            "../components/crypto/src/proto",
+            "../components/proto/src/proto",
+        ],
         "exonum_tests_proto_mod.rs",
     );
 

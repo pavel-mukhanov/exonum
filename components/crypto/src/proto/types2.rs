@@ -1,9 +1,9 @@
 pub use crate::proto::types::*;
 
-use failure::Error;
 use crate::proto::types::{Hash, PublicKey, Signature};
 use crate::{HASH_SIZE, PUBLIC_KEY_LENGTH, SIGNATURE_LENGTH};
 use exonum_proto::ProtobufConvert;
+use failure::Error;
 
 impl ProtobufConvert for crate::Hash {
     type ProtoStruct = Hash;

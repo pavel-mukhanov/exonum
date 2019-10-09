@@ -219,9 +219,12 @@ pub fn get_exonum_protobuf_files_path() -> String {
     env::var("DEP_EXONUM_PROTOBUF_PROTOS").expect("Failed to get exonum protobuf path")
 }
 
-pub fn get_exonum_protobuf_deps_files_path() -> Vec<String> {
-    let deps = env::var("DEP_EXONUM_PROTOBUF_ADD_PROTOS").expect("Failed to get exonum protobuf path");
-
-    deps.split(",").map(|s|{s.to_string()}).collect()
+/// Get path to the folder containing `exonum-crypto` protobuf files.
+pub fn get_exonum_protobuf_crypto_files_path() -> String {
+    env::var("DEP_EXONUM_PROTOBUF_CRYPTO_PROTOS").expect("Failed to get exonum protobuf path")
 }
 
+/// Get path to the folder containing `exonum-proto` protobuf files.
+pub fn get_exonum_protobuf_common_files_path() -> String {
+    env::var("DEP_EXONUM_PROTOBUF_COMMON_PROTOS").expect("Failed to get exonum protobuf path")
+}

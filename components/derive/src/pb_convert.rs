@@ -463,8 +463,6 @@ impl ToTokens for ProtobufConvert {
             &format!("pb_convert_impl_{}", self.name()),
             Span::call_site(),
         );
-        let cr = self.cr();
-
         let protobuf_convert = self.implement_protobuf_convert();
         let merkledb_traits = self.implement_merkledb_traits();
         let serde_traits = if self.serde_needed() {

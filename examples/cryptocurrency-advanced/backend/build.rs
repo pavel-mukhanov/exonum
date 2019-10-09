@@ -1,17 +1,14 @@
-use exonum_build::{get_exonum_protobuf_files_path, protobuf_generate, get_exonum_protobuf_deps_files_path};
+use exonum_build::{
+    get_exonum_protobuf_crypto_files_path, get_exonum_protobuf_files_path, protobuf_generate,
+};
 
 fn main() {
     let exonum_protos = get_exonum_protobuf_files_path();
-
-    let exonum_add_protos = get_exonum_protobuf_deps_files_path();
-    let exonum_add_protos: Vec<&str> = exonum_add_protos.iter().map(|s| s.as_str()).collect();
-
-    let mut includes = vec![exonum_protos.as_str(), "src/proto"];
-    includes.extend(exonum_add_protos);
+    let exonum_crypto_protos = get_exonum_protobuf_crypto_files_path();
 
     protobuf_generate(
         "src/proto",
-        includes,
+        &[&exonum_protos, "src/proto", &exonum_crypto_protos],
         "protobuf_mod.rs",
-    );
+    )
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use exonum_crypto::{Hash, gen_keypair};
+use exonum_crypto::Hash;
 
 use crate::{
     Entry, Fork, KeySetIndex, ListIndex, MapIndex, ProofListIndex, ProofMapIndex, SparseListIndex,
@@ -31,21 +31,4 @@ fn should_compile() {
     let _: ProofMapIndex<_, Hash, ()> = ProofMapIndex::new_in_family("", "", &fork);
     let _: SparseListIndex<_, ()> = SparseListIndex::new_in_family("", "", &fork);
     let _: ValueSetIndex<_, ()> = ValueSetIndex::new_in_family("", "", &fork);
-}
-
-#[test]
-fn protbuf_mdb() {
-    use exonum_proto::ProtobufConvert;
-
-    let (pk, _) = gen_keypair();
-
-    let str_pk = serde_json::to_string_pretty(&pk).unwrap();
-
-    println!("str1 pk {}", str_pk);
-
-    let pb_pk = pk.to_pb();
-
-    let str_pk = serde_json::to_string_pretty(&pb_pk).unwrap();
-
-    println!("str1 pk {}", str_pk);
 }
