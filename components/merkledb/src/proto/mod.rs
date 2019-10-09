@@ -16,13 +16,30 @@
 
 // For protobuf generated files.
 #![allow(bare_trait_objects)]
-#![allow(renamed_and_removed_lints)]
 
-pub use self::inflating_cryptocurrency::{TxCreateWallet, TxTransfer, Wallet};
+include!(concat!(env!("OUT_DIR"), "/protobuf_mod.rs"));
 
-include!(concat!(
-    env!("OUT_DIR"),
-    "/currency_example_protobuf_mod.rs"
-));
+use exonum_crypto::proto::*;
+use exonum_crypto::PublicKey;
+use exonum_proto::ProtobufConvert;
+use crate::proto;
+use failure::Error;
 
-use crate::crypto::proto::*;
+pub struct Proof {
+    key: PublicKey,
+}
+
+impl ProtobufConvert for Proof {
+    type ProtoStruct = proto::Proof;
+
+
+    /// Struct -> ProtoStruct
+    fn to_pb(&self) -> Self::ProtoStruct {
+        unimplemented!()
+    }
+
+    /// ProtoStruct -> Struct
+    fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
+        unimplemented!()
+    }
+}

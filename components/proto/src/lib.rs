@@ -80,9 +80,14 @@ pub mod proto;
 extern crate failure;
 
 #[macro_use]
+extern crate serde_derive;
+
+#[macro_use]
 mod macros;
-#[cfg(test)]
-mod tests;
+
+//TODO: change revert uncomment
+//#[cfg(test)]
+//mod tests;
 
 use chrono::{DateTime, TimeZone, Utc};
 use failure::Error;

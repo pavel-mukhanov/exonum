@@ -23,3 +23,4 @@ pub use self::interfaces::{AnyCall, CreateWallet, Issue, RecursiveCall, Wallet};
 include!(concat!(env!("OUT_DIR"), "/interfaces_protobuf_mod.rs"));
 
 use exonum::proto::schema::*;
+use exonum::crypto::proto::*;

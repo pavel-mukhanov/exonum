@@ -65,6 +65,7 @@ fn main() {
     );
 
     // Exonum external tests.
+    //TODO: change revert
     protobuf_generate(
         "tests/explorer/blockchain/proto",
         &["src/proto/schema/exonum", "../components/crypto/src/proto", "../components/proto/src/proto"],
