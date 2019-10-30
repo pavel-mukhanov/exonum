@@ -356,6 +356,9 @@ impl Blockchain {
     where
         I: IntoIterator<Item = Verified<Precommit>>,
     {
+        let mut added_tx = 0;
+        let current_tx_len;
+
         let patch = {
             let fork: Fork = patch.into();
 
@@ -371,17 +374,27 @@ impl Blockchain {
                 schema.update_transaction_count(u64::from(txs_in_block));
 
                 let tx_hashes = tx_cache.keys().cloned().collect::<Vec<Hash>>();
+
+                current_tx_len = schema.transactions_len();
+
                 for tx_hash in tx_hashes {
                     if let Some(tx) = tx_cache.remove(&tx_hash) {
                         if !schema.transactions().contains(&tx_hash) {
                             schema.add_transaction_into_pool(tx);
+                            added_tx += 1;
                         }
                     }
                 }
+
             }
             fork.into_patch()
         };
         self.merge(patch)?;
+
+        let snapshot = self.snapshot();
+        let schema = Schema::new(&snapshot);
+//        assert_eq!(schema.transactions_len(), added_tx + current_tx_len);
+
         // Invokes `after_commit` for each service in order of their identifiers
         self.dispatcher()
             .after_commit(self.snapshot(), &self.service_keypair, &self.api_sender);
@@ -468,7 +481,10 @@ pub(crate) fn get_transaction<T: IndexAccess>(
     txs: &MapIndex<T, Hash, Verified<AnyTx>>,
     tx_cache: &BTreeMap<Hash, Verified<AnyTx>>,
 ) -> Option<Verified<AnyTx>> {
-    txs.get(&hash).or_else(|| tx_cache.get(&hash).cloned())
+    txs.get(&hash).or_else(|| {
+        warn!("Transaction is not present in mempool, checking tx_cache");
+        tx_cache.get(&hash).cloned()
+    })
 }
 
 /// Check that transaction exists in the persistent pool or in the transaction cache.

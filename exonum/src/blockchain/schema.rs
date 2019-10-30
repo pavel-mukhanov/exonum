@@ -305,6 +305,7 @@ where
 
     /// Changes the transaction status from `in_pool`, to `committed`.
     pub(crate) fn commit_transaction(&mut self, hash: &Hash, tx: Verified<AnyTx>) {
+        // If tx is from tx_cache, add it to the database.
         if !self.transactions().contains(hash) {
             self.transactions().put(hash, tx)
         }

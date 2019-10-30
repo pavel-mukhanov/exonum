@@ -265,6 +265,7 @@ impl NodeHandler {
         // Commit propose
         for (round, block_hash) in self.state.take_unknown_propose_with_precommits(&hash) {
             // Execute block and get state hash
+            info!("handle_full_propose");
             let our_block_hash = self.execute(&hash);
 
             if our_block_hash != block_hash {
@@ -292,6 +293,7 @@ impl NodeHandler {
         let block_hash = block.object_hash();
 
         if self.state.block(&block_hash).is_none() {
+            info!("handle_full_block");
             let (computed_block_hash, patch) = self.create_block(
                 block.proposer_id(),
                 block.height(),
@@ -392,6 +394,7 @@ impl NodeHandler {
         }
 
         // Execute block and get state hash
+        info!("handle_majority_precommits");
         let our_block_hash = self.execute(propose_hash);
         assert_eq!(
             &our_block_hash, block_hash,
@@ -427,6 +430,7 @@ impl NodeHandler {
                 // Send precommit
                 if self.state.is_validator() && !self.state.have_incompatible_prevotes() {
                     // Execute block and get state hash
+                    info!("lock");
                     let block_hash = self.execute(&propose_hash);
                     self.broadcast_precommit(round, propose_hash, block_hash);
                     // Commit if has consensus
@@ -756,6 +760,10 @@ impl NodeHandler {
         let pool_txs: Vec<Hash> = pool.iter().take(remaining_tx_count as usize).collect();
 
         cache_txs.extend(pool_txs);
+
+        assert_eq!(cache_max_count + remaining_tx_count as u64, tx_block_limit as u64);
+        assert!(cache_txs.len() as u32 <= tx_block_limit);
+
         cache_txs
     }
 
@@ -831,6 +839,7 @@ impl NodeHandler {
     /// Calls `create_block` with transactions from the corresponding `Propose` and returns the
     /// block hash.
     pub fn execute(&mut self, propose_hash: &Hash) -> Hash {
+        info!("execute propose: {:?}", propose_hash);
         // if we already execute this block, return hash
         if let Some(hash) = self.state.propose_mut(propose_hash).unwrap().block_hash() {
             return hash;
