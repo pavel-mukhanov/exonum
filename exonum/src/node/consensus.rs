@@ -568,6 +568,14 @@ impl NodeHandler {
             bail!("Received already processed transaction, hash {:?}", hash)
         }
 
+        let unknown = self.state.unknown_txs.keys().find(|tx_hash| {
+            **tx_hash == hash
+        });
+
+        if let Some(tx) = unknown {
+            info!("received tx was unknown {:?}", tx);
+        }
+
         // TODO We have to check transaction correctness.
 
         // if let Err(e) = self.blockchain.tx_from_raw(msg.payload().clone()) {

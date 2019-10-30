@@ -77,7 +77,7 @@ pub struct State {
 
     queued: Vec<ConsensusMessage>,
 
-    unknown_txs: HashMap<Hash, Vec<Hash>>,
+    pub unknown_txs: HashMap<Hash, Vec<Hash>>,
     unknown_proposes_with_precommits: HashMap<Hash, Vec<(Round, Hash)>>,
 
     // Our requests state.
@@ -939,6 +939,8 @@ impl State {
                         unknown_txs.insert(*hash);
                     }
                 }
+
+                info!("unknown_txs: {:?} ", unknown_txs);
 
                 for tx in &unknown_txs {
                     self.unknown_txs
