@@ -148,6 +148,7 @@ impl NodeHandler {
         let known_nodes = self.remove_request(&RequestData::Propose(hash));
 
         if has_unknown_txs {
+            info!("has unknown txs for propose: {:?}, requesting it", hash);
             trace!("REQUEST TRANSACTIONS");
             self.request(RequestData::ProposeTransactions(hash), from);
 
@@ -155,6 +156,7 @@ impl NodeHandler {
                 self.request(RequestData::ProposeTransactions(hash), node);
             }
         } else {
+            info!("All txs is present for propose: {:?}", hash);
             self.handle_full_propose(hash, msg.payload().round());
         }
     }
@@ -839,11 +841,13 @@ impl NodeHandler {
     /// Calls `create_block` with transactions from the corresponding `Propose` and returns the
     /// block hash.
     pub fn execute(&mut self, propose_hash: &Hash) -> Hash {
-        info!("execute propose: {:?}", propose_hash);
         // if we already execute this block, return hash
         if let Some(hash) = self.state.propose_mut(propose_hash).unwrap().block_hash() {
             return hash;
         }
+
+        info!("execute propose: {:?}", propose_hash);
+
         let propose = self
             .state
             .propose(propose_hash)

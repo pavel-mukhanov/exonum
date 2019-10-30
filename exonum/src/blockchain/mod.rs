@@ -482,7 +482,6 @@ pub(crate) fn get_transaction<T: IndexAccess>(
     tx_cache: &BTreeMap<Hash, Verified<AnyTx>>,
 ) -> Option<Verified<AnyTx>> {
     txs.get(&hash).or_else(|| {
-        warn!("Transaction is not present in mempool, checking tx_cache");
         tx_cache.get(&hash).cloned()
     })
 }
