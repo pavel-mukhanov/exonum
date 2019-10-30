@@ -555,12 +555,16 @@ impl NodeHandler {
     pub fn handle_tx(&mut self, msg: Verified<AnyTx>) -> Result<(), failure::Error> {
         let hash = msg.object_hash();
 
-        let snapshot = self.blockchain.snapshot();
-        let schema = Schema::new(&snapshot);
+        let fork = self.blockchain.fork();
+        let mut schema = Schema::new(&fork);
 
         if contains_transaction(&hash, &schema.transactions(), self.state.tx_cache()) {
             bail!("Received already processed transaction, hash {:?}", hash)
         }
+
+        schema.add_transaction_into_pool(msg);
+
+        self.blockchain.merge(fork.into_patch()).unwrap();
 
         // TODO We have to check transaction correctness.
 
@@ -569,7 +573,7 @@ impl NodeHandler {
         //     bail!("Received malicious transaction.")
         // }
 
-        self.state.tx_cache_mut().insert(hash, msg);
+//        self.state.tx_cache_mut().insert(hash, msg);
 
         if self.state.is_leader() && self.state.round() != Round::zero() {
             self.maybe_add_propose_timeout();
