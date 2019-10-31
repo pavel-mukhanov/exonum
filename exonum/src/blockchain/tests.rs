@@ -39,6 +39,7 @@ use crate::{
         AnyTx, ArtifactId, ExecutionError, InstanceDescriptor, InstanceId, SUPERVISOR_INSTANCE_ID,
     },
 };
+use std::collections::HashMap;
 
 const IDX_NAME: &str = "idx_name";
 const TEST_SERVICE_ID: InstanceId = SUPERVISOR_INSTANCE_ID;
@@ -311,7 +312,7 @@ fn create_entry<T: IndexAccess>(fork: T) -> Entry<T, u64> {
 
 fn assert_service_execute(blockchain: &Blockchain, db: &mut dyn Database) {
     let (_, patch) =
-        blockchain.create_patch(ValidatorId::zero(), Height(1), &[], &mut BTreeMap::new());
+        blockchain.create_patch(ValidatorId::zero(), Height(1), &[], &mut BTreeMap::new(), &HashMap::new());
     db.merge(patch).unwrap();
     let snapshot = db.snapshot();
     let index = ListIndex::new(IDX_NAME, &snapshot);
@@ -321,7 +322,7 @@ fn assert_service_execute(blockchain: &Blockchain, db: &mut dyn Database) {
 
 fn assert_service_execute_panic(blockchain: &Blockchain, db: &mut dyn Database) {
     let (_, patch) =
-        blockchain.create_patch(ValidatorId::zero(), Height(1), &[], &mut BTreeMap::new());
+        blockchain.create_patch(ValidatorId::zero(), Height(1), &[], &mut BTreeMap::new(), &HashMap::new());
     db.merge(patch).unwrap();
     let snapshot = db.snapshot();
     let index: ListIndex<_, u32> = ListIndex::new(IDX_NAME, &snapshot);
@@ -349,6 +350,7 @@ fn execute_transaction(blockchain: &mut Blockchain, tx: Verified<AnyTx>) -> Exec
                     Height::zero(),
                     &[tx.object_hash()],
                     &mut BTreeMap::new(),
+                    &HashMap::new(),
                 )
                 .1,
         )
@@ -408,6 +410,7 @@ fn handling_tx_panic_error() {
             tx_ok2.object_hash(),
         ],
         &mut BTreeMap::new(),
+        &HashMap::new(),
     );
 
     blockchain.merge(patch).unwrap();
@@ -470,6 +473,7 @@ fn handling_tx_panic_storage_error() {
             tx_ok2.object_hash(),
         ],
         &mut BTreeMap::new(),
+        &HashMap::new(),
     );
 }
 
@@ -537,6 +541,7 @@ fn error_discards_transaction_changes() {
             Height(index),
             &[hash],
             &mut BTreeMap::new(),
+            &HashMap::new(),
         );
 
         db.merge(patch).unwrap();

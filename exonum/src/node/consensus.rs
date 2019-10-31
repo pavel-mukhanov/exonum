@@ -148,7 +148,7 @@ impl NodeHandler {
         let known_nodes = self.remove_request(&RequestData::Propose(hash));
 
         if has_unknown_txs {
-            info!("has unknown txs for propose: {:?}, requesting it", hash);
+            error!("has unknown txs for propose: {:?}, requesting it", hash);
             trace!("REQUEST TRANSACTIONS");
             self.request(RequestData::ProposeTransactions(hash), from);
 
@@ -156,7 +156,6 @@ impl NodeHandler {
                 self.request(RequestData::ProposeTransactions(hash), node);
             }
         } else {
-            info!("All txs is present for propose: {:?}", hash);
             self.handle_full_propose(hash, msg.payload().round());
         }
     }
@@ -182,7 +181,7 @@ impl NodeHandler {
 
         // TODO: Add block with greater height to queue. (ECR-171)
         if self.state.height() != block.height() {
-            bail!("Received block has another height, msg={:?}", msg);
+            bail!("Received block has another height");
         }
 
         // Check block content.
@@ -573,7 +572,7 @@ impl NodeHandler {
         });
 
         if let Some(tx) = unknown {
-            info!("received tx was unknown {:?}", tx);
+            error!("received tx was unknown {:?}", tx);
         }
 
         // TODO We have to check transaction correctness.
@@ -838,11 +837,13 @@ impl NodeHandler {
         height: Height,
         tx_hashes: &[Hash],
     ) -> (Hash, Patch) {
+        let unknown_tx = self.state.unknown_txs.clone();
         self.blockchain.create_patch(
             proposer_id,
             height,
             tx_hashes,
             &mut self.state.tx_cache_mut(),
+            &unknown_tx,
         )
     }
 
@@ -854,7 +855,13 @@ impl NodeHandler {
             return hash;
         }
 
-        info!("execute propose: {:?}", propose_hash);
+        let unknown = self.state.unknown_txs.values().flatten().find(|hash| {
+            *hash == propose_hash
+        });
+
+        if let Some(hash) = unknown {
+            error!("execute propose with unknown txs {:?}", hash);
+        }
 
         let propose = self
             .state

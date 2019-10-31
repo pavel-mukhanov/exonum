@@ -174,6 +174,7 @@ impl Blockchain {
                 Height::zero(),
                 &[],
                 &mut BTreeMap::new(),
+                &HashMap::new(),
             )
             .1
         };
@@ -212,6 +213,7 @@ impl Blockchain {
         height: Height,
         tx_hashes: &[Hash],
         tx_cache: &mut BTreeMap<Hash, Verified<AnyTx>>,
+        unknown_tx: &HashMap<Hash, Vec<Hash>>,
     ) -> (Hash, Patch) {
         let mut dispatcher = self.dispatcher();
         // Create fork
@@ -229,6 +231,7 @@ impl Blockchain {
                     index,
                     &mut fork,
                     tx_cache,
+                    unknown_tx,
                 )
                 // Execution could fail if the transaction
                 // cannot be deserialized or it isn't in the pool.
@@ -299,6 +302,7 @@ impl Blockchain {
         index: usize,
         fork: &mut Fork,
         tx_cache: &mut BTreeMap<Hash, Verified<AnyTx>>,
+        unknown_tx: &HashMap<Hash, Vec<Hash>>,
     ) -> Result<(), failure::Error> {
         let transaction = {
             let new_fork = &*fork;
@@ -306,6 +310,14 @@ impl Blockchain {
             let schema = Schema::new(snapshot);
 
             get_transaction(&tx_hash, &schema.transactions(), &tx_cache).ok_or_else(|| {
+                let unknown = unknown_tx.keys().find(|hash| {
+                    **hash == tx_hash
+                });
+
+                if let Some(tx) = unknown {
+                    error!("executing unknown tx {:?}", tx);
+                };
+
                 failure::err_msg(format!(
                     "BUG: Cannot find transaction in database. tx: {:?}",
                     tx_hash
@@ -356,9 +368,6 @@ impl Blockchain {
     where
         I: IntoIterator<Item = Verified<Precommit>>,
     {
-        let mut added_tx = 0;
-        let current_tx_len;
-
         let patch = {
             let fork: Fork = patch.into();
 
@@ -372,16 +381,12 @@ impl Blockchain {
                 let txs_in_block = schema.last_block().tx_count();
 
                 schema.update_transaction_count(u64::from(txs_in_block));
-
                 let tx_hashes = tx_cache.keys().cloned().collect::<Vec<Hash>>();
-
-                current_tx_len = schema.transactions_len();
 
                 for tx_hash in tx_hashes {
                     if let Some(tx) = tx_cache.remove(&tx_hash) {
                         if !schema.transactions().contains(&tx_hash) {
                             schema.add_transaction_into_pool(tx);
-                            added_tx += 1;
                         }
                     }
                 }
@@ -390,10 +395,6 @@ impl Blockchain {
             fork.into_patch()
         };
         self.merge(patch)?;
-
-        let snapshot = self.snapshot();
-        let schema = Schema::new(&snapshot);
-//        assert_eq!(schema.transactions_len(), added_tx + current_tx_len);
 
         // Invokes `after_commit` for each service in order of their identifiers
         self.dispatcher()

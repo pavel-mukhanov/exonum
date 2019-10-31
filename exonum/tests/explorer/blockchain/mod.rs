@@ -30,6 +30,7 @@ use exonum_proto::ProtobufConvert;
 use futures::sync::mpsc;
 
 use std::collections::BTreeMap;
+use proptest::std_facade::hash_map::HashMap;
 
 pub const SERVICE_ID: InstanceId = 4;
 
@@ -158,7 +159,7 @@ pub fn create_block(blockchain: &mut Blockchain, transactions: Vec<Verified<AnyT
 
     let mut tx_cache = BTreeMap::new();
     let (block_hash, patch) =
-        blockchain.create_patch(ValidatorId(0), height, &tx_hashes, &mut tx_cache);
+        blockchain.create_patch(ValidatorId(0), height, &tx_hashes, &mut tx_cache, &HashMap::new());
     let (consensus_public_key, consensus_secret_key) = consensus_keys();
 
     let propose = Verified::from_value(
